@@ -1,4 +1,4 @@
-function train_1D_data(folder)
+function train_1D_data(folder='data/waves')
     fds = fileDatastore(folder,"ReadFcn",@read_to_array);
 
     data = readall(fds);
@@ -36,16 +36,17 @@ function train_1D_data(folder)
 
     layers = [
         sequenceInputLayer(numChannels)
-        lstmLayer(128)
+        lstmLayer(128, 'OutputMode', 'sequence')
         fullyConnectedLayer(1)
         regressionLayer];
 
     options = trainingOptions("adam", ...
-        MaxEpochs=200, ...
+        MaxEpochs=100, ...
         SequencePaddingDirection="left", ...
         Shuffle="every-epoch", ...
         Plots="training-progress", ...
-        Verbose=0);
+        Verbose=0, ...
+        ValidationData={XTest, TTest});
 
     net = trainNetwork(XTrain,TTrain,layers,options);
 
@@ -54,10 +55,24 @@ function train_1D_data(folder)
         data = table2array(data)';
     end
 
-    outputFile = fullfile("data/networks/one-d-nets", 'netv1.mat');
+    outputFile = fullfile("data/networks/one-d-nets", 'netv2.mat');
     save(outputFile, 'net');
     
-    outputFile2 = fullfile("data/networks/one-d-nets", 'netv1testdata.mat');
+    outputFile2 = fullfile("data/networks/one-d-nets", 'netv2testdata.mat');
     save(outputFile2, 'XTest', 'TTest')
 
 end
+
+% Net v1:
+%     layers = [
+%         sequenceInputLayer(numChannels)
+%         lstmLayer(128)
+%         fullyConnectedLayer(1)
+%         regressionLayer];
+
+% Net v2:
+%     layers = [
+%         sequenceInputLayer(numChannels)
+%         lstmLayer(128, 'OutputMode', 'sequence')
+%         fullyConnectedLayer(1)
+%         regressionLayer];

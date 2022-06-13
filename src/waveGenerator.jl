@@ -12,6 +12,14 @@ function gen_simple_wave(t::Vector{Float64})
     return wave(amp, wave_freq, t)
 end
 
+function gen_complex_wave(t::Vector{Float64})
+    complex_wave = gen_simple_wave(t)
+    for i in 1:rand(1:8)
+        complex_wave = complex_wave + gen_simple_wave(t)
+    end
+    return complex_wave
+end
+
 function generate_wave_file(i, t=t_seq, time=time_span)
     # Initialize data array
     num_rows = length(t)
@@ -19,15 +27,15 @@ function generate_wave_file(i, t=t_seq, time=time_span)
 
     # First column (time): 
     data[:,1] = t 
-    # Second column (wave):
-    data[:,2] = gen_simple_wave(t)
+    # Second column (gen_complex_wave or gen_simple_wave):
+    data[:,2] = gen_complex_wave(t)
     labels = ["time", "wave"]
 
     tab = Tables.table(data)
-    CSV.write("data/waves/simplewave$(i).csv", tab, header=labels)
+    CSV.write("data/waves/complexwave$(i).csv", tab, header=labels)
 end
 
-for i = 1:10
+for i = 1:200
     generate_wave_file(i)
 end
 

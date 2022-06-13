@@ -1,8 +1,8 @@
-load('data/networks/one-d-nets/netv1.mat')
-load('data/networks/one-d-nets/netv1testdata.mat')
+load('data/networks/one-d-nets/netv2.mat')
+load('data/networks/one-d-nets/netv2testdata.mat')
 
-X = XTest{1};
-T = TTest{1};
+X = XTest{2};
+T = TTest{2};
 
 net = resetState(net);
 offset = 20;
