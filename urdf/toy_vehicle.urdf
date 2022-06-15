@@ -1,0 +1,238 @@
+<robot name="toy_vehicle">
+
+<!-- Materials -->
+    <material name="gray">
+        <color rgba="0.3 0.3 0.3 1"/>
+    </material>
+    <material name="transparent" >
+        <color rgba="0.3 0.3 0.3 0.25" />
+    </material>
+    <material name="red" >
+        <color rgba="1 0 0 0.8" />
+    </material>
+    <material name="green">
+        <color rgba="0.5 0.9 0.3 1"/>
+    </material>
+    <material name="black">
+        <color rgba=".1 .1 .1 1"/>
+    </material>
+
+<!-- Links -->
+    <link name="base_link"/>
+
+    <joint name="pitch_joint" type="revolute">
+        <!-- <origin rpy="0 0 0" xyz="0 0 0"/> -->
+        <parent link="base_link"/>
+        <child link="vehicle"/>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <axis xyz="0 1 0"/>
+    </joint>
+  
+    <link name="vehicle">
+        <visual>
+            <geometry>
+                <box size="0.5 0.4 0.15"/>
+            </geometry>
+            <!-- <origin rpy="1.57075 0 0" xyz="0 0 0"/> -->
+            <material name="green"/>
+        </visual>
+        <inertial>
+            <!-- Actual *not added* -->
+            <mass value="22.2"/> 
+            <!-- Assume COM is 6cm below the center of the green box (13.5cm from top of vehicle) -->
+            <origin xyz="0.0 0.0 -0.06"/>
+            <inertia ixx=".75" ixy="0.0" ixz="0.0" iyy="1.4" iyz="0.0" izz="1.6"/>
+        </inertial>
+    </link>
+
+    <joint name="joint1" type="revolute">
+        <parent link="vehicle"/>
+        <child link="link1"/>
+        <origin rpy="0 0 0" xyz="0.25 0 -0.075"/>
+        <axis xyz="0 1 0"/>
+    </joint>
+
+    <link name="link1">
+        <visual>
+            <geometry>
+                <cylinder length="0.15" radius="0.020"/>
+            </geometry>
+            <material name="gray"/>
+            <origin rpy="0 0 0" xyz="0 0 -.075"/>
+        </visual>
+        <inertial>
+            <mass value="0.53"/>
+            <origin xyz="0 0 -.075"/>
+            <inertia ixx="0.00104" ixy="0." ixz="0." 
+            iyy="0.00104" iyz="0.0" 
+            izz="0.000106"/>
+        </inertial>
+    </link>
+
+    <joint name="joint2" type="revolute">
+        <parent link="link1"/>
+        <child link="link2"/>
+        <origin rpy="0 0 0" xyz="0 0 -.15"/>
+        <axis xyz="0 1 0"/>
+    </joint>
+
+    <link name="link2">
+        <visual>
+            <geometry>
+                <cylinder length="0.15" radius="0.020"/>
+            </geometry>
+            <material name="red"/>
+            <origin rpy="0 0 0" xyz="0 0 -.075"/>
+        </visual>
+        <inertial>
+            <mass value="0.53"/>
+            <origin xyz="0 0 -.075"/>
+            <inertia ixx="0.00104" ixy="0." ixz="0." 
+            iyy="0.00104" iyz="0.0" 
+            izz="0.000106"/>
+        </inertial>
+    </link>
+
+
+<!-- Extra vehicle visuals -->
+    <!-- Bumpers -->
+    <link name="front_bumper">
+        <visual>
+        <geometry>
+            <cylinder length="0.4" radius="0.075"/>
+        </geometry>
+        <material name="green"/>
+        </visual>
+    </link>
+
+    <joint name="fbump_link" type="fixed">
+        <parent link="vehicle"/>
+        <child link="front_bumper"/>
+        <origin rpy="1.57579632679 0 0" xyz="0.25 0 0"/>
+    </joint>
+
+    <link name="rear_bumper">
+        <visual>
+            <geometry>
+            <cylinder length="0.4" radius="0.075"/>
+            </geometry>
+            <material name="green"/>
+        </visual>
+    </link>
+
+    <joint name="rbump_link" type="fixed">
+        <parent link="vehicle"/>
+        <child link="rear_bumper"/>
+        <origin rpy="1.57579632679 0 0" xyz="-0.25 0 0"/>
+    </joint>
+
+    <!-- Arrow -->
+    <link name="l_arrow">
+        <visual>
+        <geometry>
+            <box size="0.05 0.318 0.01"/>
+        </geometry>
+        <material name="black"/>
+        </visual>
+    </link>
+    <joint name="l_arrow_link" type="fixed">
+        <parent link="vehicle"/>
+        <child link="l_arrow"/>
+        <origin rpy="0 0 0.787898163397" xyz="0.05 0.095 0.075"/>
+    </joint>
+    <link name="r_arrow">
+        <visual>
+            <geometry>
+                <box size="0.05 0.318 0.01"/>
+            </geometry>
+        <material name="black"/>
+        </visual>
+    </link>
+    <joint name="r_arrow_link" type="fixed">
+        <parent link="vehicle"/>
+        <child link="r_arrow"/>
+        <origin rpy="0 0 -0.787898163397" xyz="0.05 -0.095 0.075"/>
+    </joint>
+
+    <!-- Frame -->
+    <link name="F_R_bar">
+        <visual>
+        <geometry>
+            <box size = "0.25 0.02 0.05"/>
+        </geometry>
+        <material name="black"/>
+        </visual>
+    </link>
+    <joint name="FRBarJoint" type="fixed">
+        <parent link="vehicle"/>
+        <child link="F_R_bar"/>
+        <origin rpy="0 1.57075 0" xyz="0.225 -.19 -.2"/>
+    </joint>
+    <link name="F_L_bar">
+        <visual>
+        <geometry>
+            <box size = "0.25 0.02 0.05"/>
+        </geometry>
+        <material name="black"/>
+        </visual>
+    </link>
+        <joint name="FLBarJoint" type="fixed">
+        <parent link="vehicle"/>
+        <child link="F_L_bar"/>
+        <origin rpy="0 1.57075 0" xyz="0.225 .19 -.2"/>
+        </joint>
+    <link name="B_L_bar">
+        <visual>
+            <geometry>
+            <box size = "0.25 0.02 0.05"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+    </link>
+        <joint name="BLBarJoint" type="fixed">
+        <parent link="vehicle"/>
+        <child link="B_L_bar"/>
+        <origin rpy="0 1.57075 0" xyz="-0.225 .19 -.2"/>
+        </joint>
+    <link name="B_R_bar">
+        <visual>
+        <geometry>
+            <box size = "0.25 0.02 0.05"/>
+        </geometry>
+        <material name="black"/>
+        </visual>
+    </link>
+        <joint name="BRBarJoint" type="fixed">
+        <parent link="vehicle"/>
+        <child link="B_R_bar"/>
+        <origin rpy="0 1.57075 0" xyz="-0.225 -.19 -.2"/>
+        </joint>
+    <link name="R_bar">
+        <visual>
+        <geometry>
+            <box size = "0.5 0.02 0.05"/>
+        </geometry>
+        <material name="black"/>
+        </visual>
+    </link>
+        <joint name="RBarJoint" type="fixed">
+        <parent link="vehicle"/>
+        <child link="R_bar"/>
+        <origin rpy="0 0 0" xyz="0 -.19 -.3"/>
+        </joint>
+    <link name="L_bar">
+        <visual>
+        <geometry>
+            <box size = "0.5 0.02 0.05"/>
+        </geometry>
+        <material name="black"/>
+        </visual>
+    </link>
+        <joint name="LBarJoint" type="fixed">
+        <parent link="vehicle"/>
+        <child link="L_bar"/>
+        <origin rpy="0 0 0" xyz="0 .19 -.3"/>
+        </joint>
+
+
+</robot>
