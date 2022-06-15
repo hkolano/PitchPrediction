@@ -1,9 +1,9 @@
 load('data/networks/one-d-nets/netv2.mat')
 load('data/networks/one-d-nets/netv2testdata.mat')
 
-X = XTest{6};
+X = XTest{5};
 dt = X(1,2) - X(1,1);
-T = TTest{6};
+T = TTest{5};
 
 net = resetState(net);
 offset = 100;
