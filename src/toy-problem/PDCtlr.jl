@@ -7,6 +7,7 @@ Kp = 50.
 Kd = 2.0
 torque_lims = [0.0, 5.0, 5.0]
 vel_error_cache = [0.0, 0.0, 0.0]
+des_vel = [0.0, 0.0]
 # ------------------------------------------------------------------------
 #                          SETUP FUNCTIONS
 # ------------------------------------------------------------------------
@@ -45,39 +46,33 @@ end
 
 function pd_control!(torques::AbstractVector, t, state::MechanismState; time_step_ctr=time_step_ctr, joint_vec=joint_vec)
     # If it's the first time called in the Runge-Kutta, update the control torque
+    # println("Made it inside the function! Ctr = $(time_step_ctr)")
     (j1, j2, j3) = joint_vec
     if rem(time_step_ctr, 4) == 0
-        # println("New control goes here!!!")
-
-        torques[velocity_range(state, j1)] .= -.1 .* velocity(state, j1)
-        # torques[velocity_range(state, j2)] .= -.1 .* velocity(state, j2)
-        # torques[velocity_range(state, j3)] .= -.1 .* velocity(state, j3)
-
-        get_des_vel!(des_vel, t)
+        # println("Div by 4: doing control")
+        torques[velocity_range(state, j1)] .= -.5 .* velocity(state, j1)
+        des_vel = get_des_vel(t)
 
         for idx in 2:3
-            # println("at idx $(idx)")
-            torques[idx] = PD_ctlr(torques[idx][1], t, velocity(state, joint_vec[idx]), des_vel[idx], idx) - .1 .*velocity(state, joint_vec[idx])
+            ctlr_tau = PD_ctlr(torques[idx][1], t, velocity(state, joint_vec[idx]), des_vel[idx-1], idx) 
+            damp_tau = -.1*velocity(state, joint_vec[idx])
+            torques[velocity_range(state, joint_vec[idx])] .= [ctlr_tau] + damp_tau
         end
 
     end
 
-    # push!(ctlr_taus, tau_base)
-    # push!(times, t)
-
-    time_step_ctr += 1
-    # println("Base joint vel errors: ", vel_error_cache.base_joint)
+    global time_step_ctr = time_step_ctr + 1
 end;
 
-function get_des_vel!(des_vel, t; joint_vec=joint_vec)
+function get_des_vel(t)
     # TODO: implement a simple pt a to pt b trajectory generation
-    (~, j2, j3) = joint_vec
-    des_vel[j2][1] = 1.0
-    des_vel[j3][1] = 0.0
+    des_vel[1] = 0.0
+    des_vel[2]= 1.0
+    return des_vel
 end;
     
 function PD_ctlr(torque, t, vel_act, des_vel, j_idx; dt=dt)
-    vel_error = vel_act[1] - des_vel[1]
+    vel_error = vel_act[1] - des_vel
     d_vel_error = (vel_error - vel_error_cache[j_idx])/dt
     # println("D_Velocity error on idx$(j_idx): $(d_vel_error)")
     d_tau = -Kp*vel_error - Kd*d_vel_error
