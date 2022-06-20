@@ -49,21 +49,22 @@ reset_to_equilibrium(state)
 
 # Set up the controller 
 Δt = 1e-3
-PDCtlr.ctlr_setup(mechanism_toy, state; time_step=Δt)
+ctlr_cache = PDCtlr.CtlrCache(Δt, mechanism_toy)
 
 #%%
 wp = TrajGen.gen_rand_waypoints_from_equil()
 traj = TrajGen.find_trajectory(wp)
 
-
 while traj === nothing
     global wp = TrajGen.gen_rand_waypoints_from_equil()
     global traj = TrajGen.find_trajectory(wp)
 end
+
 params = traj[1]
 duration = traj[2]
 println("Going to point $(wp.goal.θs)")
-ts, qs, vs = simulate_des_trajectory(state, duration, params, PDCtlr.pd_control!; Δt);
+
+ts, qs, vs = simulate_des_trajectory(state, duration, params, ctlr_cache, PDCtlr.pd_control!; Δt);
 
 MeshCatMechanisms.animate(mvis_toy, ts, qs; realtimerate = 1.);
 #%%
