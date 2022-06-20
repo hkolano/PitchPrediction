@@ -15,7 +15,7 @@ src_dir = dirname(pathof(PitchPrediction))
 urdf_file = joinpath(src_dir, "..", "urdf", "toy_vehicle.urdf")
 ctlr_file = joinpath(src_dir, "toy-problem", "PDCtlr.jl")
 traj_file = joinpath(src_dir, "toy-problem", "TrajGen.jl")
-
+simulate_file = joinpath(src_dir, "toy-problem", "simulate_des_trajectory.jl")
 # include(traj_file)
 # using .PDCtlr
 # revise(PDCtlr)
@@ -37,6 +37,8 @@ end
 
 #%%
 include(ctlr_file)
+include(traj_file)
+include(simulate_file)
 
 # Initialize the mechanism state
 state = MechanismState(mechanism_toy)
@@ -49,14 +51,26 @@ reset_to_equilibrium(state)
 Δt = 1e-3
 PDCtlr.ctlr_setup(mechanism_toy, state; time_step=Δt)
 
-ts, qs, vs = simulate(state, 10.0, PDCtlr.pd_control!; Δt);
+#%%
+wp = TrajGen.gen_rand_waypoints_from_equil()
+traj = TrajGen.find_trajectory(wp)
 
-# MeshCatMechanisms.animate(mvis_toy, ts, qs; realtimerate = 1.);
+
+while traj === nothing
+    global wp = TrajGen.gen_rand_waypoints_from_equil()
+    global traj = TrajGen.find_trajectory(wp)
+end
+params = traj[1]
+duration = traj[2]
+println("Going to point $(wp.goal.θs)")
+ts, qs, vs = simulate_des_trajectory(state, duration, params, PDCtlr.pd_control!; Δt);
+
+MeshCatMechanisms.animate(mvis_toy, ts, qs; realtimerate = 1.);
 #%%
 
 # Plotting joint angles
 qs1 = [qs[i][1] for i in 1:length(qs)]
 qs2 = [qs[i][2] for i in 1:length(qs)]
 qs3 = [qs[i][3] for i in 1:length(qs)]
-plot(qs1)
+plot(qs2)
 #%%

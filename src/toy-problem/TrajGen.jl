@@ -10,9 +10,16 @@ mutable struct jointState
     dθs::Array{Float64}
 end
 
+equil_pt = jointState([-0.18558, 0.0], [0.0, 0.0])
+
 mutable struct Waypoints
     start::jointState 
     goal::jointState
+end
+
+mutable struct trajParams
+    a::Tuple
+    wp::Waypoints
 end
 
 function gen_rand_feasible_point()
@@ -25,6 +32,10 @@ end
 
 function gen_rand_waypoints()
     Waypoints(gen_rand_feasible_point(), gen_rand_feasible_point())    
+end
+
+function gen_rand_waypoints_from_equil()
+    Waypoints(equil_pt, gen_rand_feasible_point()) 
 end
 
 function get_coeffs(pts::Waypoints, T, idx)
@@ -67,6 +78,16 @@ function get_path!(poses, vels, θ1, θ2, T, a, num_its=num_its)
     return poses, vels 
 end
 
+function get_desv_at_t(t, p)
+    # println("Got request for desv. Params $(p))")
+    des_vel = [0.0, 0.0]
+    for i = 1:2
+        ds = vel_scale_at_t(p.a, t)
+        des_vel[i] = ds*(p.wp.goal.θs[i]-p.wp.start.θs[i])
+    end
+    return des_vel
+end
+
 function check_lim(vals::Array, lims, idx)
     if minimum(vals) < lims[idx][1] || maximum(vals) > lims[idx][2]
         is_in_range = false
@@ -77,11 +98,11 @@ function check_lim(vals::Array, lims, idx)
 end
 
 function find_trajectory(pts::Waypoints; num_its=num_its, T_init=1.0)
-    is_feasible = false
     T = T_init
     poses = Array{Float64}(undef, num_its, 2)
     vels = Array{Float64}(undef, num_its, 2)
     feasible_ct = 0
+    a = Tuple{}
 
     while feasible_ct < 2 && T < 6.0
         feasible_ct = 0
@@ -103,9 +124,11 @@ function find_trajectory(pts::Waypoints; num_its=num_its, T_init=1.0)
     end
 
     if feasible_ct == 2
-        return T, poses, vels
+        return [trajParams(a, pts), T]
+        # println("Trajectory parameters set")
     else
-        throw(DomainError(pts, "Cannot find valid path between points selected."))
+        # println("No path between points; try again.")
+        return nothing
     end
 
 end

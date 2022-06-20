@@ -2,6 +2,10 @@ module PDCtlr
 # export ctlr_setup
 
 using RigidBodyDynamics
+using PitchPrediction
+src_dir = dirname(pathof(PitchPrediction))
+traj_file = joinpath(src_dir, "toy-problem", "TrajGen.jl")
+include(traj_file)
 
 Kp = 50.
 Kd = 2.0
@@ -44,18 +48,18 @@ end
 #                              CONTROLLER
 # ------------------------------------------------------------------------
 
-function pd_control!(torques::AbstractVector, t, state::MechanismState; time_step_ctr=time_step_ctr, joint_vec=joint_vec)
+function pd_control!(torques::AbstractVector, t, state::MechanismState, pars; time_step_ctr=time_step_ctr, joint_vec=joint_vec)
     # If it's the first time called in the Runge-Kutta, update the control torque
     # println("Made it inside the function! Ctr = $(time_step_ctr)")
-    (j1, j2, j3) = joint_vec
     if rem(time_step_ctr, 4) == 0
         # println("Div by 4: doing control")
-        torques[velocity_range(state, j1)] .= -1.0 .* velocity(state, j1)
-        des_vel = get_des_vel(t)
-
+        torques[velocity_range(state, joint_vec[1])] .= -1.0 .* velocity(state, joint_vec[1])
+        # println("Requesting des vel from trajgen")
+        des_vel = TrajGen.get_desv_at_t(t, pars)
+        # println("Got desired velocity")
         for idx in 2:3
-            ctlr_tau = 0 #PD_ctlr(torques[idx][1], t, velocity(state, joint_vec[idx]), des_vel[idx-1], idx) 
-            damp_tau = -.5*velocity(state, joint_vec[idx])
+            ctlr_tau = PD_ctlr(torques[idx][1], t, velocity(state, joint_vec[idx]), des_vel[idx-1], idx) 
+            damp_tau = -.1*velocity(state, joint_vec[idx])
             torques[velocity_range(state, joint_vec[idx])] .= [ctlr_tau] + damp_tau
         end
 
@@ -64,13 +68,6 @@ function pd_control!(torques::AbstractVector, t, state::MechanismState; time_ste
     global time_step_ctr = time_step_ctr + 1
 end;
 
-function get_des_vel(t)
-    # TODO: implement a simple pt a to pt b trajectory generation
-    des_vel[1] = 0.0
-    des_vel[2]= 0.0
-    return des_vel
-end;
-    
 function PD_ctlr(torque, t, vel_act, des_vel, j_idx; dt=dt)
     vel_error = vel_act[1] - des_vel
     d_vel_error = (vel_error - vel_error_cache[j_idx])/dt
@@ -79,10 +76,10 @@ function PD_ctlr(torque, t, vel_act, des_vel, j_idx; dt=dt)
     # println("Ideal tau: $(d_tau)")
 
     # Can only change torque a small amount per time step
-    if d_tau < -.05
-        d_tau = -0.05
-    elseif d_tau > 0.05
-        d_tau = 0.05
+    if d_tau < -.1
+        d_tau = -0.1
+    elseif d_tau > 0.1
+        d_tau = 0.1
     end
     
     # Torque limits
