@@ -50,12 +50,12 @@ function pd_control!(torques::AbstractVector, t, state::MechanismState; time_ste
     (j1, j2, j3) = joint_vec
     if rem(time_step_ctr, 4) == 0
         # println("Div by 4: doing control")
-        torques[velocity_range(state, j1)] .= -.5 .* velocity(state, j1)
+        torques[velocity_range(state, j1)] .= -1.0 .* velocity(state, j1)
         des_vel = get_des_vel(t)
 
         for idx in 2:3
-            ctlr_tau = PD_ctlr(torques[idx][1], t, velocity(state, joint_vec[idx]), des_vel[idx-1], idx) 
-            damp_tau = -.1*velocity(state, joint_vec[idx])
+            ctlr_tau = 0 #PD_ctlr(torques[idx][1], t, velocity(state, joint_vec[idx]), des_vel[idx-1], idx) 
+            damp_tau = -.5*velocity(state, joint_vec[idx])
             torques[velocity_range(state, joint_vec[idx])] .= [ctlr_tau] + damp_tau
         end
 
@@ -67,7 +67,7 @@ end;
 function get_des_vel(t)
     # TODO: implement a simple pt a to pt b trajectory generation
     des_vel[1] = 0.0
-    des_vel[2]= 1.0
+    des_vel[2]= 0.0
     return des_vel
 end;
     

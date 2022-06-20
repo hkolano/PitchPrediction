@@ -7,6 +7,7 @@ using MechanismGeometries
 using CoordinateTransformations
 using GeometryBasics
 using Revise
+using Plots
 using PitchPrediction
 println("Libraries imported.")
 
@@ -36,14 +37,19 @@ state = MechanismState(mechanism_toy)
 # Set initial position 
 free_joint, joint1, joint2 = joints(mechanism_toy)
 zero!(state)
-set_configuration!(state, joint1, 0)
+set_configuration!(state, free_joint, 0.18558)
+set_configuration!(state, joint1, -0.18558)
 
 # Set up the controller 
 Δt = 1e-3
 PDCtlr.ctlr_setup(mechanism_toy, state; time_step=Δt)
 
-ts, qs, vs = simulate(state, 3.0, PDCtlr.pd_control!; Δt);
+ts, qs, vs = simulate(state, 10.0, PDCtlr.pd_control!; Δt);
 
-MeshCatMechanisms.animate(mvis_toy, ts, qs; realtimerate = 1.);
+# MeshCatMechanisms.animate(mvis_toy, ts, qs; realtimerate = 1.);
 
+qs1 = [qs[i][1] for i in 1:length(qs)]
+qs2 = [qs[i][2] for i in 1:length(qs)]
+qs3 = [qs[i][3] for i in 1:length(qs)]
+plot(qs1)
 #%%
