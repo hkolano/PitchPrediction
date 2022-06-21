@@ -62,16 +62,36 @@ end
 
 params = traj[1]
 duration = traj[2]
+poses = traj[3]
+vels = traj[4]
 println("Going to point $(wp.goal.θs)")
 
 ts, qs, vs = simulate_des_trajectory(state, duration, params, ctlr_cache, PDCtlr.pd_control!; Δt);
 
-MeshCatMechanisms.animate(mvis_toy, ts, qs; realtimerate = 1.);
+# MeshCatMechanisms.animate(mvis_toy, ts, qs; realtimerate = 1.);
 #%%
 
 # Plotting joint angles
 qs1 = [qs[i][1] for i in 1:length(qs)]
 qs2 = [qs[i][2] for i in 1:length(qs)]
 qs3 = [qs[i][3] for i in 1:length(qs)]
-plot(qs2)
+vs1 = [vs[i][1] for i in 1:length(vs)]
+vs2 = [vs[i][2] for i in 1:length(vs)]
+vs3 = [vs[i][3] for i in 1:length(vs)]
+plot(qs3)
+
+l = @layout [a b ; c d]
+# label = ["q2", "q3", "v2", "v3"]
+p1 = plot(ts, qs2, label="q2")
+p1 = plot!(LinRange(0,duration,50), poses[:,1], label="des_q2")
+p2 = plot(ts, qs3, label="q3")
+p2 = plot!(LinRange(0, duration, 50), poses[:,2], label="des_q3")
+p3 = plot(ts, vs2, label="v2")
+p3 = plot!(LinRange(0, duration, 50), vels[:,1], label="des_v2")
+p4 = plot(ts, vs3, label="v3")
+p4 = plot!(LinRange(0, duration, 50), vels[:,2], label="des_v3")
+plot(p1, p2, p3, p4, layout=l)
+
+
+# plot(ts, qs1, ylab="pitch")
 #%%

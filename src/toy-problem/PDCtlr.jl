@@ -12,8 +12,8 @@ include(traj_file)
 #                              SETUP 
 # ------------------------------------------------------------------------
 
-default_Kp = 50.
-default_Kd = 2.0
+default_Kp = 200.
+default_Kd = 0.2
 default_torque_lims = [0.0, 5.0, 5.0]
 
 mutable struct CtlrCache

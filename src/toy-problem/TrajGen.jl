@@ -18,7 +18,7 @@ mutable struct Waypoints
 end
 
 mutable struct trajParams
-    a::Tuple
+    a::Array
     wp::Waypoints
 end
 
@@ -50,7 +50,7 @@ function get_coeffs(pts::Waypoints, T, idx)
     a3 = -2(3T*λ1+2T*λ2-5)/(T^3)
     a4 = (8T*λ1 + 7T*λ2-15)/(T^4)
     a5 = -3(T*λ1+T*λ2-2)/(T^5)
-    return (a0, a1, a2, a3, a4, a5)
+    return [a0, a1, a2, a3, a4, a5]
 end
 
 function pos_scale_at_t(a, t)
@@ -82,7 +82,7 @@ function get_desv_at_t(t, p)
     # println("Got request for desv. Params $(p))")
     des_vel = [0.0, 0.0]
     for i = 1:2
-        ds = vel_scale_at_t(p.a, t)
+        ds = vel_scale_at_t(p.a[i,:], t)
         des_vel[i] = ds*(p.wp.goal.θs[i]-p.wp.start.θs[i])
     end
     return des_vel
@@ -102,14 +102,14 @@ function find_trajectory(pts::Waypoints; num_its=num_its, T_init=1.0)
     poses = Array{Float64}(undef, num_its, 2)
     vels = Array{Float64}(undef, num_its, 2)
     feasible_ct = 0
-    a = Tuple{}
+    a = Array{Float64}(undef, 2, 6)
 
-    while feasible_ct < 2 && T < 6.0
+    while feasible_ct < 2 && T < 10.0
         feasible_ct = 0
         for i in 1:2
             # Get trajectory 
-            a = get_coeffs(pts, T, i)
-            (poses[:,i], vels[:,i]) = get_path!(poses[:,i], vels[:,i], pts.start.θs[i], pts.goal.θs[i], T, a)
+            a[i,:] = get_coeffs(pts, T, i)
+            (poses[:,i], vels[:,i]) = get_path!(poses[:,i], vels[:,i], pts.start.θs[i], pts.goal.θs[i], T, a[i,:])
 
             # Evaluate if possible
             is_in_range_poses = check_lim(poses, joint_lims, i)
@@ -124,7 +124,9 @@ function find_trajectory(pts::Waypoints; num_its=num_its, T_init=1.0)
     end
 
     if feasible_ct == 2
-        return [trajParams(a, pts), T]
+        println("Trajectory Parameters set")
+        println("Poses: $(poses)")
+        return [trajParams(a, pts), T, poses, vels]
         # println("Trajectory parameters set")
     else
         # println("No path between points; try again.")
