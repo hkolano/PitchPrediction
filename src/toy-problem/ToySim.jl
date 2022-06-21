@@ -68,7 +68,7 @@ println("Going to point $(wp.goal.θs)")
 
 ts, qs, vs = simulate_des_trajectory(state, duration, params, ctlr_cache, PDCtlr.pd_control!; Δt);
 
-# MeshCatMechanisms.animate(mvis_toy, ts, qs; realtimerate = 1.);
+MeshCatMechanisms.animate(mvis_toy, ts, qs; realtimerate = 1.);
 #%%
 
 # Plotting joint angles
@@ -94,4 +94,5 @@ plot(p1, p2, p3, p4, layout=l)
 
 
 # plot(ts, qs1, ylab="pitch")
+# plot(taus[:,1])
 #%%

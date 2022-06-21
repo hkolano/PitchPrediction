@@ -12,8 +12,8 @@ include(traj_file)
 #                              SETUP 
 # ------------------------------------------------------------------------
 
-default_Kp = 200.
-default_Kd = 0.2
+default_Kp = 20.
+default_Kd = 0.05
 default_torque_lims = [0.0, 5.0, 5.0]
 
 mutable struct CtlrCache
@@ -25,11 +25,12 @@ mutable struct CtlrCache
     joint_vec
     des_vel::Array{Float64}
     tau_lims::Array{Float64}
+    taus
     
     function CtlrCache(dt, mechanism)
         free_joint, joint1, joint2 = joints(mechanism)
         joint_vec = [free_joint, joint1, joint2]
-        new(default_Kp, default_Kd, dt, [0.0, 0.0], 0, joint_vec, [0.0, 0.0], default_torque_lims) 
+        new(default_Kp, default_Kd, dt, [0.0, 0.0], 0, joint_vec, [0.0, 0.0], default_torque_lims, Array{Float64}(undef, 2, 1)) 
     end
 end
 
@@ -66,6 +67,7 @@ function pd_control!(torques::AbstractVector, t, state::MechanismState, pars, c)
     # If it's the first time called in the Runge-Kutta, update the control torque
     # println("Made it inside the function! Ctr = $(time_step_ctr)")
     if rem(c.step_ctr, 4) == 0
+        c_taus = [0.0; 0.0]
         # println("Div by 4: doing control")
         torques[velocity_range(state, c.joint_vec[1])] .= -1.0 .* velocity(state, c.joint_vec[1])
         # println("Requesting des vel from trajgen")
@@ -73,9 +75,11 @@ function pd_control!(torques::AbstractVector, t, state::MechanismState, pars, c)
         # println("Got desired velocity")
         for idx in 2:3
             ctlr_tau = PD_ctlr(torques[idx][1], t, velocity(state, c.joint_vec[idx]), idx, c) 
+            c_taus[idx-1] = ctlr_tau
             damp_tau = -.1*velocity(state, c.joint_vec[idx])
             torques[velocity_range(state, c.joint_vec[idx])] .= [ctlr_tau] + damp_tau
         end
+        c.taus = cat(c.taus, c_taus, dims=2)
     end
     c.step_ctr = c.step_ctr + 1
 end;

@@ -125,7 +125,7 @@ function find_trajectory(pts::Waypoints; num_its=num_its, T_init=1.0)
 
     if feasible_ct == 2
         println("Trajectory Parameters set")
-        println("Poses: $(poses)")
+        # println("Poses: $(poses)")
         return [trajParams(a, pts), T, poses, vels]
         # println("Trajectory parameters set")
     else

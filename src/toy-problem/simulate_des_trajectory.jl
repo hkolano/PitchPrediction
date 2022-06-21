@@ -9,12 +9,15 @@ function simulate_des_trajectory(state0::MechanismState{X}, final_time, pars, cl
     T = cache_eltype(state0)
     result = DynamicsResult{T}(state0.mechanism)
     control_torques = similar(velocity(state0))
+    # storage_torque = [0.0; 0.0; 0.0]
     closed_loop_dynamics! = let result=result, control_torques=control_torques, stabilization_gains=stabilization_gains # https://github.com/JuliaLang/julia/issues/15276
         function (v̇::AbstractArray, ṡ::AbstractArray, t, state)
             control!(control_torques, t, state, pars, cltr)
+            # println("Control Torques: $(control_torques)")
             dynamics!(result, state, control_torques; stabilization_gains=stabilization_gains)
             copyto!(v̇, result.v̇)
             copyto!(ṡ, result.ṡ)
+            # storage_torque = cat(storage_torque, control_torques, dims=2)
             nothing
         end
     end
