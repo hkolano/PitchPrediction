@@ -12,8 +12,8 @@ include(traj_file)
 #                              SETUP 
 # ------------------------------------------------------------------------
 
-default_Kp = 20.
-default_Kd = 0.05
+default_Kp = 45.
+default_Kd = 0.1
 default_torque_lims = [0.0, 5.0, 5.0]
 
 mutable struct CtlrCache
@@ -76,7 +76,7 @@ function pd_control!(torques::AbstractVector, t, state::MechanismState, pars, c)
         for idx in 2:3
             ctlr_tau = PD_ctlr(torques[idx][1], t, velocity(state, c.joint_vec[idx]), idx, c) 
             c_taus[idx-1] = ctlr_tau
-            damp_tau = -.1*velocity(state, c.joint_vec[idx])
+            damp_tau = -0.1*velocity(state, c.joint_vec[idx])
             torques[velocity_range(state, c.joint_vec[idx])] .= [ctlr_tau] + damp_tau
         end
         c.taus = cat(c.taus, c_taus, dims=2)
@@ -104,10 +104,10 @@ function PD_ctlr(torque, t, vel_act, j_idx, c)
     # println("Ideal tau: $(d_tau)")
 
     # Can only change torque a small amount per time step
-    if d_tau < -.1
-        d_tau = -0.1
-    elseif d_tau > 0.1
-        d_tau = 0.1
+    if d_tau < -.05
+        d_tau = -0.05
+    elseif d_tau > 0.05
+        d_tau = 0.05
     end
     
     # Torque limits

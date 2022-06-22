@@ -3,7 +3,8 @@ module TrajGen
 
 num_its=50
 joint_lims = [[-π/2, π/2], [-π/2, π/2]]
-vel_lims = [[-2, 2],[-1.5, 1.5]]
+# Velocity limits: 30 degrees/s, from the Alpha documentation for the first 3 joints
+vel_lims = [[-0.5326, 0.5326],[-0.5326, 0.5326]]
 
 mutable struct jointState
     θs::Array{Float64}
