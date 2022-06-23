@@ -12,11 +12,14 @@ mutable struct jointState
 end
 
 equil_pt = jointState([-0.18558, 0.0], [0.0, 0.0])
+extended_pt = jointState([π/2-.05, 0.0], [0.0, 0.0])
 
 mutable struct Waypoints
     start::jointState 
     goal::jointState
 end
+
+raise_wpts = Waypoints(equil_pt, extended_pt)
 
 mutable struct trajParams
     a::Array

@@ -1,9 +1,9 @@
 load('data/networks/toy-nets/netv1.mat')
 load('data/networks/toy-nets/netv1testdata.mat')
 
-X = XTest{5};
+X = XTest{6};
 dt = X(1,2) - X(1,1);
-T = TTest{5};
+T = TTest{6};
 
 net = resetState(net);
 offset = 1000;
