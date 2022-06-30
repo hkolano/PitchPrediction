@@ -53,7 +53,7 @@ include(simulate_file)
 # ----------------------------------------------------------
 
 
-# for n = 1:1
+for n = 1:5000
     # Set initial position 
     reset_to_equilibrium(state)
 
@@ -64,14 +64,15 @@ include(simulate_file)
     traj = TrajGen.find_trajectory(wp)
 
     while traj === nothing
-        global wp = TrajGen.gen_rand_waypoints_from_equil()
-        global traj = TrajGen.find_trajectory(wp)
+        wp = TrajGen.gen_rand_waypoints_from_equil()
+        traj = TrajGen.find_trajectory(wp)
     end
 
-    params = traj[1]
-    duration = traj[2]
-    poses = traj[3]
-    vels = traj[4]
+    scaled_traj = TrajGen.scale_trajectory(traj...)
+    params = scaled_traj[1]
+    duration = scaled_traj[2]
+    poses = scaled_traj[3]
+    vels = scaled_traj[4]
     println("Going to point $(wp.goal.θs)")
 
     ts, qs, vs = simulate_des_trajectory(state, duration, params, ctlr_cache, PIDCtlr.pid_control!; Δt);
@@ -93,10 +94,10 @@ include(simulate_file)
     end
     
     tab = Tables.table(data)
-    # CSV.write("data/toy-data/toystates$(n).csv", tab, header=labels)
+    CSV.write("data/toy-data/toystates$(n).csv", tab, header=labels)
     
     # MeshCatMechanisms.animate(mvis_toy, ts, qs; realtimerate = 1.);
-# end
+end
 
 # ----------------------------------------------------------
 #                      Visualization
@@ -108,17 +109,17 @@ include(simulate_file)
 
 # Plot actual and desired joint angles and velocities
 # function plot_state_errors()
-    l = @layout [a b ; c d]
-    # label = ["q2", "q3", "v2", "v3"]
-    p1 = plot(ts, qs2, label="q2", ylim=(-1.5, 1.0))
-    p1 = plot!(LinRange(0,duration,50), poses[:,1], label="des_q2")
-    p2 = plot(ts, qs3, label="q3",  ylim=(-1.5, 1.5))
-    p2 = plot!(LinRange(0, duration, 50), poses[:,2], label="des_q3")
-    p3 = plot(ts, vs2, label="v2",  ylim=(-.6, 0.6))
-    p3 = plot!(LinRange(0, duration, 50), vels[:,1], label="des_v2")
-    p4 = plot(ts, vs3, label="v3",  ylim=(-.6, 0.6))
-    p4 = plot!(LinRange(0, duration, 50), vels[:,2], label="des_v3")
-    plot(p1, p2, p3, p4, layout=l)
+    # l = @layout [a b ; c d]
+    # # label = ["q2", "q3", "v2", "v3"]
+    # p1 = plot(ts, qs2, label="q2", ylim=(-1.5, 1.0))
+    # p1 = plot!(LinRange(0,duration,50), poses[:,1], label="des_q2")
+    # p2 = plot(ts, qs3, label="q3",  ylim=(-1.5, 1.5))
+    # p2 = plot!(LinRange(0, duration, 50), poses[:,2], label="des_q3")
+    # p3 = plot(ts, vs2, label="v2",  ylim=(-.6, 0.6))
+    # p3 = plot!(LinRange(0, duration, 50), vels[:,1], label="des_v2")
+    # p4 = plot(ts, vs3, label="v3",  ylim=(-.6, 0.6))
+    # p4 = plot!(LinRange(0, duration, 50), vels[:,2], label="des_v3")
+    # plot(p1, p2, p3, p4, layout=l)
 # end
 
 # plot(ts[1:50], ctlr_cache.taus[1,1:50])

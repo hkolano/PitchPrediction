@@ -101,6 +101,18 @@ function check_lim(vals::Array, lims, idx)
     return is_in_range
 end
 
+function scale_trajectory(params, dur, poses, vels)
+    a = Array{Float64}(undef, 2, 6)
+    scale_factor = rand(1:.01:5)
+    T = dur*scale_factor
+    # println("Scaling factor: $(scale_factor)")
+    for i in 1:2
+        a[i,:] = get_coeffs(params.wp, T, i)
+        (poses[:,i], vels[:,i]) = get_path!(poses[:,i], vels[:,i], params.wp.start.θs[i], params.wp.goal.θs[i], T, a[i,:])
+    end
+    return [trajParams(a, params.wp), T, poses, vels]
+end
+
 function find_trajectory(pts::Waypoints; num_its=num_its, T_init=1.0)
     T = T_init
     poses = Array{Float64}(undef, num_its, 2)
