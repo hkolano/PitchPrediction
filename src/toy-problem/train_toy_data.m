@@ -23,24 +23,11 @@ function train_toy_data()
         TTest{n} = X(2:end,2:end);
     end
 
-    layers = [
-        sequenceInputLayer(numChannels)
-        lstmLayer(128, 'OutputMode', 'sequence')
-        fullyConnectedLayer(6)
-        regressionLayer];
-
-    options = trainingOptions("adam", ...
-        MaxEpochs=100, ...
-        SequencePaddingDirection="left", ...
-        Shuffle="every-epoch", ...
-        Plots="training-progress", ...
-        Verbose=0, ...
-        ValidationData={XTest, TTest}, ...
-        ValidationFrequency = 25);
+    [layers, options] = setup_rnn(numChannels, XTest, TTest);
     
 %     disp(XTrain{1})
 
-%     net = trainNetwork(XTrain,TTrain,layers,options);
+    net = trainNetwork(XTrain,TTrain,layers,options);
 
 
 %     outputFile = fullfile("data/networks/toy-nets", 'netv1.mat');
