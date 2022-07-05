@@ -3,21 +3,21 @@ function train_toy_data(folder)
 
     data = readall(fds);
 %     figure 
-%     plot(data{1}(5,:))
+    plot(data{2}(5,:))
 %     hold on
-    data = smooth_velocities(data);
-%     plot(data{1}(5,:))
+%     data = smooth_velocities(data);
+%     plot(data{2}(5,:))
 
-    % Preview the data
-    % figure
-    % tiledlayout(2,2)
-    % for i = 1:4
-    %     nexttile
-    %     stackedplot(data{i})
-    % 
-    %     xlabel("Time Step")
-    % end
-
+%     % Preview the data
+%     % figure
+%     % tiledlayout(2,2)
+%     % for i = 1:4
+%     %     nexttile
+%     %     stackedplot(data{i})
+%     % 
+%     %     xlabel("Time Step")
+%     % end
+% 
     % Divide into train and test data
     numObservations = numel(data);
     idxTrain = 1:floor(0.9*numObservations);
@@ -54,7 +54,7 @@ function train_toy_data(folder)
         ValidationData={XTest, TTest}, ...
         ValidationFrequency = 25);
     
-    disp(XTrain{1})
+%     disp(XTrain{1})
 
 %     net = trainNetwork(XTrain,TTrain,layers,options);
 
@@ -64,10 +64,11 @@ function train_toy_data(folder)
     end
 
     function data = smooth_velocities(data)
+        window = 21;
         for i = 1:numel(data)
-            data{i}(5,:) = movmean(data{i}(5,:), 67);
-            data{i}(6,:) = movmean(data{i}(6,:), 67);
-            data{i}(7,:) = movmean(data{i}(7,:), 67);
+            data{i}(5,:) = movmean(data{i}(5,:), window);
+            data{i}(6,:) = movmean(data{i}(6,:), window);
+            data{i}(7,:) = movmean(data{i}(7,:), window);
         end
     end
 
