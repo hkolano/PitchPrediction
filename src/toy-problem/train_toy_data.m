@@ -1,23 +1,7 @@
-function train_toy_data(folder)
-    fds = fileDatastore(folder,"ReadFcn",@read_to_array);
+function train_toy_data()
+    data = import_toy_training_data("data/toy-data");
 
-    data = readall(fds);
-%     figure 
-    plot(data{2}(5,:))
-%     hold on
-%     data = smooth_velocities(data);
-%     plot(data{2}(5,:))
 
-%     % Preview the data
-%     % figure
-%     % tiledlayout(2,2)
-%     % for i = 1:4
-%     %     nexttile
-%     %     stackedplot(data{i})
-%     % 
-%     %     xlabel("Time Step")
-%     % end
-% 
     % Divide into train and test data
     numObservations = numel(data);
     idxTrain = 1:floor(0.9*numObservations);
@@ -39,38 +23,12 @@ function train_toy_data(folder)
         TTest{n} = X(2:end,2:end);
     end
 
-    layers = [
-        sequenceInputLayer(numChannels)
-        lstmLayer(128, 'OutputMode', 'sequence')
-        fullyConnectedLayer(6)
-        regressionLayer];
-
-    options = trainingOptions("adam", ...
-        MaxEpochs=100, ...
-        SequencePaddingDirection="left", ...
-        Shuffle="every-epoch", ...
-        Plots="training-progress", ...
-        Verbose=0, ...
-        ValidationData={XTest, TTest}, ...
-        ValidationFrequency = 25);
+    [layers, options] = setup_rnn(numChannels, XTest, TTest);
     
 %     disp(XTrain{1})
 
-%     net = trainNetwork(XTrain,TTrain,layers,options);
+    net = trainNetwork(XTrain,TTrain,layers,options);
 
-    function data = read_to_array(input)
-        data = readtable(input);
-        data = table2array(data)';
-    end
-
-    function data = smooth_velocities(data)
-        window = 21;
-        for i = 1:numel(data)
-            data{i}(5,:) = movmean(data{i}(5,:), window);
-            data{i}(6,:) = movmean(data{i}(6,:), window);
-            data{i}(7,:) = movmean(data{i}(7,:), window);
-        end
-    end
 
 %     outputFile = fullfile("data/networks/toy-nets", 'netv1.mat');
 %     save(outputFile, 'net');
