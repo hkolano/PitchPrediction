@@ -1,6 +1,6 @@
 function [lgraph, options] = setup_rnn(numChannels, XTest, TTest)
     % Initialize layer graph object
-    
+    params = load("data\networks\toy-nets\params_2022_07_05__14_09_45.mat");
     lgraph = layerGraph();
     
     split_1st = splittingLayer('Splitting-1st','1st');
@@ -17,10 +17,10 @@ function [lgraph, options] = setup_rnn(numChannels, XTest, TTest)
     % Left side: LSTM on the sequence data
     tempLayers = [
         split_1st
-        lstmLayer(128,"Name","LSTM", 'InputWeightsInitializer', 'glorot')];
+        lstmLayer(128,"Name","LSTM")];
     lgraph = addLayers(lgraph,tempLayers);
 
-    % Final stretch: FCN on LSTM output and consts
+    % Final stretch: F
     tempLayers = [
         concatenationLayer(1,2,"Name","concat")
         fullyConnectedLayer(6,"Name","fc")
@@ -30,7 +30,6 @@ function [lgraph, options] = setup_rnn(numChannels, XTest, TTest)
     % clean up helper variable
     clear tempLayers;
 
-    % Make all the connections
     lgraph = connectLayers(lgraph,"State Input","Splitting-2nd");
     lgraph = connectLayers(lgraph,"State Input","Splitting-1st");
     lgraph = connectLayers(lgraph,"Splitting-2nd","concat/in2");

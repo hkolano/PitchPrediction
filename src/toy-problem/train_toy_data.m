@@ -1,33 +1,45 @@
 function train_toy_data()
-    data = import_toy_training_data("data/toy-data");
+    sequence_data = import_toy_training_data("data/toy-data");
+    waypoint_data = import_toy_waypoint_data();
 
-
-    % Divide into train and test data
-    numObservations = numel(data);
+    % Determine division between train and test data
+    numObservations = numel(sequence_data);
     idxTrain = 1:floor(0.9*numObservations);
     idxTest = floor(0.9*numObservations)+1:numObservations;
-    dataTrain = data(idxTrain);
-    dataTest = data(idxTest);
+    
+    % Split sequence data
+    seq_dataTrain = sequence_data(idxTrain);
+    seq_dataTest = sequence_data(idxTest);
+    wp_dataTrain = waypoint_data(:,idxTrain);
+    wp_dataTest = waypoint_data(:,idxTest);
+    
+    numChannels = size(seq_dataTrain{1}, 1);
 
-    numChannels = size(dataTrain{1}, 1);
-
-    for n = 1:numel(dataTrain)
-        X = dataTrain{n};
-        XTrain{n} = X(:,1:end-1);
+    for n = 1:numel(seq_dataTrain)
+        X = seq_dataTrain{n};
+        wp_array = repmat(wp_dataTrain(:,n), 1, length(X)-1);
+        XTrain{n} = [X(:,1:end-1); wp_array];
         TTrain{n} = X(2:end,2:end);
     end
 
-    for n = 1:numel(dataTest)
-        X = dataTest{n};
-        XTest{n} = X(:,1:end-1);
+    for n = 1:numel(seq_dataTest)
+        X = seq_dataTest{n};
+        wp_array = repmat(wp_dataTest(:,n), 1, length(X)-1);
+        XTest{n} = [X(:,1:end-1); wp_array];
         TTest{n} = X(2:end,2:end);
     end
 
-    [layers, options] = setup_rnn(numChannels, XTest, TTest);
-    
-%     disp(XTrain{1})
+%     [layers, options] = setup_rnn(numChannels, XTest, TTest);
+    layers = [
+        sequenceInputLayer(numChannels+8)
+        lstmLayer(128, 'OutputMode', 'sequence')
+        fullyConnectedLayer(6)
+        regressionLayer];
+    disp(XTrain{1}(:,1))
 
-    net = trainNetwork(XTrain,TTrain,layers,options);
+    init_options = trainingOptions("adam", ...
+        MaxEpochs=1);
+    net = trainNetwork(XTrain(1:2),TTrain(1:2),layers,init_options);
 
 
 %     outputFile = fullfile("data/networks/toy-nets", 'netv1.mat');
