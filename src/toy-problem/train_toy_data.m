@@ -34,8 +34,13 @@
     [layers, options] = setup_rnn(numChannels, XTest, TTest);
 
     init_options = trainingOptions("adam", ...
-        MaxEpochs=10);
+        MaxEpochs=1, ...
+        MiniBatchSize=1, ...
+        SequencePaddingDirection="right");
     net = trainNetwork(XTrain(1:5),TTrain(1:5),layers,init_options);
+    
+    new_lgraph = layerGraph(net);
+    net = trainNetwork(XTrain(1:5), TTrain(1:5), new_lgraph, init_options);
 
 
     outputFile = fullfile("data/networks/toy-nets", 'netv2_1.mat');
