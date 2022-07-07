@@ -35,6 +35,7 @@ state = MechanismState(mechanism_toy)
 free_joint, joint1, joint2 = joints(mechanism_toy)
 Δt = 1e-3
 
+# Output data at 50 Hz
 goal_freq = 50
 sample_rate = Int(floor((1/Δt)/goal_freq))
 
@@ -54,10 +55,11 @@ include(simulate_file)
 # ----------------------------------------------------------
 #                       Generate Data
 # ----------------------------------------------------------
+num_trajs = 100
 
-
-for n in ProgressBar(1:100)
-    # Set initial position 
+# Create (num_trajs) different trajectories and save to csvs
+for n in ProgressBar(1:num_trajs)
+    # Set to initial position 
     reset_to_equilibrium(state)
 
     # Set up the controller 
@@ -81,7 +83,7 @@ for n in ProgressBar(1:100)
     vels = scaled_traj[4]
     # println("Going to point $(wp.goal.θs)")
 
-    # Make vector of waypoint values to save to csv
+    # Make vector of waypoint values and time step to save to csv
     waypoints = [Δt*sample_rate params.wp.start.θs... params.wp.goal.θs... params.wp.start.dθs... params.wp.goal.dθs...]
     wp_data = Tables.table(waypoints)
 
