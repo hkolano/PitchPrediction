@@ -1,4 +1,4 @@
-function [lgraph, options] = setup_rnn(numChannels, XTest, TTest)
+function [lgraph, options] = setup_rnn_build(numChannels, XTest, TTest)
     % Initialize layer graph object
     
     lgraph = layerGraph();
@@ -8,7 +8,7 @@ function [lgraph, options] = setup_rnn(numChannels, XTest, TTest)
     
     %% Build out network layers
     % Top: input sequence layer
-    tempLayers = sequenceInputLayer(15,"Name","State Input");
+    tempLayers = sequenceInputLayer(numChannels+8,"Name","State Input");
     lgraph = addLayers(lgraph,tempLayers);
 
     % Right side: forward the constant values
@@ -22,7 +22,7 @@ function [lgraph, options] = setup_rnn(numChannels, XTest, TTest)
 
     % Final stretch: FCN on LSTM output and consts
     tempLayers = [
-        concatenationLayer(1,2,"Name","concat")
+%         concatenationLayer(1,2,"Name","concat")
         fullyConnectedLayer(6,"Name","fc")
         regressionLayer("Name","regressionoutput")];
     lgraph = addLayers(lgraph,tempLayers);
@@ -33,8 +33,10 @@ function [lgraph, options] = setup_rnn(numChannels, XTest, TTest)
     % Make all the connections
     lgraph = connectLayers(lgraph,"State Input","Splitting-2nd");
     lgraph = connectLayers(lgraph,"State Input","Splitting-1st");
-    lgraph = connectLayers(lgraph,"Splitting-2nd","concat/in2");
-    lgraph = connectLayers(lgraph,"LSTM","concat/in1");
+%     lgraph = connectLayers(lgraph,"Splitting-2nd","concat/in2");
+%     lgraph = connectLayers(lgraph,"LSTM","concat/in1");
+%     lgraph = connectLayers(lgraph, "State Input", "LSTM")
+    lgraph = connectLayers(lgraph, "LSTM", "fc");
     
     options = trainingOptions("adam", ...
         MaxEpochs=100, ...

@@ -35,7 +35,8 @@ state = MechanismState(mechanism_toy)
 free_joint, joint1, joint2 = joints(mechanism_toy)
 Δt = 1e-3
 
-goal_freq = 100
+# Output data at 50 Hz
+goal_freq = 50
 sample_rate = Int(floor((1/Δt)/goal_freq))
 
 # ----------------------------------------------------------
@@ -54,10 +55,11 @@ include(simulate_file)
 # ----------------------------------------------------------
 #                       Generate Data
 # ----------------------------------------------------------
+num_trajs = 100
 
-
-for n in ProgressBar(1:100)
-    # Set initial position 
+# Create (num_trajs) different trajectories and save to csvs
+for n in ProgressBar(1:num_trajs)
+    # Set to initial position 
     reset_to_equilibrium(state)
 
     # Set up the controller 
@@ -81,23 +83,23 @@ for n in ProgressBar(1:100)
     vels = scaled_traj[4]
     # println("Going to point $(wp.goal.θs)")
 
-    # Make vector of waypoint values to save to csv
-    waypoints = [params.wp.start.θs... params.wp.goal.θs... params.wp.start.dθs... params.wp.goal.dθs...]
+    # Make vector of waypoint values and time step to save to csv
+    waypoints = [Δt*sample_rate params.wp.start.θs... params.wp.goal.θs... params.wp.start.dθs... params.wp.goal.dθs...]
     wp_data = Tables.table(waypoints)
 
     # Save waypoints (start and goal positions, velocities) to CSV file
     if n == 1
-        goal_headers = ["J1_start", "J2_start", "J1_end", "J2_end", "dJ1_start", "dJ2_start", "dJ1_end", "dJ2_end"]
-        CSV.write("data/toy-data-goalstates.csv", wp_data, header=goal_headers)
+        goal_headers = ["dt", "J1_start", "J2_start", "J1_end", "J2_end", "dJ1_start", "dJ2_start", "dJ1_end", "dJ2_end"]
+        CSV.write("data/toy-data-waypoints.csv", wp_data, header=goal_headers)
     else 
-        CSV.write("data/toy-data-goalstates.csv", wp_data, header=false, append=true)
+        CSV.write("data/toy-data-waypoints.csv", wp_data, header=false, append=true)
     end
 
     # Run the simulation
     ts, qs, vs = simulate_des_trajectory(state, duration, params, ctlr_cache, PIDCtlr.pid_control!; Δt);
 
     # Break out each variable (probably better way to do this)
-    # downsample to 100 Hz
+    # downsample to 50 Hz
     # println("Sample rate: $(sample_rate)")
     ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
     qs1 = [qs[i][1] for i in 1:sample_rate:length(qs)]
@@ -108,10 +110,10 @@ for n in ProgressBar(1:100)
     vs3 = [vs[i][3] for i in 1:sample_rate:length(vs)]
 
     # Write the 
-    num_rows = 7
+    num_rows = 6
     data = Array{Float64}(undef, length(ts_down), num_rows)
-    cols = [ts_down, qs1, qs2, qs3, vs1, vs2, vs3]
-    labels = ["t", "pitch", "joint1", "joint2", "d_pitch", "vel_j1", "vel_j2"]
+    cols = [qs1, qs2, qs3, vs1, vs2, vs3]
+    labels = ["pitch", "joint1", "joint2", "d_pitch", "vel_j1", "vel_j2"]
     for (idx, val) in enumerate(cols)
         data[:,idx] = val
     end
