@@ -29,6 +29,19 @@
         XTest{n} = [X(:,1:end-1); wp_array];
         TTest{n} = X(:,2:end);
     end
+    
+    %{
+    X(:,1) is a column vector. 
+    1-3: joint values (pitch, J1, J2) from sequence 
+    4-6: joint velocities (pitch, J1, J2) from sequence
+    7: time step of data collection (constant)
+    8-9: known starting positions (constant)
+    10-11: goal end positions (constant)
+    12-13: known starting velocities (constant)
+    14-15: goal end velocities (constant)
+    X(:,1:6) are fed to the LSTM, while X(:,7:end) are sent directly to the
+    FCN.
+    %}
 
     %% Network setup
     [layers, options] = setup_rnn(numChannels, XTest, TTest);
