@@ -1,24 +1,25 @@
-load('data/networks/toy-nets/netv1.mat')
-load('data/networks/toy-nets/netv1testdata.mat')
+load('data/networks/toy-nets/netv2_1.mat')
+load('data/networks/toy-nets/netv2_1testdata.mat')
 
 X = XTest{6};
 dt = X(1,2) - X(1,1);
 T = TTest{6};
+wp_vec = X(8:end,1); % (const) waypoint values
 
 net = resetState(net);
-offset = 1000;
+offset = 200;
 [net, Z] = predictAndUpdateState(net, X(:,1:offset));
     
-numPredictionTimeSteps = 2000;
+numPredictionTimeSteps = 200;
 t = X(1,offset);
-Xt = [t; Z(:,end)];
+Xt = [t; Z(:,end); wp_vec];
 Y = zeros(6, numPredictionTimeSteps);
 
 for n = 1:numPredictionTimeSteps
     [net, outputs] = predictAndUpdateState(net, Xt);
     t = t+dt;
     Y(:,n) = outputs;
-    Xt = [t; outputs];
+    Xt = [t; outputs; wp_vec];
 end
 
 timesteps = offset+numPredictionTimeSteps;

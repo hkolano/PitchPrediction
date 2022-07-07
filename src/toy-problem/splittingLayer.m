@@ -17,11 +17,13 @@ classdef splittingLayer < nnet.layer.Layer
             layer.target = target;
         end
         function Z = predict(layer, X)
+%             disp('Got values: \n')
+%             disp(X)
             switch layer.target
                 case '1st'
-                    Z = X(1:7); 
+                    Z = X(1:6,:,:); 
                 case '2nd' 
-                    Z = X(8:end); 
+                    Z = X(7:end,:,:); 
             end
         end
     end

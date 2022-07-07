@@ -1,4 +1,5 @@
-function train_toy_data()
+% function train_toy_data()
+%% Data import and processing
     sequence_data = import_toy_training_data("data/toy-data");
     waypoint_data = import_toy_waypoint_data();
 
@@ -19,36 +20,31 @@ function train_toy_data()
         X = seq_dataTrain{n};
         wp_array = repmat(wp_dataTrain(:,n), 1, length(X)-1);
         XTrain{n} = [X(:,1:end-1); wp_array];
-        TTrain{n} = X(2:end,2:end);
+        TTrain{n} = X(:,2:end);
     end
 
     for n = 1:numel(seq_dataTest)
         X = seq_dataTest{n};
         wp_array = repmat(wp_dataTest(:,n), 1, length(X)-1);
         XTest{n} = [X(:,1:end-1); wp_array];
-        TTest{n} = X(2:end,2:end);
+        TTest{n} = X(:,2:end);
     end
 
-%     [layers, options] = setup_rnn(numChannels, XTest, TTest);
-    layers = [
-        sequenceInputLayer(numChannels+8)
-        lstmLayer(128, 'OutputMode', 'sequence')
-        fullyConnectedLayer(6)
-        regressionLayer];
-    disp(XTrain{1}(:,1))
+    %% Network setup
+    [layers, options] = setup_rnn(numChannels, XTest, TTest);
 
     init_options = trainingOptions("adam", ...
-        MaxEpochs=1);
-    net = trainNetwork(XTrain(1:2),TTrain(1:2),layers,init_options);
+        MaxEpochs=10);
+    net = trainNetwork(XTrain(1:5),TTrain(1:5),layers,init_options);
 
 
-%     outputFile = fullfile("data/networks/toy-nets", 'netv1.mat');
-%     save(outputFile, 'net');
-%     
-%     outputFile2 = fullfile("data/networks/toy-nets", 'netv1testdata.mat');
-%     save(outputFile2, 'XTest', 'TTest')
+    outputFile = fullfile("data/networks/toy-nets", 'netv2_1.mat');
+    save(outputFile, 'net');
+    
+    outputFile2 = fullfile("data/networks/toy-nets", 'netv2_1testdata.mat');
+    save(outputFile2, 'XTest', 'TTest')
 
-end
+% end
 
 % Net v1:
 %     layers = [

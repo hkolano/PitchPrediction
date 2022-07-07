@@ -1,6 +1,6 @@
-function [lgraph, options] = setup_rnn(numChannels, XTest, TTest)
+function [lgraph, options] = setup_rnn_build(numChannels, XTest, TTest)
     % Initialize layer graph object
-    params = load("data\networks\toy-nets\params_2022_07_05__14_09_45.mat");
+    
     lgraph = layerGraph();
     
     split_1st = splittingLayer('Splitting-1st','1st');
@@ -8,7 +8,7 @@ function [lgraph, options] = setup_rnn(numChannels, XTest, TTest)
     
     %% Build out network layers
     % Top: input sequence layer
-    tempLayers = sequenceInputLayer(15,"Name","State Input");
+    tempLayers = sequenceInputLayer(numChannels+8,"Name","State Input");
     lgraph = addLayers(lgraph,tempLayers);
 
     % Right side: forward the constant values
@@ -17,12 +17,12 @@ function [lgraph, options] = setup_rnn(numChannels, XTest, TTest)
     % Left side: LSTM on the sequence data
     tempLayers = [
         split_1st
-        lstmLayer(128,"Name","LSTM")];
+        lstmLayer(128,"Name","LSTM", 'OutputMode', 'sequence')];
     lgraph = addLayers(lgraph,tempLayers);
 
-    % Final stretch: F
+    % Final stretch: FCN on LSTM output and consts
     tempLayers = [
-        concatenationLayer(1,2,"Name","concat")
+%         concatenationLayer(1,2,"Name","concat")
         fullyConnectedLayer(6,"Name","fc")
         regressionLayer("Name","regressionoutput")];
     lgraph = addLayers(lgraph,tempLayers);
@@ -30,10 +30,13 @@ function [lgraph, options] = setup_rnn(numChannels, XTest, TTest)
     % clean up helper variable
     clear tempLayers;
 
+    % Make all the connections
     lgraph = connectLayers(lgraph,"State Input","Splitting-2nd");
     lgraph = connectLayers(lgraph,"State Input","Splitting-1st");
-    lgraph = connectLayers(lgraph,"Splitting-2nd","concat/in2");
-    lgraph = connectLayers(lgraph,"LSTM","concat/in1");
+%     lgraph = connectLayers(lgraph,"Splitting-2nd","concat/in2");
+%     lgraph = connectLayers(lgraph,"LSTM","concat/in1");
+%     lgraph = connectLayers(lgraph, "State Input", "LSTM")
+    lgraph = connectLayers(lgraph, "LSTM", "fc");
     
     options = trainingOptions("adam", ...
         MaxEpochs=100, ...

@@ -17,7 +17,7 @@ function [lgraph, options] = setup_rnn(numChannels, XTest, TTest)
     % Left side: LSTM on the sequence data
     tempLayers = [
         split_1st
-        lstmLayer(128,"Name","LSTM", 'InputWeightsInitializer', 'glorot')];
+        lstmLayer(128,"Name","LSTM", 'OutputMode', 'sequence')];
     lgraph = addLayers(lgraph,tempLayers);
 
     % Final stretch: FCN on LSTM output and consts
