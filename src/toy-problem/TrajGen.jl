@@ -103,7 +103,7 @@ end
 
 function scale_trajectory(params, dur, poses, vels)
     a = Array{Float64}(undef, 2, 6)
-    scale_factor = rand(1:.01:5)
+    scale_factor = rand(1:.01:3)
     T = dur*scale_factor
     # println("Scaling factor: $(scale_factor)")
     for i in 1:2
