@@ -43,19 +43,33 @@
     FCN.
     %}
 
-    %% Network setup
+    %% Initial network setup
     [layers, options] = setup_rnn(numChannels, XTest, TTest);
 
     init_options = trainingOptions("adam", ...
-        MaxEpochs=1, ...
+        MaxEpochs=2, ...
         MiniBatchSize=1, ...
         SequencePaddingDirection="right");
-    net = trainNetwork(XTrain(1:5),TTrain(1:5),layers,init_options);
-    
-    new_lgraph = layerGraph(net);
-    net = trainNetwork(XTrain(1:5), TTrain(1:5), new_lgraph, init_options);
+    net = trainNetwork(XTrain,TTrain,layers,init_options);
+        
+    %% Retraining
+    % Choose a random trajectory index to predict on
 
+        n = 100;    % Number of time steps before starting forecasting
+        k = 25;     % Number of time steps to forecast (0.5s)
 
+    for traj = 1:20
+        % Generate a prediction
+        pred = toy_forecast(net, XTrain{traj_idx}, n, k);
+
+        wp_array = repmat(wp_dataTrain(:,traj_idx), 1, length(pred));
+        preds{1} = [pred; wp_array];
+        g_truth = XTrain{traj_idx}(1:6,n+1:n+k+1);
+
+        new_lgraph = layerGraph(net);
+        net = trainNetwork(preds, {g_truth}, new_lgraph, init_options);
+    end 
+    %% Save the output
     outputFile = fullfile("data/networks/toy-nets", 'netv2_1.mat');
     save(outputFile, 'net');
     
@@ -64,16 +78,3 @@
 
 % end
 
-% Net v1:
-%     layers = [
-%         sequenceInputLayer(numChannels)
-%         lstmLayer(128)
-%         fullyConnectedLayer(1)
-%         regressionLayer];
-
-% Net v2:
-%     layers = [
-%         sequenceInputLayer(numChannels)
-%         lstmLayer(128, 'OutputMode', 'sequence')
-%         fullyConnectedLayer(1)
-%         regressionLayer];

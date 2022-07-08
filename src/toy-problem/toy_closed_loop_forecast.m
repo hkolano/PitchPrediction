@@ -4,7 +4,7 @@ load('data/networks/toy-nets/netv2_1testdata.mat')
 X = XTest{6};
 dt = X(1,2) - X(1,1);
 T = TTest{6};
-wp_vec = X(8:end,1); % (const) waypoint values
+wp_vec = X(7:end,1); % (const) waypoint values
 
 net = resetState(net);
 offset = 200;
