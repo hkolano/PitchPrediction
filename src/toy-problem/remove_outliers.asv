@@ -1,0 +1,12 @@
+function [seq_data, wp_data] = remove_outliers(seq_data, wp_data)
+
+    max_vals = [];
+    for n = 1:numel(sequence_data)
+        max_vals(n) = max(sequence_data{n}, [], 'all');
+    end
+
+    bad_idxs = [];
+    for idx = 1:length(max_vals)
+        if max_vals(idx) < 
+    end
+end

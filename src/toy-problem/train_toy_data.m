@@ -4,6 +4,12 @@
     waypoint_data = import_toy_waypoint_data();
     
     [sequence_data, p] = normalize_data(sequence_data);
+    bad_ids = ID_outliers(sequence_data);
+    
+    for idx = 1:length(bad_ids)
+        sequence_data(bad_ids(idx)) = [];
+        waypoint_data(:, bad_ids(idx)) = [];
+    end
 
     % Determine division between train and test data
     numObservations = numel(sequence_data);
@@ -56,10 +62,10 @@
     %}
 
     %% Initial network setup
-    [layers, options] = setup_gru(numChannels, XTest, TTest);
+    [layers, options] = setup_recurrent_gru(numChannels, XTest, TTest);
 
     init_options = trainingOptions("adam", ...
-        MaxEpochs=200, ...
+        MaxEpochs=2, ...
         MiniBatchSize=20, ...
         SequencePaddingDirection="right", ...
         Plots="training-progress", ...
@@ -69,7 +75,7 @@
         ValidationPatience = 3);
     net = trainNetwork(XTrain,TTrain,layers,init_options);
     
-    outputFile = fullfile("data/networks/toy-nets", 'SingleStepNet_071122_v2.mat');
+    outputFile = fullfile("data/networks/toy-nets", 'SingleStepNet_071222_v1.mat');
     save(outputFile, 'net');
         
     %% Retraining
