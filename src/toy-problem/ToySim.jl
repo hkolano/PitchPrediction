@@ -90,9 +90,9 @@ for n in ProgressBar(1:num_trajs)
     # Save waypoints (start and goal positions, velocities) to CSV file
     if n == 1
         goal_headers = ["dt", "J1_start", "J2_start", "J1_end", "J2_end", "dJ1_start", "dJ2_start", "dJ1_end", "dJ2_end"]
-        CSV.write("data/toy-data-waypoints2.csv", wp_data, header=goal_headers)
+        CSV.write("data/toy-data-waypoints.csv", wp_data, header=goal_headers)
     else 
-        CSV.write("data/toy-data-waypoints2.csv", wp_data, header=false, append=true)
+        CSV.write("data/toy-data-waypoints.csv", wp_data, header=false, append=true)
     end
 
     # Run the simulation
@@ -119,7 +119,7 @@ for n in ProgressBar(1:num_trajs)
     end
     
     tab = Tables.table(data)
-    CSV.write("data/toy-data2/toystates$(n).csv", tab, header=labels)
+    CSV.write("data/toy-data/toystates$(n).csv", tab, header=labels)
     
     # MeshCatMechanisms.animate(mvis_toy, ts, qs; realtimerate = 2.5);
 end

@@ -6,7 +6,7 @@ function data = import_toy_training_data(folder)
 %     figure 
 %     plot(data{2}(5,:))
 %     hold on
-%     data = smooth_velocities(data);
+    data = smooth_velocities(data);
 %     plot(data{2}(5,:))
 
     % Preview the data
@@ -25,11 +25,11 @@ function data = import_toy_training_data(folder)
     end
 
     function data = smooth_velocities(data)
-        window = 21;
+        window = 15;
         for i = 1:numel(data)
             data{i}(5,:) = movmean(data{i}(5,:), window);
             data{i}(6,:) = movmean(data{i}(6,:), window);
-            data{i}(7,:) = movmean(data{i}(7,:), window);
+            data{i}(4,:) = movmean(data{i}(4,:), window);
         end
     end
 

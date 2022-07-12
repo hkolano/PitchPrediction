@@ -2,6 +2,8 @@
 %% Data import and processing
     sequence_data = import_toy_training_data("data/toy-data");
     waypoint_data = import_toy_waypoint_data();
+    
+    [sequence_data, p] = normalize_data(sequence_data);
 
     % Determine division between train and test data
     numObservations = numel(sequence_data);
@@ -30,10 +32,20 @@
         TTest{n} = X(:,2:end);
     end
     
+    %% Sort by sequence length
+    for i=1:numel(XTrain)
+        sequence = XTrain{i};
+        sequenceLengths(i) = size(sequence,2);
+    end
+
+    [sequenceLengths,idx] = sort(sequenceLengths,'descend');
+    XTrain = XTrain(idx);
+    TTrain = TTrain(idx);
+
     %{
     X(:,1) is a column vector. 
-    1-3: joint values (pitch, J1, J2) from sequence 
-    4-6: joint velocities (pitch, J1, J2) from sequence
+    1-3: joint values (pitch, J1, J2) from sequence NORMALIZED
+    4-6: joint velocities (pitch, J1, J2) from sequence NORMALIZED
     7: time step of data collection (constant)
     8-9: known starting positions (constant)
     10-11: goal end positions (constant)
@@ -44,36 +56,62 @@
     %}
 
     %% Initial network setup
-    [layers, options] = setup_rnn(numChannels, XTest, TTest);
+    [layers, options] = setup_gru(numChannels, XTest, TTest);
 
     init_options = trainingOptions("adam", ...
-        MaxEpochs=2, ...
-        MiniBatchSize=1, ...
-        SequencePaddingDirection="right");
+        MaxEpochs=200, ...
+        MiniBatchSize=20, ...
+        SequencePaddingDirection="right", ...
+        Plots="training-progress", ...
+        Shuffle='never', ...
+        ValidationData={XTest, TTest}, ...
+        ValidationFrequency = 250, ...
+        ValidationPatience = 3);
     net = trainNetwork(XTrain,TTrain,layers,init_options);
+    
+    outputFile = fullfile("data/networks/toy-nets", 'SingleStepNet_071122_v2.mat');
+    save(outputFile, 'net');
         
     %% Retraining
     % Choose a random trajectory index to predict on
-
-        n = 100;    % Number of time steps before starting forecasting
-        k = 25;     % Number of time steps to forecast (0.5s)
-
-    for traj = 1:20
-        % Generate a prediction
-        pred = toy_forecast(net, XTrain{traj_idx}, n, k);
-
-        wp_array = repmat(wp_dataTrain(:,traj_idx), 1, length(pred));
-        preds{1} = [pred; wp_array];
-        g_truth = XTrain{traj_idx}(1:6,n+1:n+k+1);
-
-        new_lgraph = layerGraph(net);
-        net = trainNetwork(preds, {g_truth}, new_lgraph, init_options);
-    end 
-    %% Save the output
-    outputFile = fullfile("data/networks/toy-nets", 'netv2_1.mat');
-    save(outputFile, 'net');
+    new_net = net;
+    n = 25;    % Number of time steps before starting forecasting
+    k = 25;     % Number of time steps to forecast (0.5s)
     
-    outputFile2 = fullfile("data/networks/toy-nets", 'netv2_1testdata.mat');
+    retrain_options = trainingOptions("adam", ...
+        MaxEpochs=1, ...
+        MiniBatchSize=20, ...
+        SequencePaddingDirection="right", ...
+        Shuffle='never');
+    
+    for retrain_idx = 1:1
+    
+%         pred = toy_forecast(new_net, XTest{1}, n, k, true);
+
+        for it_num = 1:20
+            traj_idx = randi(size(XTrain, 2));
+            n = randi(size(XTrain{traj_idx}, 2) - k - 1);
+            % Generate a prediction
+            pred = toy_forecast(new_net, XTrain{traj_idx}, n, k, false);
+
+            wp_array = repmat(wp_dataTrain(:,traj_idx), 1, length(pred));
+            preds{it_num} = [pred; wp_array];
+            g_truth{it_num} = XTrain{traj_idx}(1:6,n+1:n+k+1);        
+        end 
+
+        new_net = trainNetwork(preds, g_truth, layerGraph(new_net), retrain_options);
+        
+    end
+    
+    n = randi(size(XTest{1}, 2) - k - 1);
+    pred = toy_forecast(new_net, XTest{1}, n, k, true);
+    
+
+    %% Save the output
+%     outputFile = fullfile("data/networks/toy-nets", 'netv2_2.mat');
+%     save(outputFile, 'new_net');
+%     
+    outputFile2 = fullfile("data/networks/toy-nets", 'SingleStepTestData_071122_v2.mat');
     save(outputFile2, 'XTest', 'TTest')
 
 % end

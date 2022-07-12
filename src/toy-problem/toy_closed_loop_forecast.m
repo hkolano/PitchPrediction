@@ -1,5 +1,5 @@
-load('data/networks/toy-nets/netv2_1.mat')
-load('data/networks/toy-nets/netv2_1testdata.mat')
+load('data/networks/toy-nets/SingleStepNet_071122.mat')
+load('data/networks/toy-nets/SingleStepTestData_071122.mat')
 
 X = XTest{6};
 dt = X(1,2) - X(1,1);

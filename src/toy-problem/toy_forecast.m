@@ -7,7 +7,7 @@ a number of steps ahead to forecast (k)
 Returns:
 
 %}
-function Y = toy_forecast(net, X, n, k)
+function Y = toy_forecast(net, X, n, k, p, make_plot)
     % Reset the state for a new prediction
     net = resetState(net);
     
@@ -30,12 +30,27 @@ function Y = toy_forecast(net, X, n, k)
         Xt = [outputs; const_vec];
     end
          
-    figure
-    plot(X(1,:), 'g')
-    hold on
-    plot(n+1:n+k+1, Y(1,:), 'm--')
-    xlabel("Time Step")
-    xline(n, 'k-.')
-    legend("Ground Truth", "Forecasted", "Prediction Start")    
+    if make_plot == true
+        figure
+        order = [1 4 2 5 3 6];
+        t = tiledlayout(3,2, 'TileSpacing', 'Compact');
+        ylabels = ["Vehicle Pitch", "Joint 1", "Joint 2", "", "", ""];
+        titles = ["Joint Position (radians)", "Joint Velocity (rad/s)", "", "", "", ""];
+        
+        
+        for i = 1:6
+            idx = order(i);
+            ax = nexttile;
+            plot((1:size(X(1,:), 2))/50, X(idx,:).*p.sig(idx)+p.mu(idx), 'Color', '#FFC20A', 'LineWidth', 2)
+            hold on
+            plot((n+1:n+k+1)/50, Y(idx,:).*p.sig(idx)+p.mu(idx), '--', 'Color', '#0C7BDC', 'LineWidth', 2)
+            xlabel("Time (s)")
+            ylabel(ylabels(idx))
+            xline(n/50, 'k-.')
+            title(titles(i))
+            legend("Ground Truth", "Forecast", "Prediction Start")
+        end
+        title(t, "Pitch Forecast based on Single Step Training")
+    end
     
 end
