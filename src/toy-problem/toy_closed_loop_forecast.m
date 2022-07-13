@@ -1,4 +1,4 @@
-load('data/networks/toy-nets/SingleStepNet_071122.mat')
+load('data/networks/toy-nets/SingleStepNet_071222_v1.mat')
 load('data/networks/toy-nets/SingleStepTestData_071122.mat')
 
 X = XTest{6};
