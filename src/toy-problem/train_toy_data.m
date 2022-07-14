@@ -65,7 +65,7 @@
     [layers, options] = setup_recurrent_gru(numChannels, XTest, TTest);
 
     init_options = trainingOptions("adam", ...
-        MaxEpochs=100, ...
+        MaxEpochs=1, ...
         MiniBatchSize=20, ...
         SequencePaddingDirection="right", ...
         Plots="training-progress", ...
@@ -75,7 +75,7 @@
         ValidationPatience = 1);
     net = trainNetwork(XTrain,TTrain,layers,init_options);
     
-    outputFile = fullfile("data/networks/toy-nets", 'SingleStepNet_071222_v2.mat');
+    outputFile = fullfile("data/networks/toy-nets", 'SingleStepNet_OneEpoch_071322_v2.mat');
     save(outputFile, 'net');
         
 %     %% Retraining
@@ -117,8 +117,8 @@
 %     outputFile = fullfile("data/networks/toy-nets", 'netv2_2.mat');
 %     save(outputFile, 'new_net');
 %     
-    outputFile2 = fullfile("data/networks/toy-nets", 'SingleStepTestData_071122_v2.mat');
-    save(outputFile2, 'XTest', 'TTest')
+    outputFile2 = fullfile("data/toy-data-matlab", 'TestandTrainData_071322.mat');
+    save(outputFile2, 'XTest', 'TTest', 'XTrain', 'TTrain', 'p')
 
 % end
 

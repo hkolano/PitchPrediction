@@ -1,27 +1,25 @@
-close all
-load("data/networks/toy-nets/netv1testdata.mat")
+X = XTest{5};
+n = 200;
+k = 200;
+make_plot = true;
 
-v1s = XTest{1}(5,:);
-v2s = XTest{1}(6,:);
-v3s = XTest{1}(7,:);
+net = resetState(net);
 
-v1s_mmean = movmean(v1s, 57);
+% Extract the constant values (waypoints, dt)
+const_vec = X(7:end,1);
 
-figure
-% subplot(3, 1, 1)
-plot(v1s)
-hold on
-% plot(v1s_lpass)
-plot(v1s_mmean)
-xlabel("Time Step")
-ylabel("Pitch Velocity")
+% Predict and update until the forecasting start
+[net, Z] = predictAndUpdateState(net, X(:,1:n));
 
-% subplot(3, 1, 2)
-% plot(v2s)
-% xlabel("Time Step")
-% ylabel("J1 Velocity")
-% 
-% subplot(3, 1, 3)
-% plot(v3s)
-% xlabel("Time Step")
-% ylabel("J2 Velocity")
+% Get the last output
+Xt = [Z(:,end); const_vec];
+% Setup forecast array
+Y = zeros(6, k);
+%     Y(:,1) = Z(:,end);
+
+% Generate the forecast
+for i = 1:k
+    [net, outputs] = predictAndUpdateState(net, Xt);
+    Y(:,i) = outputs;
+    Xt = [outputs; const_vec];
+end

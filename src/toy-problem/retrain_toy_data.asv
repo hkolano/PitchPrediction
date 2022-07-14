@@ -29,7 +29,7 @@ error = validate(net)
 error_vec = [error];
 % pred = toy_forecast(net, XTest{1}, 100, 25, p, true);
 
-for retrain_idx = 1:20
+for retrain_idx = 1:200
     
     for it_num = 1:20
         traj_idx = randi(size(XTrain, 2));
@@ -43,13 +43,13 @@ for retrain_idx = 1:20
         % Generate a prediction
         pred = toy_forecast(net, XTrain{traj_idx}, n, k, p, false);
         if size(pred, 2) > 2*k 
-            pred = pred(:,end-2*k+1:end);
+            pred = pred(:,end-2*k:end);
         end
 
         wp_array = repmat(XTrain{traj_idx}(7:end,1), 1, length(pred));
         preds{it_num} = [pred; wp_array];
-        if size(pred, 2) >= 2*k
-            g_truth{it_num} = XTrain{traj_idx}(1:6,n-k+1:n+k);      
+        if size(pred, 2) > 2*k
+            g_truth{it_num} = XTrain{traj_idx}(1:6,n-k:n+k);      
         else
             g_truth{it_num} = XTrain{traj_idx}(1:6,2:n+k);
         end
@@ -76,8 +76,8 @@ function error = validate_net(net, X_test, idxs, ns, k, p)
     for i = 1:length(idxs)
         pred = toy_forecast(net, X_test{idxs(i)}, ns(i), k, p, false);
 %         size(pred)
-        pred = pred(:,end-k+1:end);
-        g_truth = X_test{idxs(i)}(1:6,ns(i)+1:ns(i)+k);
+        pred = pred(:,end-k:end);
+        g_truth = X_test{idxs(i)}(1:6,ns(i)+1:ns(i)+k+1);
         rmse = sqrt(immse(pred, single(g_truth)));
         error = error + rmse;
     end

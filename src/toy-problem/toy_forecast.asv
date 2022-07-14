@@ -9,7 +9,7 @@ make_plot: true/false whether to plot the results
 Returns:
 
 %}
-function full_pred = toy_forecast(net, X, n, k, p, make_plot)
+function Y = toy_forecast(net, X, n, k, p, make_plot)
     % Reset the state for a new prediction
     net = resetState(net);
     
@@ -22,19 +22,20 @@ function full_pred = toy_forecast(net, X, n, k, p, make_plot)
     % Get the last output
     Xt = [Z(:,end); const_vec];
     % Setup forecast array
-    Y = zeros(6, k-1);
+    Y = zeros(6, k);
 %     Y(:,1) = Z(:,end);
     
     % Generate the forecast
-    for i = 1:k-1
+    for i = 1:k
         [net, outputs] = predictAndUpdateState(net, Xt);
         Y(:,i) = outputs;
         Xt = [outputs; const_vec];
     end
     
-    full_pred = cat(2, Z, Y);
+    full_pred = cat(2, 
          
     if make_plot == true
+        figure
         order = [1 4 2 5 3 6];
         t = tiledlayout(3,2, 'TileSpacing', 'Compact');
         ylabels = ["Vehicle Pitch", "Joint 1", "Joint 2", "", "", ""];
@@ -45,15 +46,14 @@ function full_pred = toy_forecast(net, X, n, k, p, make_plot)
             ax = nexttile;
             plot((1:size(X(1,:), 2))/50, X(idx,:).*p.sig(idx)+p.mu(idx), 'Color', '#FFC20A', 'LineWidth', 2)
             hold on
-            plot((2:n+k)/50, full_pred(idx,:).*p.sig(idx)+p.mu(idx), '--', 'Color', '#0C7BDC', 'LineWidth', 2)
+            plot((n+1:n+k+1)/50, Y(idx,:).*p.sig(idx)+p.mu(idx), '--', 'Color', '#0C7BDC', 'LineWidth', 2)
             xlabel("Time (s)")
             ylabel(ylabels(idx))
             xline(n/50, 'k-.')
             title(titles(i))
-            legend("Ground Truth", "Prediction", "Forecast Start")
+            legend("Ground Truth", "Forecast", "Prediction Start")
         end
         title(t, "Pitch Forecast based on Single Step Training")
-        set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
     end
     
 end
