@@ -1,5 +1,5 @@
 %% Import data
-load('data/networks/toy-nets/SingleStepNet_071222_v1.mat')
+load('data/networks/toy-nets/retrained_071322_v2.mat')
 load('data/toy-data-matlab/TestandTrainData_071322.mat')
 k = 25;     % Number of time steps to forecast (0.5s)
 
@@ -29,7 +29,7 @@ error = validate(net)
 error_vec = [error];
 % pred = toy_forecast(net, XTest{1}, 100, 25, p, true);
 
-for retrain_idx = 1:200
+for retrain_idx = 1:1000
     
     for it_num = 1:20
         traj_idx = randi(size(XTrain, 2));
@@ -43,13 +43,13 @@ for retrain_idx = 1:200
         % Generate a prediction
         pred = toy_forecast(net, XTrain{traj_idx}, n, k, p, false);
         if size(pred, 2) > 2*k 
-            pred = pred(:,end-2*k:end);
+            pred = pred(:,end-2*k+1:end);
         end
 
         wp_array = repmat(XTrain{traj_idx}(7:end,1), 1, length(pred));
         preds{it_num} = [pred; wp_array];
-        if size(pred, 2) > 2*k
-            g_truth{it_num} = XTrain{traj_idx}(1:6,n-k:n+k);      
+        if size(pred, 2) >= 2*k
+            g_truth{it_num} = XTrain{traj_idx}(1:6,n-k+1:n+k);      
         else
             g_truth{it_num} = XTrain{traj_idx}(1:6,2:n+k);
         end
@@ -57,7 +57,7 @@ for retrain_idx = 1:200
     
     net = trainNetwork(preds, g_truth, layerGraph(net), retrain_options);
     
-    if rem(retrain_idx, 5) == 0
+    if rem(retrain_idx, 25) == 0
         error = validate(net)
         disp(retrain_idx)
         error_vec = [error_vec error];
@@ -68,16 +68,16 @@ end
 % pred = toy_forecast(net, XTest{1}, 100, 25, p, true);
 
 % Save the output
-outputFile = fullfile("data/networks/toy-nets", 'retrained_071322_v3.mat');
-save(outputFile, 'net');
+outputFile = fullfile("data/networks/toy-nets", 'retrained_071322_v3_2.mat');
+save(outputFile, 'net', 'error_vec');
 
 function error = validate_net(net, X_test, idxs, ns, k, p)
     error = 0;
     for i = 1:length(idxs)
         pred = toy_forecast(net, X_test{idxs(i)}, ns(i), k, p, false);
 %         size(pred)
-        pred = pred(:,end-k:end);
-        g_truth = X_test{idxs(i)}(1:6,ns(i)+1:ns(i)+k+1);
+        pred = pred(:,end-k+1:end);
+        g_truth = X_test{idxs(i)}(1:6,ns(i)+1:ns(i)+k);
         rmse = sqrt(immse(pred, single(g_truth)));
         error = error + rmse;
     end

@@ -1,10 +1,9 @@
 %% Import data
-load('data/networks/toy-nets/SingleStepNet_OneEpoch_071322.mat')
+load('data/networks/toy-nets/retrained_071322_v3.mat')
 load('data/toy-data-matlab/TestandTrainData_071322.mat')
 k = 25;     % Number of time steps to forecast (0.5s)
 
-retrain_options = trainingOptions("sgdm", ...
-    InitialLearnRate=0.001,...
+retrain_options = trainingOptions("adam", ...
     MaxEpochs=1, ...
     MiniBatchSize=20, ...
     SequencePaddingDirection="right");
@@ -30,7 +29,7 @@ error = validate(net)
 error_vec = [error];
 % pred = toy_forecast(net, XTest{1}, 100, 25, p, true);
 
-for retrain_idx = 1:1000
+for retrain_idx = 1:2500
     
     for it_num = 1:20
         traj_idx = randi(size(XTrain, 2));
@@ -43,10 +42,17 @@ for retrain_idx = 1:1000
         
         % Generate a prediction
         pred = toy_forecast(net, XTrain{traj_idx}, n, k, p, false);
+        if size(pred, 2) > 2*k 
+            pred = pred(:,end-2*k+1:end);
+        end
 
         wp_array = repmat(XTrain{traj_idx}(7:end,1), 1, length(pred));
         preds{it_num} = [pred; wp_array];
-        g_truth{it_num} = XTrain{traj_idx}(1:6,2:n+k);
+        if size(pred, 2) >= 2*k
+            g_truth{it_num} = XTrain{traj_idx}(1:6,n-k+1:n+k);      
+        else
+            g_truth{it_num} = XTrain{traj_idx}(1:6,2:n+k);
+        end
     end
     
     net = trainNetwork(preds, g_truth, layerGraph(net), retrain_options);
@@ -62,7 +68,7 @@ end
 % pred = toy_forecast(net, XTest{1}, 100, 25, p, true);
 
 % Save the output
-outputFile = fullfile("data/networks/toy-nets", 'retrained_071422_v5.mat');
+outputFile = fullfile("data/networks/toy-nets", 'retrained_071322_v3_2.mat');
 save(outputFile, 'net', 'error_vec');
 
 function error = validate_net(net, X_test, idxs, ns, k, p)
