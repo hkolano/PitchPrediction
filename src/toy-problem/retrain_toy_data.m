@@ -1,12 +1,12 @@
 %% Import data
 load('data/networks/toy-nets/SingleStepNet_OneEpoch_071322.mat')
-load('data/toy-data-matlab/TestandTrainData_071322.mat')
+load('data/toy-data-matlab/TestandTrainData_071222.mat')
 k = 25;     % Number of time steps to forecast (0.5s)
 
 retrain_options = trainingOptions("adam", ...
     InitialLearnRate=0.001,...
     MaxEpochs=1, ...
-    MiniBatchSize=20, ...
+    MiniBatchSize=5, ...
     SequencePaddingDirection="right");
 
 %% Define a validation set
@@ -28,9 +28,10 @@ validate = @(net) validate_net(net, XTest, val_idxs, val_ns, k, p);
 %% Train on predictions
 error = validate(net)
 error_vec = [error];
+training_rmse_vec = [];
 % pred = toy_forecast(net, XTest{1}, 100, 25, p, true);
 
-for retrain_idx = 1:50
+for retrain_idx = 1:2
     
     for it_num = 1:20
         traj_idx = randi(size(XTrain, 2));
@@ -49,7 +50,9 @@ for retrain_idx = 1:50
         g_truth{it_num} = XTrain{traj_idx}(1:6,2:n+k);
     end
     
-    net = trainNetwork(preds, g_truth, layerGraph(net), retrain_options);
+    [net,info] = trainNetwork(preds, g_truth, layerGraph(net), retrain_options);
+    this_test_rmse = info.TrainingRMSE;
+    training_rmse_vec = [training_rmse_vec this_test_rmse];
     
     if rem(retrain_idx, 25) == 0
         error = validate(net)
