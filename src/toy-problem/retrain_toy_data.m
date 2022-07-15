@@ -3,7 +3,7 @@ load('data/networks/toy-nets/SingleStepNet_OneEpoch_071322.mat')
 load('data/toy-data-matlab/TestandTrainData_071322.mat')
 k = 25;     % Number of time steps to forecast (0.5s)
 
-retrain_options = trainingOptions("sgdm", ...
+retrain_options = trainingOptions("adam", ...
     InitialLearnRate=0.001,...
     MaxEpochs=1, ...
     MiniBatchSize=20, ...
@@ -30,7 +30,7 @@ error = validate(net)
 error_vec = [error];
 % pred = toy_forecast(net, XTest{1}, 100, 25, p, true);
 
-for retrain_idx = 1:1000
+for retrain_idx = 1:50
     
     for it_num = 1:20
         traj_idx = randi(size(XTrain, 2));
@@ -62,8 +62,8 @@ end
 % pred = toy_forecast(net, XTest{1}, 100, 25, p, true);
 
 % Save the output
-outputFile = fullfile("data/networks/toy-nets", 'retrained_071422_v5.mat');
-save(outputFile, 'net', 'error_vec');
+% outputFile = fullfile("data/networks/toy-nets", 'retrained_071522_v6.mat');
+% save(outputFile, 'net', 'error_vec');
 
 function error = validate_net(net, X_test, idxs, ns, k, p)
     error = 0;

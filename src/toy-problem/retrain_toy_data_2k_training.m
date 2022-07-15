@@ -29,7 +29,7 @@ error = validate(net)
 error_vec = [error];
 % pred = toy_forecast(net, XTest{1}, 100, 25, p, true);
 
-for retrain_idx = 1:2500
+for retrain_idx = 1:1000
     
     for it_num = 1:20
         traj_idx = randi(size(XTrain, 2));
@@ -68,8 +68,8 @@ end
 % pred = toy_forecast(net, XTest{1}, 100, 25, p, true);
 
 % Save the output
-outputFile = fullfile("data/networks/toy-nets", 'retrained_071322_v3_2.mat');
-save(outputFile, 'net', 'error_vec');
+% outputFile = fullfile("data/networks/toy-nets", 'retrained_071522_v3_2.mat');
+% save(outputFile, 'net', 'error_vec');
 
 function error = validate_net(net, X_test, idxs, ns, k, p)
     error = 0;
