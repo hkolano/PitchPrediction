@@ -14,9 +14,9 @@ println("Libraries imported.")
 
 src_dir = dirname(pathof(PitchPrediction))
 urdf_file = joinpath(src_dir, "..", "urdf", "toy_vehicle.urdf")
-ctlr_file = joinpath(src_dir, "toy-problem", "PIDCtlr.jl")
-traj_file = joinpath(src_dir, "toy-problem", "TrajGen.jl")
-simulate_file = joinpath(src_dir, "toy-problem", "simulate_des_trajectory.jl")
+ctlr_file = joinpath(src_dir, "toy-problem", "data-generation", "PIDCtlr.jl")
+traj_file = joinpath(src_dir, "toy-problem", "data-generation", "TrajGen.jl")
+simulate_file = joinpath(src_dir, "toy-problem", "data-generation", "simulate_des_trajectory.jl")
 
 # ----------------------------------------------------------
 #                 One-Time Mechanism Setup
