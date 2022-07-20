@@ -17,7 +17,8 @@ function full_pred = toy_forecast(net, X, n, k, p, make_plot)
     const_vec = X(7:end,1);
     
     % Predict and update until the forecasting start
-    [net, Z] = predictAndUpdateState(net, X(:,1:n));
+    [net, Z] = predictAndUpdateState(net, X(:,1:n), "ExecutionEnvironment","auto");
+%     [net, Z] = predictAndUpdateState(net, X(:,1:n), "ExecutionEnvironment","cpu");
     
     % Get the last output
     Xt = [Z(:,end); const_vec];
@@ -27,7 +28,7 @@ function full_pred = toy_forecast(net, X, n, k, p, make_plot)
     
     % Generate the forecast
     for i = 1:k-1
-        [net, outputs] = predictAndUpdateState(net, Xt);
+        [net, outputs] = predictAndUpdateState(net, Xt, "ExecutionEnvironment", "auto");
         Y(:,i) = outputs;
         Xt = [outputs; const_vec];
     end
