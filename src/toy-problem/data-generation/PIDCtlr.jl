@@ -5,7 +5,7 @@ using RigidBodyDynamics
 using PitchPrediction
 
 src_dir = dirname(pathof(PitchPrediction))
-traj_file = joinpath(src_dir, "toy-problem", "TrajGen.jl")
+traj_file = joinpath(src_dir, "toy-problem", "data-generation", "TrajGen.jl")
 include(traj_file)
 
 # ------------------------------------------------------------------------

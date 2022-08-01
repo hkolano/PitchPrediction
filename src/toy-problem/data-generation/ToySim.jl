@@ -90,9 +90,9 @@ for n in ProgressBar(1:num_trajs)
     # Save waypoints (start and goal positions, velocities) to CSV file
     if n == 1
         goal_headers = ["dt", "J1_start", "J2_start", "J1_end", "J2_end", "dJ1_start", "dJ2_start", "dJ1_end", "dJ2_end"]
-        CSV.write("data/toy-data-waypoints.csv", wp_data, header=goal_headers)
+        CSV.write("data/toy-data-waypoints_set2.csv", wp_data, header=goal_headers)
     else 
-        CSV.write("data/toy-data-waypoints.csv", wp_data, header=false, append=true)
+        CSV.write("data/toy-data-waypoints_set2.csv", wp_data, header=false, append=true)
     end
 
     # Run the simulation
@@ -109,17 +109,21 @@ for n in ProgressBar(1:num_trajs)
     vs2 = [vs[i][2] for i in 1:sample_rate:length(vs)]
     vs3 = [vs[i][3] for i in 1:sample_rate:length(vs)]
 
+    des_vs = [TrajGen.get_desv_at_t(t, params) for t in ts_down]
+    des_v1s = [des_vs[n][1] for n in 1:length(des_vs)]
+    des_v2s = [des_vs[n][2] for n in 1:length(des_vs)]
+
     # Write the 
-    num_rows = 6
+    num_rows = 8
     data = Array{Float64}(undef, length(ts_down), num_rows)
-    cols = [qs1, qs2, qs3, vs1, vs2, vs3]
-    labels = ["pitch", "joint1", "joint2", "d_pitch", "vel_j1", "vel_j2"]
+    cols = [qs1, qs2, qs3, vs1, vs2, vs3, des_v1s, des_v2s]
+    labels = ["pitch", "joint1", "joint2", "d_pitch", "vel_j1", "vel_j2", "des_v1s", "des_v2s"]
     for (idx, val) in enumerate(cols)
         data[:,idx] = val
     end
     
     tab = Tables.table(data)
-    CSV.write("data/toy-data/toystates$(n).csv", tab, header=labels)
+    CSV.write("data/toy-data-with-desv/toystates$(n).csv", tab, header=labels)
     
     # MeshCatMechanisms.animate(mvis_toy, ts, qs; realtimerate = 2.5);
 end
