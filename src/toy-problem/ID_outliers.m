@@ -1,12 +1,13 @@
 function bad_idxs = ID_outliers(sequence_data)
+% Returns indices of trajectories that have values outside 5 standard
+% deviations from the mean.
 
     max_vals = [];
     for n = 1:numel(sequence_data)
         max_vals(n) = max(sequence_data{n}, [], 'all');
     end
     
-%     hist(max_vals)
-
+    hist(max_vals)
     bad_idxs = [];
     for idx = 1:length(max_vals)
         if max_vals(idx) > 5.0

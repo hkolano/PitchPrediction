@@ -8,7 +8,7 @@ function [lgraph, options] = setup_residual_gru(numChannels, XTest, TTest)
     
     %% Build out network layers
     % Top: input sequence layer
-    tempLayers = sequenceInputLayer(15,"Name","State Input");
+    tempLayers = sequenceInputLayer(17,"Name","State Input");
     lgraph = addLayers(lgraph,tempLayers);
 
     % Right side: forward the constant values
@@ -25,7 +25,7 @@ function [lgraph, options] = setup_residual_gru(numChannels, XTest, TTest)
     % FCN on LSTM output and consts
     tempLayers = [
         concatenationLayer(1,2,"Name","concat")
-        fullyConnectedLayer(6,"Name","fc")];
+        fullyConnectedLayer(8,"Name","fc")];
     lgraph = addLayers(lgraph,tempLayers);
     lgraph = connectLayers(lgraph,"Splitting-2nd","concat/in2");
     lgraph = connectLayers(lgraph,"GRU","concat/in1");

@@ -21,9 +21,9 @@ classdef splittingLayer < nnet.layer.Layer
 %             disp(X)
             switch layer.target
                 case '1st'
-                    Z = X(1:6,:,:); 
+                    Z = X(1:8,:,:); 
                 case '2nd' 
-                    Z = X(7:end,:,:); 
+                    Z = X(9:end,:,:); 
             end
         end
     end

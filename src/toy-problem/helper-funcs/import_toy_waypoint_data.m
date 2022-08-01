@@ -1,6 +1,6 @@
 function data = import_toy_waypoint_data()
 % Import the data from 
-    ds = datastore("data/toy-data-waypoints.csv");
+    ds = datastore("data/toy-data-waypoints_set2.csv");
     data = readall(ds);
     data = table2array(data)';
     
