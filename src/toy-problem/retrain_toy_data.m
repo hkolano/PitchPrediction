@@ -1,5 +1,5 @@
 %% Import data
-load('data/networks/toy-nets/SingleStepNet_OneEpoch_071322.mat')
+load('data/networks/toy-nets/retrained_072022_v6_1.mat')
 load('data/toy-data-matlab/TestandTrainData_071322.mat')
 k = 25;     % Number of time steps to forecast (0.5s)
 
@@ -7,7 +7,8 @@ retrain_options = trainingOptions("adam", ...
     InitialLearnRate=0.001,...
     MaxEpochs=1, ...
     MiniBatchSize=5, ...
-    SequencePaddingDirection="right");
+    SequencePaddingDirection="right",...
+    ExecutionEnvironment="auto");
 
 %% Define a validation set
 load('data/toy-data-matlab/retrain_validation_vals_071322_v2.mat');
@@ -54,7 +55,7 @@ for retrain_idx = 1:1000
     this_test_rmse = info.TrainingRMSE;
     training_rmse_vec = [training_rmse_vec this_test_rmse];
     
-    if rem(retrain_idx, 25) == 0
+    if rem(retrain_idx, 10) == 0
         error = validate(net)
         disp(retrain_idx)
         error_vec = [error_vec error];
@@ -65,8 +66,8 @@ end
 % pred = toy_forecast(net, XTest{1}, 100, 25, p, true);
 
 % Save the output
-% outputFile = fullfile("data/networks/toy-nets", 'retrained_071522_v6.mat');
-% save(outputFile, 'net', 'error_vec', 'training_rmse_vec');
+outputFile = fullfile("data/networks/toy-nets", 'retrained_072022_v6_2.mat');
+save(outputFile, 'net', 'error_vec', 'training_rmse_vec');
 
 function error = validate_net(net, X_test, idxs, ns, k, p)
     error = 0;
