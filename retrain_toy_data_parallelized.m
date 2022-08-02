@@ -1,6 +1,6 @@
 %% Import data
-load('data/networks/toy-nets/SingleStepNet_OneEpoch_071322.mat')
-load('data/toy-data-matlab/TestandTrainData_071322.mat')
+load('data/networks/toy-nets/SingleStepNet_080122.mat')
+load('data/toy-data-matlab/TestandTrainData_080122.mat')
 k = 25;     % Number of time steps to forecast (0.5s)
 
 retrain_options = trainingOptions("adam", ...
@@ -31,14 +31,14 @@ error = validate(net)
 error_vec = [error];
 training_rmse_vec = [];
 % pred = toy_forecast(net, XTest{1}, 100, 25, p, true);
-
-for retrain_idx = 1:5
+%%
+for retrain_idx = 1:1000
 
     % Extract only the data needed to be sent to workers
     traj_indices = [];
     trajs = {};
     for it_num = 1:20
-        traj_idx = randi(size(XTrain, 1));
+        traj_idx = randi(size(XTrain, 2));
         traj_indices = [traj_indices traj_idx];
         trajs{it_num} = XTrain{traj_idx};
     end
@@ -67,7 +67,7 @@ for retrain_idx = 1:5
     training_rmse_vec = [training_rmse_vec this_test_rmse];
     
     % Validate every so often
-    if rem(retrain_idx, 10) == 0
+    if rem(retrain_idx, 25) == 0
         error = validate(net)
         disp(retrain_idx)
         error_vec = [error_vec error];
@@ -78,11 +78,12 @@ end
 % pred = toy_forecast(net, XTest{1}, 100, 25, p, true);
 
 % Save the output
-outputFile = fullfile("data/networks/toy-nets", 'retrained_072022_v6_2.mat');
+outputFile = fullfile("data/networks/toy-nets", 'retrained_080122_1000its.mat');
 save(outputFile, 'net', 'error_vec', 'training_rmse_vec');
-
+%%
 function error = validate_net(net, X_test, ns, k, p)
     error = 0;
+    rmses = {};
     parfor i = 1:numel(X_test)
         pred = toy_forecast(net, X_test{i}, ns(i), k, p, false);
 %         size(pred)
