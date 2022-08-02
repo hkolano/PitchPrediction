@@ -6,7 +6,8 @@
     [sequence_data, p] = normalize_data(sequence_data);
     bad_ids = ID_outliers(sequence_data);
     
-    for idx = 1:length(bad_ids)
+    % Remove outliers (from highest idx to lowest idx)
+    for idx = length(bad_ids):-1:1
         sequence_data(bad_ids(idx)) = [];
         waypoint_data(:, bad_ids(idx)) = [];
     end
