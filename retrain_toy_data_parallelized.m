@@ -32,19 +32,19 @@ error_vec = [error];
 training_rmse_vec = [];
 % pred = toy_forecast(net, XTest{1}, 100, 25, p, true);
 %%
-for retrain_idx = 1:1000
+for retrain_idx = 1:400
 
     % Extract only the data needed to be sent to workers
     traj_indices = [];
     trajs = {};
-    for it_num = 1:20
+    for it_num = 1:50
         traj_idx = randi(size(XTrain, 2));
         traj_indices = [traj_indices traj_idx];
         trajs{it_num} = XTrain{traj_idx};
     end
     
     % Make 20 predictions in parallel
-    parfor it_num = 1:20
+    parfor it_num = 1:50
         data = trajs{it_num};
         top_n_lim = size(data, 2) - k - 1;
         if top_n_lim <= k + 1
@@ -78,7 +78,7 @@ end
 % pred = toy_forecast(net, XTest{1}, 100, 25, p, true);
 
 % Save the output
-outputFile = fullfile("data/networks/toy-nets", 'retrained_080122_1000its.mat');
+outputFile = fullfile("data/networks/toy-nets", 'retrained_p1_2_20k.mat');
 save(outputFile, 'net', 'error_vec', 'training_rmse_vec');
 %%
 function error = validate_net(net, X_test, ns, k, p)
