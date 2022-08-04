@@ -17,9 +17,11 @@ using PitchPrediction
 src_dir = dirname(pathof(PitchPrediction))
 # URDF of the seabotix vehicle + alpha arm
 urdf_file = joinpath(src_dir, "..", "urdf", "alpha_seabotix.urdf")
-frame_setup_file = joinpath(src_dir, "full-sim", "FrameSetup.jl")
-hydro_calc_file = joinpath(src_dir, "full-sim", "HydroCalc.jl")
-sim_file = joinpath(src_dir, "full-sim", "SimWExt.jl")
+frame_setup_file = joinpath(src_dir, "full-sim", "data-generation", "FrameSetup.jl")
+hydro_calc_file = joinpath(src_dir, "full-sim", "data-generation", "HydroCalc.jl")
+sim_file = joinpath(src_dir, "full-sim", "data-generation", "SimWExt.jl")
+ctlr_file = joinpath(src_dir, "full-sim", "data-generation", "PIDCtlrMain.jl")
+traj_file = joinpath(src_dir, "full-sim", "TrajGenMain.jl")
 
 println("Libraries and external files imported.")
 
@@ -27,6 +29,8 @@ println("Libraries and external files imported.")
 include(frame_setup_file)
 include(hydro_calc_file)
 include(sim_file)
+include(ctlr_file)
+include(traj_file)
 
 # ----------------------------------------------------------
 #                 One-Time Mechanism Setup
@@ -108,27 +112,23 @@ println("CoM and CoB frames initialized. \n")
 # ----------------------------------------------------------
 #%%
 state = MechanismState(mech_sea_alpha)
-zero!(state)
-set_configuration!(state, vehicle_joint, [0., 0., 0.0, 0., 0., 0.])
+Δt = 1e-3
 
-# Define desired accelerations
-des_acc = similar(velocity(state))
-fill!(des_acc[vehicle_joint], 0.0)
-des_acc[vehicle_joint][1] = 1.0
-des_acc[base_joint][1] = 0.0
-des_acc[shoulder_joint][1] = 0.0
-des_acc[elbow_joint][1] = 0.0
-des_acc[wrist_joint][1] = 0.0
+zero!(state)
+set_configuration!(state, vehicle_joint, [0., 0., 0., 0., 0., 0.])
+
+ctlr_cache = PIDCtlr.CtlrCache(Δt, mech_sea_alpha)
+
 
 # ----------------------------------------------------------
 #                          Simulate
 # ----------------------------------------------------------
-final_time = 5.
-ts, qs, vs = simulate_with_ext_forces(state, final_time, hydro_calc!, simple_control!; Δt = 5e-3)
+final_time = 2.5
+ts, qs, vs = simulate_with_ext_forces(state, final_time, ctlr_cache, hydro_calc!, PIDCtlr.pid_control!; Δt = 5e-3)
 # ts, qs, vs = simulate(state_alpha, final_time, simple_control!; Δt = 1e-2)
 
 println("Simulation finished.")
 
 #%% Animate
-render(mvis_alpha)
-MeshCatMechanisms.animate(mvis_alpha, ts, qs; realtimerate = 0.5)
+render(mvis)
+MeshCatMechanisms.animate(mvis, ts, qs; realtimerate = 0.5)
