@@ -7,7 +7,7 @@ using LinearAlgebra, StaticArrays
 using MeshCat, MeshCatMechanisms, MechanismGeometries
 using CoordinateTransformations
 using GeometryBasics
-using Printf
+using Printf, Plots
 using PitchPrediction
 
 # include("/home/hkolano/onr-dynamics-julia/simulate_with_ext_forces.jl")
@@ -113,9 +113,11 @@ println("CoM and CoB frames initialized. \n")
 #%%
 state = MechanismState(mech_sea_alpha)
 Δt = 1e-3
+goal_freq = 50
+sample_rate = Int(floor((1/Δt)/goal_freq))
 
 zero!(state)
-set_configuration!(state, vehicle_joint, [0., 0., 0., 0., 0., 0.])
+set_configuration!(state, vehicle_joint, [1., 0., 0., 0., 0., 0., 0.])
 
 ctlr_cache = PIDCtlr.CtlrCache(Δt, mech_sea_alpha)
 
@@ -124,11 +126,45 @@ ctlr_cache = PIDCtlr.CtlrCache(Δt, mech_sea_alpha)
 #                          Simulate
 # ----------------------------------------------------------
 final_time = 2.5
-ts, qs, vs = simulate_with_ext_forces(state, final_time, ctlr_cache, hydro_calc!, PIDCtlr.pid_control!; Δt = 5e-3)
+ts, qs, vs = simulate_with_ext_forces(state, final_time, ctlr_cache, hydro_calc!, PIDCtlr.pid_control!; Δt=Δt)
 # ts, qs, vs = simulate(state_alpha, final_time, simple_control!; Δt = 1e-2)
 
 println("Simulation finished.")
+paths = Dict();
+ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
+for n = 8:11
+    joint_poses = [qs[i][n] for i in 1:sample_rate:length(qs)]
+    joint_vels = [vs[i][n-1] for i in 1:sample_rate:length(vs)]
+    paths[string("qs", n)] = joint_poses
+    paths[string("vs", n)] = joint_vels
+end
+
+# function plot_state_errors()
+    l = @layout [a b ; c d ; e f ; g h]
+    # label = ["q2", "q3", "v2", "v3"]
+    # Joint E (base joint)
+    p1 = plot(ts_down, paths["qs8"], label="Joint E", ylim=(-1.5, 1.5))
+    # p1 = plot!(LinRange(0,duration,50), poses[:,1], label="des_q2")
+    p2 = plot(ts_down, paths["vs8"], label="Joint E vels",  ylim=(-0.5, 0.5))
+    # p3 = plot!(LinRange(0, duration, 50), vels[:,1], label="des_v2")
+    # Joint D (shoulder joint)
+    p3 = plot(ts_down, paths["qs9"], label="Joint D",  ylim=(-1.5, 1.5))
+    # p2 = plot!(LinRange(0, duration, 50), poses[:,2], label="des_q3")
+    p4 = plot(ts_down, paths["vs9"], label="Joint D vels",  ylim=(-0.5, 0.5))
+    # p4 = plot!(LinRange(0, duration, 50), vels[:,2], label="des_v3")
+    # Joint C (elbow joint)
+    p5 = plot(ts_down, paths["qs10"], label="Joint C",  ylim=(-1.5, 1.5))
+    # p2 = plot!(LinRange(0, duration, 50), poses[:,2], label="des_q3")
+    p6 = plot(ts_down, paths["vs10"], label="Joint C vels",  ylim=(-0.5, 0.5))
+    # p4 = plot!(LinRange(0, duration, 50), vels[:,2], label="des_v3")
+    # Joint B (wrist joint)
+    p7 = plot(ts_down, paths["qs11"], label="Joint B",  ylim=(-1.5, 1.5))
+    # p2 = plot!(LinRange(0, duration, 50), poses[:,2], label="des_q3")
+    p8 = plot(ts_down, paths["vs11"], label="Joint B vels",  ylim=(-0.5, 0.5))
+    # p4 = plot!(LinRange(0, duration, 50), vels[:,2], label="des_v3")
+    plot(p1, p2, p3, p4, p5, p6, p7, p8, layout=l)
+# end
 
 #%% Animate
-render(mvis)
-MeshCatMechanisms.animate(mvis, ts, qs; realtimerate = 0.5)
+# render(mvis)
+# MeshCatMechanisms.animate(mvis, ts, qs; realtimerate = 0.5)
