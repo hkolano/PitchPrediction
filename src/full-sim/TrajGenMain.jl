@@ -2,6 +2,7 @@ module TrajGen
 # export gen_rand_waypoints, find_trajectory
 
 num_its=50
+num_actuated_dofs = 4
 θa = atan(145.3, 40)
 joint_lims = [[-175*pi/180, 175*pi/180], [-θa, 200*pi/180-θa], [-θa-pi/2, 200*pi/180-θa-pi/2], [-165*pi/180, 165*pi/180]]
 # Velocity limits: 30 degrees/s for Joints E, D, C, 50 degrees/s for Joint B (from Reach Alpha Integration Manual V1.15 p8)
@@ -14,15 +15,16 @@ mutable struct jointState
     dθs::Array{Float64}
 end
 
-equil_pt = jointState([-0.18558, 0.0], [0.0, 0.0])
-extended_pt = jointState([π/2-.05, 0.0], [0.0, 0.0])
+equil_pose = zeros(num_actuated_dofs)
+equil_pt = jointState(equil_pose, zeros(num_actuated_dofs))
+# extended_pt = jointState([π/2-.05, 0.0], [0.0, 0.0])
 
 mutable struct Waypoints
     start::jointState 
     goal::jointState
 end
 
-raise_wpts = Waypoints(equil_pt, extended_pt)
+# raise_wpts = Waypoints(equil_pt, extended_pt)
 
 mutable struct trajParams
     a::Array
@@ -30,11 +32,13 @@ mutable struct trajParams
 end
 
 function gen_rand_feasible_point()
-    θj1 = rand(joint_lims[1][1]:.001:joint_lims[1][2])
-    θj2 = rand(joint_lims[2][1]:.001:joint_lims[2][2])
-    dθj1 = rand(vel_lims[1][1]:.001:vel_lims[1][2])
-    dθj2 = rand(vel_lims[2][1]:.001:vel_lims[2][2])
-    return jointState([θj1, θj2], [dθj1, dθj2])
+    θs = Array{Float64}(undef,num_actuated_dofs)    
+    dθs = Array{Float64}(undef,num_actuated_dofs)    
+    for jt_idx in  1:num_actuated_dofs
+        θs[jt_idx] = rand(joint_lims[jt_idx][1]:.001:joint_lims[jt_idx][2])
+        dθs[jt_idx] = rand(vel_lims[jt_idx][1]:.001:vel_lims[jt_idx][2])
+    end
+    return jointState(θs, dθs)
 end
 
 function gen_rand_waypoints()
@@ -86,13 +90,14 @@ function get_path!(poses, vels, θ1, θ2, T, a, num_its=num_its)
 end
 
 # function get_desv_at_t(t, p)
-function get_desv_at_t(t)
+function get_desv_at_t(t, p)
     # println("Got request for desv. Params $(p))")
-    des_vel = zeros(4)
-    # for i = 1:2
-    #     ds = vel_scale_at_t(p.a[i,:], t)
-    #     des_vel[i] = ds*(p.wp.goal.θs[i]-p.wp.start.θs[i])
-    # end
+    des_vel = Array{Float64}(undef, 8)
+    des_vel[1:4] = zeros(4)
+    for i = 1:num_actuated_dofs
+        ds = vel_scale_at_t(p.a[i,:], t)
+        des_vel[i+4] = ds*(p.wp.goal.θs[i]-p.wp.start.θs[i])
+    end
     return des_vel
 end
 
@@ -106,11 +111,11 @@ function check_lim(vals::Array, lims, idx)
 end
 
 function scale_trajectory(params, dur, poses, vels)
-    a = Array{Float64}(undef, 2, 6)
+    a = Array{Float64}(undef, num_actuated_dofs, 6)
     scale_factor = rand(1:.01:3)
     T = dur*scale_factor
     # println("Scaling factor: $(scale_factor)")
-    for i in 1:2
+    for i in 1:num_actuated_dofs
         a[i,:] = get_coeffs(params.wp, T, i)
         (poses[:,i], vels[:,i]) = get_path!(poses[:,i], vels[:,i], params.wp.start.θs[i], params.wp.goal.θs[i], T, a[i,:])
     end
@@ -119,14 +124,14 @@ end
 
 function find_trajectory(pts::Waypoints; num_its=num_its, T_init=1.0)
     T = T_init
-    poses = Array{Float64}(undef, num_its, 2)
-    vels = Array{Float64}(undef, num_its, 2)
+    poses = Array{Float64}(undef, num_its, num_actuated_dofs)
+    vels = Array{Float64}(undef, num_its, num_actuated_dofs)
     feasible_ct = 0
-    a = Array{Float64}(undef, 2, 6)
+    a = Array{Float64}(undef, num_actuated_dofs, 6)
 
     while feasible_ct < 2 && T < 10.0
         feasible_ct = 0
-        for i in 1:2
+        for i in 1:num_actuated_dofs
             # Get trajectory 
             a[i,:] = get_coeffs(pts, T, i)
             (poses[:,i], vels[:,i]) = get_path!(poses[:,i], vels[:,i], pts.start.θs[i], pts.goal.θs[i], T, a[i,:])
@@ -138,12 +143,12 @@ function find_trajectory(pts::Waypoints; num_its=num_its, T_init=1.0)
                 feasible_ct = feasible_ct + 1
             end
         end
-        if feasible_ct < 2
+        if feasible_ct < num_actuated_dofs
             T = T + 0.2
         end
     end
 
-    if feasible_ct == 2
+    if feasible_ct == num_actuated_dofs
         # println("Trajectory Parameters set")
         # println("Poses: $(poses)")
         return [trajParams(a, pts), T, poses, vels]

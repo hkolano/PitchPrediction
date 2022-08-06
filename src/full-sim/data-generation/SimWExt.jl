@@ -3,7 +3,7 @@ import RigidBodyDynamics: default_constraint_stabilization_gains
 import RigidBodyDynamics
 import RigidBodyDynamics.cache_eltype
 
-function simulate_with_ext_forces(state0::MechanismState{X}, final_time, ctlr, hydro_calc!, control! = zero_torque!;
+function simulate_with_ext_forces(state0::MechanismState{X}, final_time, pars, ctlr, hydro_calc!, control! = zero_torque!;
         Δt = 1e-4, stabilization_gains=default_constraint_stabilization_gains(X)) where X 
     println("Made it to the simulate function!")
         T = cache_eltype(state0)
@@ -16,7 +16,7 @@ function simulate_with_ext_forces(state0::MechanismState{X}, final_time, ctlr, h
             # println("Current State:")
             # println(configuration(state))
             hydro_calc!(hydro_wrenches, t, state)
-            control!(control_torques, t, state, ctlr)
+            control!(control_torques, t, state, pars, ctlr)
             # println("Control torques")
             # println(control_torques)
 
