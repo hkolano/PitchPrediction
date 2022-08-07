@@ -195,23 +195,34 @@ for n in ProgressBar(1:num_trajs)
 
     # Write the trajectories to an array -> Table -> CSV
     num_rows = 25
-    data = Array{Float64}(undef, length(ts_down), num_rows)
+    data = Array{Float64}(undef, length(ts_down), num_rows-4)
     fill!(data, 0.0)
-    labels = Array{String}(undef, num_rows)
+    labels = Array{String}(undef, num_rows-4)
+
+    quat_data = Array{Float64}(undef, length(ts_down), num_rows-4)
+    quat_labels = Array{String}(undef, 4)
     row_n = 1
     for (key, value) in paths
-        labels[row_n] = key
-        data[:,row_n] = value 
+        if row_n < 5
+            quat_labels[row_n] = key 
+            quat_data[:,row_n] = value
+        else
+            labels[row_n-4] = key
+            data[:,row_n-4] = value 
+        end
         row_n = row_n + 1
     end
     for actuated_idx = 5:8
-        data[:,row_n] = [des_vs[m][actuated_idx] for m in 1:length(des_vs)]
+        println([des_vs[m][actuated_idx] for m in 1:length(des_vs)])
+        data[:,row_n-4] = [des_vs[m][actuated_idx] for m in 1:length(des_vs)]
         row_n = row_n + 1
     end
-    labels[22:25] = ["des_vsE", "des_vsD", "des_vsC", "des_vsB"]
+    labels[18:21] = ["des_vsE", "des_vsD", "des_vsC", "des_vsB"]
     
     tab = Tables.table(data)
-    CSV.write("data/full-sim-data/full-data/states$(n).csv", tab, header=labels)
+    CSV.write("data/full-sim-data/data-no-orientation/states$(n).csv", tab, header=labels)
+    quat_tab = Tables.table(quat_data)
+    CSV.write("data/full-sim-data/data-quat/quats$(n).csv", quat_tab, header=quat_labels)
 end
 
 println("Simulation finished.")
