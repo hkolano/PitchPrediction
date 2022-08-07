@@ -4,7 +4,7 @@ module TrajGen
 num_its=50
 num_actuated_dofs = 4
 θa = atan(145.3, 40)
-joint_lims = [[-175*pi/180, 175*pi/180], [-θa, 200*pi/180-θa], [-θa-pi/2, 200*pi/180-θa-pi/2], [-165*pi/180, 165*pi/180]]
+joint_lims = [[-175*pi/180, 175*pi/180], [0, 200*pi/180], [0, 200*pi/180], [-165*pi/180, 165*pi/180]]
 # Velocity limits: 30 degrees/s for Joints E, D, C, 50 degrees/s for Joint B (from Reach Alpha Integration Manual V1.15 p8)
 θb = deg2rad(30)
 θc = deg2rad(50)
@@ -92,12 +92,13 @@ end
 # function get_desv_at_t(t, p)
 function get_desv_at_t(t, p)
     # println("Got request for desv. Params $(p))")
-    des_vel = Array{Float64}(undef, 8)
+    des_vel = Array{Float64}(undef,8)
     des_vel[1:4] = zeros(4)
     for i = 1:num_actuated_dofs
         ds = vel_scale_at_t(p.a[i,:], t)
         des_vel[i+4] = ds*(p.wp.goal.θs[i]-p.wp.start.θs[i])
     end
+    # fill!(des_vel, 0)
     return des_vel
 end
 

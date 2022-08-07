@@ -35,7 +35,7 @@ include(traj_file)
 # ----------------------------------------------------------
 #                 One-Time Mechanism Setup
 # ----------------------------------------------------------
-#%%
+
 vis = Visualizer()
 mech_sea_alpha = parse_urdf(urdf_file; floating=true, gravity = [0.0, 0.0, 0.0])
 # mech_sea_alpha = parse_urdf(urdf_file; gravity = [0.0, 0.0, 0.0])
@@ -46,6 +46,7 @@ delete!(vis)
 visuals = URDFVisuals(urdf_file)
 mvis = MechanismVisualizer(mech_sea_alpha, URDFVisuals(urdf_file), vis[:alpha])
 render(mvis)
+#%%
 
 # Name the joints and bodies of the mechanism
 vehicle_joint, base_joint, shoulder_joint, elbow_joint, wrist_joint = joints(mech_sea_alpha)
@@ -114,7 +115,7 @@ println("CoM and CoB frames initialized. \n")
 
 function reset_to_equilibrium!(state)
     zero!(state)
-    set_configuration!(state, vehicle_joint, [.99152, 0., 0.1299, 0., 0., 0., 0.])
+    set_configuration!(state, vehicle_joint, [.993607, 0., 0.11289, 0.00034, 0., 0., 0.])
 end
 
 # Constants
@@ -144,7 +145,7 @@ while traj === nothing
 end
 
 println("Got a trajectory.")
-println(traj[3])
+# println(traj[3])
 
 # Scale that trajectory to 1x-5x "top speed"
 scaled_traj = TrajGen.scale_trajectory(traj...)
@@ -170,17 +171,17 @@ end
     l = @layout [a b ; c d ; e f]
     # label = ["q2", "q3", "v2", "v3"]
     # Joint E (base joint)
-    p1 = plot(ts_down, paths["qs8"], label="Joint E", ylim=(-1.5, 1.5))
+    p1 = plot(ts_down, paths["qs8"], label="Joint E", ylim=(-3.0, 3.0))
     p1 = plot!(LinRange(0,duration,50), poses[:,1], label="des_qE", legend=:topleft)
     p2 = plot(ts_down, paths["vs8"], label="Joint E vels",  ylim=(-0.5, 0.5))
     p2 = plot!(LinRange(0, duration, 50), vels[:,1], label="des_vE", legend=:topleft)
     # Joint D (shoulder joint)
-    p3 = plot(ts_down, paths["qs9"], label="Joint D",  ylim=(-1.5, 1.5))
+    p3 = plot(ts_down, paths["qs9"], label="Joint D",  ylim=(-.5, 5.5))
     p3 = plot!(LinRange(0, duration, 50), poses[:,2], label="des_qD", legend=:topleft)
     p4 = plot(ts_down, paths["vs9"], label="Joint D vels",  ylim=(-0.5, 0.5))
     p4 = plot!(LinRange(0, duration, 50), vels[:,2], label="des_vD", legend=:topleft)
     # Joint C (elbow joint)
-    p5 = plot(ts_down, paths["qs10"], label="Joint C",  ylim=(-1.5, 1.5))
+    p5 = plot(ts_down, paths["qs10"], label="Joint C",  ylim=(-.5, 5.5))
     p5 = plot!(LinRange(0, duration, 50), poses[:,3], label="des_qC", legend=:topleft)
     p6 = plot(ts_down, paths["vs10"], label="Joint C vels",  ylim=(-0.5, 0.5))
     p6 = plot!(LinRange(0, duration, 50), vels[:,3], label="des_vC", legend=:topleft)
@@ -208,4 +209,4 @@ end
 
 #  Animate
 # render(mvis)
-MeshCatMechanisms.animate(mvis, ts, qs; realtimerate = 1.0)
+# MeshCatMechanisms.animate(mvis, ts, qs; realtimerate = 1.0)
