@@ -199,7 +199,7 @@ for n in ProgressBar(1:num_trajs)
     fill!(data, 0.0)
     labels = Array{String}(undef, num_rows-4)
 
-    quat_data = Array{Float64}(undef, length(ts_down), num_rows-4)
+    quat_data = Array{Float64}(undef, length(ts_down), 4)
     quat_labels = Array{String}(undef, 4)
     row_n = 1
     for (key, value) in paths
