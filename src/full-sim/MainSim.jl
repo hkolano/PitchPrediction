@@ -134,7 +134,7 @@ include(traj_file)
 #                      Gather Sim Data
 # ----------------------------------------------------------
 
-num_trajs = 1
+num_trajs = 5
 
 # Create (num_trajs) different trajectories and save to csvs
 for n in ProgressBar(1:num_trajs)
@@ -153,8 +153,8 @@ for n in ProgressBar(1:num_trajs)
 
     # Keep trying until a good trajectory is found
     while traj === nothing
-        global wp = TrajGen.gen_rand_waypoints_from_equil()
-        global traj = TrajGen.find_trajectory(wp)
+        wp = TrajGen.gen_rand_waypoints_from_equil()
+        traj = TrajGen.find_trajectory(wp)
     end
 
     # Scale that trajectory to 1x-3x "top speed"
@@ -213,7 +213,7 @@ for n in ProgressBar(1:num_trajs)
         row_n = row_n + 1
     end
     for actuated_idx = 5:8
-        println([des_vs[m][actuated_idx] for m in 1:length(des_vs)])
+        # println([des_vs[m][actuated_idx] for m in 1:length(des_vs)])
         data[:,row_n-4] = [des_vs[m][actuated_idx] for m in 1:length(des_vs)]
         row_n = row_n + 1
     end
@@ -223,6 +223,8 @@ for n in ProgressBar(1:num_trajs)
     CSV.write("data/full-sim-data/data-no-orientation/states$(n).csv", tab, header=labels)
     quat_tab = Tables.table(quat_data)
     CSV.write("data/full-sim-data/data-quat/quats$(n).csv", quat_tab, header=quat_labels)
+
+    # MeshCatMechanisms.animate(mvis, ts, qs; realtimerate = 1.0)
 end
 
 println("Simulation finished.")
@@ -270,4 +272,3 @@ println("Simulation finished.")
 
 #  Animate
 # render(mvis)
-# MeshCatMechanisms.animate(mvis, ts, qs; realtimerate = 1.0)
