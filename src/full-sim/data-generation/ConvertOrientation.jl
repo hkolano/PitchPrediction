@@ -2,15 +2,17 @@ using Rotations, StaticArrays, PitchPrediction, DataFrames, Tables
 
 # Pick which directory to read from
 src_dir = dirname(pathof(PitchPrediction))
-quats_folder = joinpath(src_dir, "..", "data", "mini-sets", "quats")
+quats_folder = joinpath(src_dir, "..", "data", "full-sim-data", "data-quat")
 # Generate list of files to parse
 files_to_read = readdir(quats_folder)
+
+num_files_converted = 0
 
 # Iterate through each file in the folder
 for file_name in files_to_read
     # Get its index
     file_digits = filter(isdigit, file_name)
-    println(file_digits)
+    # println(file_digits)
     file_idx = parse(Int, file_digits)
 
     # Get the full file path
@@ -46,8 +48,13 @@ for file_name in files_to_read
     aa_labels = ["Angle, Axis1, Axis2, Axis3"]
     rpy_table = Tables.table(rpy_array)
     rpy_labels = ["Roll", "Pitch", "Yaw"]
-    CSV.write("data/mini-sets/aas/aas$(file_idx).csv", aa_table, header=aa_labels)
-    CSV.write("data/mini-sets/rpys/rpys$(file_idx).csv", rpy_table, header=rpy_labels)
+    CSV.write("data/full-sim-data/data-angleaxis/aas$(file_idx).csv", aa_table, header=aa_labels)
+    CSV.write("data/full-sim-data/data-rpy/rpys$(file_idx).csv", rpy_table, header=rpy_labels)
+
+    global num_files_converted = num_files_converted + 1
+    if rem(num_files_converted, 10) == 0
+        println("$(num_files_converted) files converted.")
+    end
 end
 
 println("Converted all orientations")
