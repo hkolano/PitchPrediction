@@ -134,7 +134,7 @@ include(traj_file)
 #                      Gather Sim Data
 # ----------------------------------------------------------
 
-num_trajs = 5
+num_trajs = 5000
 
 # Create (num_trajs) different trajectories and save to csvs
 for n in ProgressBar(1:num_trajs)
