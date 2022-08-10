@@ -1,12 +1,12 @@
 %% Import data
-load('data/networks/toy-nets/retrained_p1_3_20k.mat')
+load('data/networks/toy-nets/retrained_080122_30kits.mat')
 load('data/toy-data-matlab/TestandTrainData_080122.mat')
 k = 25;     % Number of time steps to forecast (0.5s)
 
 retrain_options = trainingOptions("adam", ...
     InitialLearnRate=0.001,...
     MaxEpochs=1, ...
-    MiniBatchSize=5, ...
+    MiniBatchSize=4, ...
     Shuffle="never", ...
     SequencePaddingDirection="right",...
     ExecutionEnvironment="auto");
@@ -33,7 +33,7 @@ error_vec = [error];
 training_rmse_vec = [];
 % pred = toy_forecast(net, XTest{1}, 100, 25, p, true);
 %%
-for retrain_idx = 1:1000
+for retrain_idx = 1:10000
 
     % Extract only the data needed to be sent to workers
     traj_indices = [];
@@ -63,13 +63,13 @@ for retrain_idx = 1:1000
     end
     
     % Sort by length
-    for i=1:numel(preds)
-        sequenceLengths(i) = size(preds{i}, 2);
-    end
-
-    [sequenceLengths, idx] = sort(sequenceLengths, 'descend');
-    preds = preds(idx);
-    g_truth = g_truth(idx);
+%     for i=1:numel(preds)
+%         sequenceLengths(i) = size(preds{i}, 2);
+%     end
+% 
+%     [sequenceLengths, idx] = sort(sequenceLengths, 'descend');
+%     preds = preds(idx);
+%     g_truth = g_truth(idx);
     
     % Train on those predictions
     [net,info] = trainNetwork(preds, g_truth, layerGraph(net), retrain_options);
@@ -88,7 +88,7 @@ end
 % pred = toy_forecast(net, XTest{1}, 100, 25, p, true);
 
 % Save the output
-outputFile = fullfile("data/networks/toy-nets", 'retrained_p1_3_40k.mat');
+outputFile = fullfile("data/networks/toy-nets", 'retrained_080122_40kits.mat');
 save(outputFile, 'net', 'error_vec', 'training_rmse_vec');
 %%
 function error = validate_net(net, X_test, ns, k, p)
