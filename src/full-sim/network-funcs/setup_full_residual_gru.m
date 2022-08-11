@@ -18,13 +18,14 @@ function [lgraph, options] = setup_full_residual_gru(num_channels, num_recurrent
     % Left side: LSTM on the sequence data
     tempLayers = [
         split_1st
-        gruLayer(128,"Name","GRU", 'OutputMode', 'sequence')];
+        gruLayer(1024,"Name","GRU", 'OutputMode', 'sequence')];
     lgraph = addLayers(lgraph,tempLayers);
     lgraph = connectLayers(lgraph,"State Input","Splitting-1st");
 
     % Final stretch: FCN on LSTM output and consts
     tempLayers = [
         concatenationLayer(1,2,"Name","concat")
+%         fullyConnectedLayer(256, "Name", "hiddenFC")
         fullyConnectedLayer(num_recurrent_channels,"Name","fc")];
     lgraph = addLayers(lgraph,tempLayers);
     lgraph = connectLayers(lgraph,"Splitting-2nd","concat/in2");

@@ -1,8 +1,7 @@
 % function train_toy_data()
 %% Data import and processing
-sequence_data = import_traj_no_orientation("data/mini-sets/states");
-orientation_data = import_orientations("data/mini-sets/rpys");
-waypoint_data = import_waypoint_data("data/mini-sets/full-sim-waypoints_080622.csv");
+sequence_data = import_traj_no_orientation("data/full-sim-data/data-no-orientation");
+orientation_data = import_orientations("data/full-sim-data/data-rpy");
 %%
 %{
 X(:,1) is a column vector.
@@ -20,13 +19,20 @@ X(:,1) is a column vector.
 X(:,1:6) are fed to the LSTM, while X(:,7:end) are sent directly to the
 FCN.
 %}
+waypoint_data = import_waypoint_data("data/full-sim-data/full-sim-waypoints_080622.csv");
 for idx = 1:numel(sequence_data)
     combo_data{idx} = [sequence_data{idx}; orientation_data{idx}];
 end
 
 %%
+nan_IDs = ID_nans(combo_data)
+for idx = length(nan_IDs):-1:1
+    combo_data(nan_IDs(idx)) = [];
+    waypoint_data(:, nan_IDs(idx)) = [];
+end
+
 [combo_data, p] = normalize_data(combo_data);
-bad_ids = ID_outliers(combo_data);
+bad_ids = ID_outliers(combo_data)
 
 %%
 % Remove outliers (from highest idx to lowest idx)
@@ -35,6 +41,7 @@ for idx = length(bad_ids):-1:1
     waypoint_data(:, bad_ids(idx)) = [];
 end
 
+%%
 % Determine division between train and test data
 numObservations = numel(combo_data);
 idxTrain = 1:floor(0.95*numObservations);
