@@ -4,7 +4,7 @@
 load('data/full-data-matlab/FullData_NoVehXYZ_noB_081022.mat')
 
 % Load network to retrain
-load('data/networks/full-nets/SingleStepNet_fromFullData_NoVehXYZ_noB_1028units.mat')
+load('data/networks/full-nets/retrained_nets/net_A_1_10000its.mat')
 
 % Load validation set definition
 load('data/full-data-matlab/val_set_081122.mat')
@@ -16,7 +16,8 @@ k = 25;     % Number of time steps to forecast (0.5s)
 mbatch = 4;
 num_trajs_before_update = 20;
 val_freq = 25;
-save_freq = 250;
+save_freq = 500;
+train_to_val_ratio = val_freq*(num_trajs_before_update/mbatch);
 
 retrain_options = trainingOptions("adam", ...
     InitialLearnRate=0.001,...
@@ -32,12 +33,11 @@ validate = @(net) validate_net(net, XTest_subset, val_ns, k, p, num_rec_vars);
 
 
 %% Train on predictions
-error = validate(net)
-error_vec = [error];
-training_rmse_vec = [];
-% pred = toy_forecast(net, XTest{1}, 100, 25, p, true);
+% error = validate(net)
+% error_vec = [error];
+% training_rmse_vec = [];
 
-for retrain_idx = 1:1000
+for retrain_idx = 10001:30000
 
     traj_indices = [];
     trajs = {};
@@ -73,13 +73,12 @@ for retrain_idx = 1:1000
         error = validate(net)
         disp(retrain_idx)
         error_vec = [error_vec error];
+        plot_errors(training_rmse_vec, error_vec, train_to_val_ratio, "Training Progress")
     end
 
     if rem(retrain_idx, save_freq) == 0
-        train_to_val_ratio = val_freq*(num_trajs_before_update/mbatch);
         outputFile = fullfile("data/networks/full-nets/retrained_nets", strcat("net_A_1_", string(retrain_idx), "its.mat"));
         save(outputFile, 'net', 'info', "error_vec", "training_rmse_vec", "train_to_val_ratio")
-        plot_errors(training_rmse_vec, error_vec, train_to_val_ratio, "Training Progress")
     end
     
 end
