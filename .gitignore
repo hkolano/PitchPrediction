@@ -5,3 +5,4 @@ data/full-sim-data
 data/backup-full-sim-data
 data/mini-sets
 data/full-data-matlab
+*.csv
