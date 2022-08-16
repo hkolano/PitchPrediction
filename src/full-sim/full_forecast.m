@@ -36,7 +36,8 @@ function full_pred = full_forecast(net, X, n, k, p, num_rec_channels, make_plot)
     full_pred = cat(2, Z, Y);
          
     if make_plot == true
-        order = [22 8 23 9 24 10];
+%         order = [22 8 23 9 24 10];
+        order = [13 4 14 5 15 6];
         t = tiledlayout(3,2, 'TileSpacing', 'Compact');
         ylabels = ["Roll", "", "Pitch", "",  "Yaw", ""];
         titles = ["R/P/Y(radians)", "Joint Velocity (rad/s)", "", "", "", ""];
