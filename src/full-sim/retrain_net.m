@@ -1,10 +1,10 @@
 %% Import data
 
 % Load data set
-load('data/full-data-matlab/FullData_NoVehXYZ_noB_081022.mat')
+load('data/full-data-matlab/FullData_NoVehXYZ_noB_noWaypoints_081522.mat')
 
 % Load network to retrain
-load('data/networks/full-nets/increasing_k_nets_C/net_C_k2_250its.mat')
+load('data/networks/full-nets/A_3_nets/net_A_3_1000its.mat')
 
 % Load validation set definition
 load('data/full-data-matlab/val_set_081122.mat')
@@ -12,7 +12,7 @@ load('data/full-data-matlab/val_set_081122.mat')
 
 %% Initialization
 
-k = 2;     % Number of time steps to forecast (0.5s)
+k = 25;     % Number of time steps to forecast (0.5s)
 mbatch = 4;
 num_trajs_before_update = 20;
 val_freq = 25;
@@ -20,10 +20,12 @@ save_freq = 250;
 train_to_val_ratio = val_freq*(num_trajs_before_update/mbatch);
 
 retrain_options = trainingOptions("adam", ...
-    InitialLearnRate=0.0001,...
+    InitialLearnRate=0.001,...
     MaxEpochs=1, ...
     MiniBatchSize=mbatch, ...
     SequencePaddingDirection="right",...
+    GradientThresholdMethod = 'l2norm',...
+    GradientThreshold=1.0,...
     ExecutionEnvironment="auto");
 
 num_rec_vars = size(TTest{1}, 1);
@@ -32,13 +34,20 @@ XTest_subset = XTest(val_idxs);
 validate = @(net) validate_net(net, XTest_subset, val_ns, k, p, num_rec_vars);
 validate_pitch = @(net) validate_pitch_only(net, XTest_subset, val_ns, k, p, num_rec_vars);
 
+%%
+% load('data/networks/full-nets/A_1_nets/net_A_1_58000its.mat')
+% disp("New Network:")
+% % mean(training_rmse_vec(end-100:end))
+% % mean(error_vec(end-4:end))
+% validate_pitch(net)
+
 
 %% Train on predictions
-first_error = validate(net);
+first_error = validate(net)
 error_vec = [];
 training_rmse_vec = [];
 
-for retrain_idx = 251:1000
+for retrain_idx = 1001:2000
 
     traj_indices = [];
     trajs = {};
@@ -65,6 +74,12 @@ for retrain_idx = 251:1000
         preds{it_num} = [pred; wp_array];
         g_truth{it_num} = data(1:num_rec_vars,2:n+k);
     end
+
+    nan_idxs = ID_nans(preds);
+    if sum(nan_idxs) ~= 0
+        disp(nan_idxs)
+        disp("NaNs detected in prediction!")
+    end
     
     [net,info] = trainNetwork(preds, g_truth, layerGraph(net), retrain_options);
     this_test_rmse = info.TrainingRMSE;
@@ -78,11 +93,11 @@ for retrain_idx = 251:1000
     end
 
     if rem(retrain_idx, save_freq) == 0
-        outputFile = fullfile("data/networks/full-nets/increasing_k_nets_C", strcat("net_C_k2_", string(retrain_idx), "its.mat"));
+        outputFile = fullfile("data/networks/full-nets/A_3_nets", strcat("net_A_3_", string(retrain_idx), "its.mat"));
         end_it = retrain_idx;
         start_it = end_it-save_freq+1;
         save(outputFile, 'net', 'info', "error_vec", "training_rmse_vec", "train_to_val_ratio", "start_it", "end_it")
-        plot_network_error_progression()
+        plot_network_error_progression('data/networks/full-nets/A_3_nets', "A-3 Training Progression")
         error_vec = [];
         training_rmse_vec = [];
     end
@@ -110,7 +125,7 @@ end
 
 function error = validate_pitch_only(net, X_test, ns, k, p, num_recur)
     error = 0;
-    parfor i = 1:numel(X_test)
+    for i = 1:numel(X_test)
         pred = full_forecast(net, X_test{i}, ns(i), k, p, num_recur, false);
 %         size(pred)
         pred = pred(14,end-k+1:end);

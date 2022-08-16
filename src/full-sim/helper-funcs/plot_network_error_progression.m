@@ -1,10 +1,11 @@
-function plot_network_error_progression()
+function plot_network_error_progression(folder, plot_title)
 
 % files = dir(fullfile(folder_path, '*.mat'))
 % save_pt_its = [250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2500, 3000, 3500, 4000];
-fds = fileDatastore("data/networks/full-nets/increasing_k_nets", 'ReadFcn', @importdata);
+fds = fileDatastore(folder, 'ReadFcn', @importdata);
 fullFileNames = fds.Files;
 numFiles = length(fullFileNames);
+% close all
 
 figure;
 hold on
@@ -13,6 +14,7 @@ for m = 1:numFiles
 %     file_name = fullfile("data/networks/full-nets/retrained_nets", strcat("net_A_1_", string(save_pt_its(m)), "its.mat"))
 %     baseFileName = files(m).name
 %     fullFileName = fullfile(files, baseFileName)
+    disp(fullFileNames{m})
     load(fullFileNames{m});
 
     its = start_it-.8:0.2:end_it;
@@ -25,7 +27,7 @@ end
 
 xlabel("Iteration Number")
 ylabel("RMSE")
-title("Noodle")
+title(plot_title)
 grid on
 legend("Training RMSE", "Validation RMSE")
 

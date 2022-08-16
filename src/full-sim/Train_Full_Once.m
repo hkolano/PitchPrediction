@@ -1,7 +1,7 @@
-load('data/full-data-matlab/FullData_NoVehXYZ_noB_081022.mat')  
+load('data/full-data-matlab/FullData_NoVehXYZ_noB_noWaypoints_081522.mat')  
 
-numChannels = size(XTrain{1}, 1);
-numRecChannels = size(TTrain{1}, 1);
+numChannels = size(XTrain{1}, 1)
+numRecChannels = size(TTrain{1}, 1)
 [layers, options] = setup_full_residual_gru(numChannels, numRecChannels, XTest, TTest);
 
 %     MaxEpochs=5, ...
@@ -15,5 +15,5 @@ init_options = trainingOptions("adam", ...
     ValidationPatience = 2);
 [net, info] = trainNetwork(XTrain,TTrain,layers,init_options);
 %     
-outputFile = fullfile("data/networks/full-nets", 'SingleStepNet_fromFullData_NoVehXYZ_noB_1028units.mat');
+outputFile = fullfile("data/networks/full-nets", 'SingleStepNet_NoVehXYZ_noB_noWaypoints_1024units.mat');
 save(outputFile, 'net', 'info');

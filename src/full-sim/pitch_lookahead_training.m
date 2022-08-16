@@ -1,9 +1,9 @@
-load('data/full-data-matlab/FullData_NoVehXYZ_noB_noWaypoints_081222.mat')  
+load('data/full-data-matlab/FullData_NoVehXYZ_noB_noWaypoints_081522.mat')  
 
-k = 25;
+k = 5;
 numChannels = size(XTrain{1}, 1);
 pitch_idx = 14;
-layers = setup_lookahead_rnn(numChannels, k);
+layers = setup_lookahead_rnn(numChannels, k, 1024);
 
 for n = 1:numel(XTrain)
     resp = [];
@@ -34,5 +34,5 @@ init_options = trainingOptions("adam", ...
     ValidationPatience = 2);
 [net, info] = trainNetwork(XTrain,Resp_Train,layers,init_options);
 %     
-outputFile = fullfile("data/networks/full-nets/KstepPreds", '25StepNet_fromScratch_512units.mat');
+outputFile = fullfile("data/networks/full-nets/Z_1_nets", '5StepNet_fromScratch_1024units.mat');
 save(outputFile, 'net', 'info');

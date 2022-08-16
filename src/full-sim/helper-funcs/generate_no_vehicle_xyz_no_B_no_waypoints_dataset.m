@@ -11,7 +11,7 @@ TTest = downselect_data_subset(keep_idxs_responses, TTest);
 XTrain = downselect_data_subset(keep_idxs, XTrain);
 TTrain = downselect_data_subset(keep_idxs_responses, TTrain);
 
-outputFile = fullfile("data/full-data-matlab", 'FullData_NoVehXYZ_noB_noWaypoints_081222.mat');
+outputFile = fullfile("data/full-data-matlab", 'FullData_NoVehXYZ_noB_noWaypoints_081522.mat');
 save(outputFile, 'XTest', 'TTest', 'XTrain', 'TTrain', 'p')
 
 
