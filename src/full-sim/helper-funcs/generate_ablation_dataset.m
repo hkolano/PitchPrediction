@@ -1,5 +1,5 @@
 load("data/full-data-matlab/FullData_081022.mat")
-load("data/full-data-matlab/channel_dict.mat")
+load("data/channel_dict.mat")
 
 full_XTest = XTest;
 full_XTrain = XTrain;
@@ -12,8 +12,8 @@ all_idxs = [1:41];
 
 for gp_idx = 1:length(fn)
     keep_idxs = setdiff(all_idxs, chan_idxs.(fn{gp_idx}));
-    pitch_idx = find(keep_idxs == 23)
-    responses = keep_idxs(keep_idxs<25)
+    pitch_idx = find(keep_idxs == 23);
+    responses = keep_idxs(keep_idxs<25);
 
     p.mu = full_p.mu([responses]);
     p.sig = full_p.sig([responses]);
@@ -22,6 +22,12 @@ for gp_idx = 1:length(fn)
     TTest = downselect_data_subset(responses, full_TTest);
     XTrain = downselect_data_subset(keep_idxs, full_XTrain);
     TTrain = downselect_data_subset(responses, full_TTrain);
+
+    for i = 1:numel(XTest)
+        sequenceLengths(i) = size(XTest{i}, 2);
+    end
+    [sequenceLengths, idx] = sort(sequenceLengths, 'descend');
+    XTest = XTest(idx);
 
     outputFile = fullfile("data/full-data-matlab/channel_subgroups", strcat('data_without_', fn{gp_idx}, '.mat'));
     save(outputFile, 'XTest', 'TTest', 'XTrain', 'TTrain', 'p', 'pitch_idx')
