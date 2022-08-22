@@ -1,7 +1,7 @@
 % load('data/full-data-matlab/FullData_NoVehXYZ_noB_noWaypoints_081522.mat') 
 load('data/channel_dict.mat')
-chan_idxs = rmfield(chan_idxs, 'pitch');
-chan_idxs = rmfield(chan_idxs, 'dt');
+fields = {'pitch', 'dt', 'manip_vels', 'xyz_poses'};
+chan_idxs = rmfield(chan_idxs, fields);
 fn = fieldnames(chan_idxs);
 
 % Initialize constants
@@ -9,8 +9,8 @@ fn = fieldnames(chan_idxs);
 k = 25;
 
 
-for idx = 2:9
-    load(strcat("data/full-data-matlab/channel_subgroups/data_without_", fn{idx}, ".mat"))
+for idx = 1:7
+    load(strcat("data/full-data-matlab/channel_subgroups/no_manip_vels/no_xyz_poses/data_without_", fn{idx}, ".mat"))
     numChannels = size(XTrain{1}, 1);
 %     layers = layerGraph(net);
     clear Resp_Train Inputs_Train Resp_Test Inputs_Test
@@ -41,7 +41,7 @@ for idx = 2:9
     
     init_options = trainingOptions("adam", ...
         MaxEpochs = 50, ...
-        MiniBatchSize=32, ...
+        MiniBatchSize=16, ...
         SequencePaddingDirection="right", ...
         Plots="training-progress", ...
         Shuffle='never', ...
@@ -50,7 +50,7 @@ for idx = 2:9
         OutputNetwork='best-validation-loss');
     [net, info] = trainNetwork(Inputs_Train,Resp_Train,layers,init_options);
     %     
-    outputFile = fullfile("data/networks/full-nets/abl_1_nets", strcat('abl_1_no_', fn{idx}, '_v2.mat'));
+    outputFile = fullfile("data/networks/full-nets/abl_3_nets", strcat('abl_3_no_', fn{idx}, '.mat'));
     save(outputFile, 'net', 'info');
 end
 
