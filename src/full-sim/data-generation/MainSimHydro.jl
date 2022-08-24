@@ -129,6 +129,7 @@ end
 
 function randomize_inertia(inertia, percent_error)
     new_mass = randomize_value(inertia.mass, percent_error)
+    # println(inertia.moment[1,2])
     new_ixx = randomize_value(inertia.moment[1,1], percent_error)
     new_iyy = randomize_value(inertia.moment[2,2], percent_error)
     new_izz = randomize_value(inertia.moment[3,3], percent_error)
@@ -154,10 +155,15 @@ end
 function randomize_value(value, percent)
     low_range = 1-percent
     high_range = 1+percent 
-    if abs(value) >= 0.002
-        new_value = rand(low_range*value:.001:high_range*value)
+    if abs(value) >= 0.000001
+        if value > 0.0
+            new_value = rand(LinRange(low_range*value, high_range*value, 200))
+        else
+            new_value = rand(LinRange(high_range*value, low_range*value, 200))
+        end
     else
         new_value = 0.0
+        println("VERY LOW VALUE; was $(value), is now $(new_value)")
     end
     return new_value
 end
@@ -173,7 +179,7 @@ state = MechanismState(mech_sea_alpha)
 final_time = 5.0
 goal_freq = 50
 sample_rate = Int(floor((1/Δt)/goal_freq))
-per_error = 0.01
+per_error = 0.0001
 
 #%%
 # (temporary adds while making changes to ctlr and traj generator)
@@ -184,10 +190,11 @@ include(traj_file)
 #                      Gather Sim Data
 # ----------------------------------------------------------
 
-num_trajs = 2
+num_trajs = 10
+prev_n = 0
 
 # Create (num_trajs) different trajectories and save to csvs
-for n in ProgressBar(1:num_trajs)
+for n in ProgressBar(prev_n+1:prev_n+num_trajs)
 
     global d_lin_coeffs = [randomize_value(d, per_error) for d in og_d_lin_coeffs]
     global d_nonlin_coeffs = [randomize_value(d, per_error) for d in og_d_nonlin_coeffs]
@@ -224,62 +231,75 @@ for n in ProgressBar(1:num_trajs)
     wp_data = Tables.table(waypoints)
 
     # Save waypoints (start and goal positions, velocities) to CSV file
-    if n == 1
-        goal_headers = ["dt", "E_start", "D_start", "C_start", "B_start", "E_end", "D_end", "C_end", "B_end", "dE_start", "dD_start", "dC_start", "dB_start", "dE_end", "dD_end", "dC_end", "dB_end"]
-        CSV.write("data/full-sim-with-hydro/point1percent-error/waypoints_082322.csv", wp_data, header=goal_headers)
-    else 
-        CSV.write("data/full-sim-with-hydro/point1percent-error/waypoints_082322.csv", wp_data, header=false, append=true)
-    end
+    try
+        println("Trying to simulate...")
+        ts, qs, vs = simulate_with_ext_forces(state, duration, params, ctlr_cache, hydro_calc!, PIDCtlr.pid_control!; Δt=Δt)
+        println("Checking for nans: $(any(isnan(qs)))")
+        println(any(isnan(qs)))
+        # println("  ")
+        if !any(isnan(qs))
+            println("no NaNs. Saving data.")
+            if n == 1
+                goal_headers = ["dt", "E_start", "D_start", "C_start", "B_start", "E_end", "D_end", "C_end", "B_end", "dE_start", "dD_start", "dC_start", "dB_start", "dE_end", "dD_end", "dC_end", "dB_end"]
+                CSV.write("data/full-sim-with-hydro/point1percent-error/waypoints_082322.csv", wp_data, header=goal_headers)
+            else 
+                CSV.write("data/full-sim-with-hydro/point1percent-error/waypoints_082322.csv", wp_data, header=false, append=true)
+            end
 
-    ts, qs, vs = simulate_with_ext_forces(state, duration, params, ctlr_cache, hydro_calc!, PIDCtlr.pid_control!; Δt=Δt)
-    # ts, qs, vs = simulate(state_alpha, final_time, simple_control!; Δt = 1e-2)
+            ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
+            des_vs = [TrajGen.get_desv_at_t(t, params) for t in ts_down]
+            paths = OrderedDict();
 
-    ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
-    des_vs = [TrajGen.get_desv_at_t(t, params) for t in ts_down]
-    paths = OrderedDict();
+            paths["qs0"] = [qs[i][1] for i in 1:sample_rate:length(qs)]
+            for idx = 1:10
+                joint_poses = [qs[i][idx+1] for i in 1:sample_rate:length(qs)]
+                paths[string("qs", idx)] = joint_poses
+            end
+            for idx = 1:10
+                joint_vels = [vs[i][idx] for i in 1:sample_rate:length(vs)]
+                paths[string("vs", idx)] = joint_vels
+            end
 
-    paths["qs0"] = [qs[i][1] for i in 1:sample_rate:length(qs)]
-    for idx = 1:10
-        joint_poses = [qs[i][idx+1] for i in 1:sample_rate:length(qs)]
-        paths[string("qs", idx)] = joint_poses
-    end
-    for idx = 1:10
-        joint_vels = [vs[i][idx] for i in 1:sample_rate:length(vs)]
-        paths[string("vs", idx)] = joint_vels
-    end
+            # Write the trajectories to an array -> Table -> CSV
+            num_rows = 25
+            data = Array{Float64}(undef, length(ts_down), num_rows-4)
+            fill!(data, 0.0)
+            labels = Array{String}(undef, num_rows-4)
 
-    # Write the trajectories to an array -> Table -> CSV
-    num_rows = 25
-    data = Array{Float64}(undef, length(ts_down), num_rows-4)
-    fill!(data, 0.0)
-    labels = Array{String}(undef, num_rows-4)
-
-    quat_data = Array{Float64}(undef, length(ts_down), 4)
-    quat_labels = Array{String}(undef, 4)
-    row_n = 1
-    for (key, value) in paths
-        if row_n < 5
-            quat_labels[row_n] = key 
-            quat_data[:,row_n] = value
+            quat_data = Array{Float64}(undef, length(ts_down), 4)
+            quat_labels = Array{String}(undef, 4)
+            row_n = 1
+            for (key, value) in paths
+                if row_n < 5
+                    quat_labels[row_n] = key 
+                    quat_data[:,row_n] = value
+                else
+                    labels[row_n-4] = key
+                    data[:,row_n-4] = value 
+                end
+                row_n = row_n + 1
+            end
+            for actuated_idx = 5:8
+                # println([des_vs[m][actuated_idx] for m in 1:length(des_vs)])
+                data[:,row_n-4] = [des_vs[m][actuated_idx] for m in 1:length(des_vs)]
+                row_n = row_n + 1
+            end
+            labels[18:21] = ["des_vsE", "des_vsD", "des_vsC", "des_vsB"]
+            
+            tab = Tables.table(data)
+            CSV.write("data/full-sim-with-hydro/point1percent-error/data-no-orientation/states$(n).csv", tab, header=labels)
+            quat_tab = Tables.table(quat_data)
+            CSV.write("data/full-sim-with-hydro/point1percent-error/data-quat/quats$(n).csv", quat_tab, header=quat_labels)
+            
+            # MeshCatMechanisms.animate(mvis, ts, qs; realtimerate = 1.0)
         else
-            labels[row_n-4] = key
-            data[:,row_n-4] = value 
+            println("NaNs detected. Not saving.")
         end
-        row_n = row_n + 1
-    end
-    for actuated_idx = 5:8
-        # println([des_vs[m][actuated_idx] for m in 1:length(des_vs)])
-        data[:,row_n-4] = [des_vs[m][actuated_idx] for m in 1:length(des_vs)]
-        row_n = row_n + 1
-    end
-    labels[18:21] = ["des_vsE", "des_vsD", "des_vsC", "des_vsB"]
-    
-    tab = Tables.table(data)
-    CSV.write("data/full-sim-with-hydro/point1percent-error/data-no-orientation/states$(n).csv", tab, header=labels)
-    quat_tab = Tables.table(quat_data)
-    CSV.write("data/full-sim-with-hydro/point1percent-error/data-quat/quats$(n).csv", quat_tab, header=quat_labels)
 
-    # MeshCatMechanisms.animate(mvis, ts, qs; realtimerate = 1.0)
+    catch
+        println("Error in simulation. ")
+    end
+
 end
 
 println("Simulation finished.")

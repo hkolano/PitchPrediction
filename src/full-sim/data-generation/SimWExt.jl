@@ -5,7 +5,7 @@ import RigidBodyDynamics.cache_eltype
 
 function simulate_with_ext_forces(state0::MechanismState{X}, final_time, pars, ctlr, hydro_calc!, control! = zero_torque!;
         Δt = 1e-4, stabilization_gains=default_constraint_stabilization_gains(X)) where X 
-    println("Made it to the simulate function!")
+    # println("Made it to the simulate function!")
         T = cache_eltype(state0)
     result = DynamicsResult{T}(state0.mechanism)
     control_torques = similar(velocity(state0))
