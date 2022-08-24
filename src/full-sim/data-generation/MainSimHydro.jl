@@ -127,10 +127,38 @@ function randomize_link_drag(og_link_drag_coeffs, percent_error)
     return link_drag_coeffs
 end
 
+function randomize_inertia(inertia, percent_error)
+    new_mass = randomize_value(inertia.mass, percent_error)
+    new_ixx = randomize_value(inertia.moment[1,1], percent_error)
+    new_iyy = randomize_value(inertia.moment[2,2], percent_error)
+    new_izz = randomize_value(inertia.moment[3,3], percent_error)
+    new_ixy = randomize_value(inertia.moment[1,2], percent_error)
+    new_ixz = randomize_value(inertia.moment[1,3], percent_error)
+    new_iyz = randomize_value(inertia.moment[2,3], percent_error)
+    new_moment = [new_ixx new_ixy new_ixz; new_ixy new_iyy new_iyz; new_ixz new_iyz new_izz]
+    new_inertia = SpatialInertia(inertia.frame,
+        SMatrix{3, 3, Float64}(new_moment),
+        SVector{3, Float64}(inertia.cross_part),
+        Float64(new_mass))
+    return new_inertia
+end
+
+function randomize_all_added_masses(mechanism, percent_error)
+    # println("Randomizing added masses")
+    for body in bodies(mechanism)[2:end]
+        # println("Randomizing body: $(body)")
+        spatial_inertia!(body, randomize_inertia(spatial_inertia(body), percent_error))
+    end
+end
+
 function randomize_value(value, percent)
     low_range = 1-percent
     high_range = 1+percent 
-    new_value = rand(low_range*value:.001:high_range*value)
+    if abs(value) >= 0.002
+        new_value = rand(low_range*value:.001:high_range*value)
+    else
+        new_value = 0.0
+    end
     return new_value
 end
 
@@ -164,6 +192,7 @@ for n in ProgressBar(1:num_trajs)
     global d_lin_coeffs = [randomize_value(d, per_error) for d in og_d_lin_coeffs]
     global d_nonlin_coeffs = [randomize_value(d, per_error) for d in og_d_nonlin_coeffs]
     global link_drag_coeffs = randomize_link_drag(og_link_drag_coeffs, per_error)
+    randomize_all_added_masses(mech_sea_alpha, per_error)
 
     # Reset the sim to the equilibrium position
     reset_to_equilibrium!(state)
@@ -197,9 +226,9 @@ for n in ProgressBar(1:num_trajs)
     # Save waypoints (start and goal positions, velocities) to CSV file
     if n == 1
         goal_headers = ["dt", "E_start", "D_start", "C_start", "B_start", "E_end", "D_end", "C_end", "B_end", "dE_start", "dD_start", "dC_start", "dB_start", "dE_end", "dD_end", "dC_end", "dB_end"]
-        CSV.write("data/full-sim-with-hydro/waypoints_082322.csv", wp_data, header=goal_headers)
+        CSV.write("data/full-sim-with-hydro/point1percent-error/waypoints_082322.csv", wp_data, header=goal_headers)
     else 
-        CSV.write("data/full-sim-with-hydro/waypoints_082322.csv", wp_data, header=false, append=true)
+        CSV.write("data/full-sim-with-hydro/point1percent-error/waypoints_082322.csv", wp_data, header=false, append=true)
     end
 
     ts, qs, vs = simulate_with_ext_forces(state, duration, params, ctlr_cache, hydro_calc!, PIDCtlr.pid_control!; Δt=Δt)
@@ -246,9 +275,9 @@ for n in ProgressBar(1:num_trajs)
     labels[18:21] = ["des_vsE", "des_vsD", "des_vsC", "des_vsB"]
     
     tab = Tables.table(data)
-    CSV.write("data/full-sim-with-hydro/data-no-orientation/states$(n).csv", tab, header=labels)
+    CSV.write("data/full-sim-with-hydro/point1percent-error/data-no-orientation/states$(n).csv", tab, header=labels)
     quat_tab = Tables.table(quat_data)
-    CSV.write("data/full-sim-with-hydro/data-quat/quats$(n).csv", quat_tab, header=quat_labels)
+    CSV.write("data/full-sim-with-hydro/point1percent-error/data-quat/quats$(n).csv", quat_tab, header=quat_labels)
 
     # MeshCatMechanisms.animate(mvis, ts, qs; realtimerate = 1.0)
 end
