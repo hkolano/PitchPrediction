@@ -223,6 +223,12 @@ git-tree-sha1 = "d8a578692e3077ac998b50c0217dfd67f21d1e5f"
 uuid = "b22a6f82-2f65-5046-a5b2-351ab43fb4e5"
 version = "4.4.0+0"
 
+[[FileIO]]
+deps = ["Pkg", "Requires", "UUIDs"]
+git-tree-sha1 = "94f5101b96d2d968ace56f7f2db19d0a5f592e28"
+uuid = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
+version = "1.15.0"
+
 [[FilePathsBase]]
 deps = ["Compat", "Dates", "Mmap", "Printf", "Test", "UUIDs"]
 git-tree-sha1 = "129b104185df66e408edd6625d480b7f9e9823a0"
@@ -990,6 +996,12 @@ version = "1.0.3"
 git-tree-sha1 = "34db80951901073501137bdbc3d5a8e7bbd06670"
 uuid = "41fe7b60-77ed-43a1-b4f0-825fd5a5650d"
 version = "0.1.2"
+
+[[WAV]]
+deps = ["Base64", "FileIO", "Libdl", "Logging"]
+git-tree-sha1 = "7e7e1b4686995aaf4ecaaf52f6cd824fa6bd6aa5"
+uuid = "8149f6b0-98f6-5db9-b78f-408fbbb8ef88"
+version = "1.2.0"
 
 [[Wayland_jll]]
 deps = ["Artifacts", "Expat_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Pkg", "XML2_jll"]

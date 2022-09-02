@@ -17,7 +17,7 @@ end
 
 equil_pose = zeros(num_actuated_dofs)
 equil_pt = jointState(equil_pose, zeros(num_actuated_dofs))
-# extended_pt = jointState([π/2-.05, 0.0], [0.0, 0.0])
+extended_pt = jointState([0.01, 1.5, 2.6, 0.01], zeros(num_actuated_dofs))
 
 mutable struct Waypoints
     start::jointState 
@@ -47,6 +47,10 @@ end
 
 function gen_rand_waypoints_from_equil()
     Waypoints(equil_pt, gen_rand_feasible_point()) 
+end
+
+function gen_reaching_waypoints()
+    Waypoints(equil_pt, extended_pt)
 end
 
 function get_coeffs(pts::Waypoints, T, idx)
@@ -130,9 +134,10 @@ function find_trajectory(pts::Waypoints; num_its=num_its, T_init=1.0)
     feasible_ct = 0
     a = Array{Float64}(undef, num_actuated_dofs, 6)
 
-    while feasible_ct < 2 && T < 10.0
+    while feasible_ct < 4 && T < 10.0
         feasible_ct = 0
         for i in 1:num_actuated_dofs
+            # println("Joint $(i)")
             # Get trajectory 
             a[i,:] = get_coeffs(pts, T, i)
             (poses[:,i], vels[:,i]) = get_path!(poses[:,i], vels[:,i], pts.start.θs[i], pts.goal.θs[i], T, a[i,:])
@@ -140,6 +145,7 @@ function find_trajectory(pts::Waypoints; num_its=num_its, T_init=1.0)
             # Evaluate if possible
             is_in_range_poses = check_lim(poses, joint_lims, i)
             is_in_range_vels = check_lim(vels, vel_lims, i)
+            # println("OK poses = $(is_in_range_poses), OK vels = $(is_in_range_vels)")
             if is_in_range_poses == true && is_in_range_vels == true
                 feasible_ct = feasible_ct + 1
             end

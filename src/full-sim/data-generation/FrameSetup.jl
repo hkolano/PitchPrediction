@@ -11,9 +11,9 @@ function setup_frames!(mech, frame_names_cob, frame_names_com, cob_vecs, com_vec
         if !(RigidBodyDynamics.is_fixed_to_body(bod, frame_cob))
             add_frame!(bod, cob_transform)
             push!(cob_frames, frame_cob)
-            if i == 3
-                setelement!(mvis, frame_cob)    # visualizes COB frames in MeshCat
-            end
+            # if i == 3
+            #     # setelement!(mvis, frame_cob)    # visualizes COB frames in MeshCat
+            # end
         end
         if !(RigidBodyDynamics.is_fixed_to_body(bod, frame_com))
             add_frame!(bod, com_transform)

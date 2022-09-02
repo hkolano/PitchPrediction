@@ -150,4 +150,42 @@ function PID_ctlr(torque, t, vel_act, idx, c)
 end
 
 
+function pid_stationary!(torques::AbstractVector, t, state::MechanismState, pars, c)
+    # If it's the first time called in the Runge-Kutta, update the control torque
+    # println("Made it inside the function! Ctr = $(time_step_ctr)")
+    if rem(c.step_ctr, 4) == 0
+        # Set up empty vector for control torques
+        c_taus = zeros(10)
+        
+        # Roll and pitch are not controlled.
+        torques[1] = 0.
+        torques[2] = 0.
+        
+        # println("Requesting des vel from trajgen")
+        # c.des_vel = TrajGen.get_desv_at_t(t, pars)
+        c.des_vel = TrajGen.get_desv_at_t(t, pars)
+        fill!(c.des_vel, 0)
+        # println("Got desired velocity")
+
+        # Get forces for vehicle (yaw, surge, sway, heave)
+        for dir_idx = 3:6
+            ctlr_tau = PID_ctlr(torques[dir_idx][1], t, velocity(state, c.joint_vec[1])[dir_idx], dir_idx, c)
+            c_taus[dir_idx] = ctlr_tau 
+            torques[dir_idx] = ctlr_tau
+        end
+        
+        # Get torques for the arm joints
+        for jt_idx in 2:5 # Joint index (1:vehicle, 2:baseJoint, etc)
+            idx = jt_idx+5 # velocity index 
+            ctlr_tau = PID_ctlr(torques[idx][1], t, velocity(state, c.joint_vec[jt_idx]), idx, c) 
+            c_taus[jt_idx+3] = ctlr_tau
+            damp_tau = -0.1*velocity(state, c.joint_vec[jt_idx])
+            torques[velocity_range(state, c.joint_vec[jt_idx])] .= [ctlr_tau] + damp_tau
+        end
+        c.taus = cat(c.taus, c_taus, dims=2)
+    end
+    c.step_ctr = c.step_ctr + 1
+end;
+
+
 end
