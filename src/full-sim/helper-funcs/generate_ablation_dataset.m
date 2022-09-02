@@ -10,15 +10,21 @@ full_p = p;
 fields = {'pitch', 'dt'};
 chan_idxs = rmfield(chan_idxs, fields);
 
+%% ADD THE NEXT ELIMINATED ONE HERE
+elimd_gps = ["goal_poses", "manip_vels", "goal_vels", "xyz_poses", "manip_des_vels", "xyz_vels", "ry_vels"];
+
 all_idxs = [1:41];
-idxs_without_manip_vels = setdiff(all_idxs, chan_idxs.manip_vels);
-idxs_without_xyz_poses = setdiff(idxs_without_manip_vels, chan_idxs.xyz_poses);
-chan_idxs = rmfield(chan_idxs, "manip_vels");
-chan_idxs = rmfield(chan_idxs, "xyz_poses");
+rnd_idxs = all_idxs;
+for rnd_num = 1:length(elimd_gps)
+    rnd_name = elimd_gps(rnd_num);
+    rnd_idxs = setdiff(rnd_idxs, chan_idxs.(rnd_name));
+    chan_idxs = rmfield(chan_idxs, rnd_name);
+end
 fn = fieldnames(chan_idxs);
 
+%% MAKE SURE THIS IS 1:length(fn)
 for gp_idx = 1:length(fn)
-    keep_idxs = setdiff(idxs_without_xyz_poses, chan_idxs.(fn{gp_idx}));
+    keep_idxs = setdiff(rnd_idxs, chan_idxs.(fn{gp_idx}));
     pitch_idx = find(keep_idxs == 23);
     responses = keep_idxs(keep_idxs<25);
 
@@ -36,7 +42,12 @@ for gp_idx = 1:length(fn)
     [sequenceLengths, idx] = sort(sequenceLengths, 'descend');
     XTest = XTest(idx);
 
-    outputFile = fullfile("data/full-data-matlab/channel_subgroups/no_manip_vels/no_xyz_poses", strcat('data_without_', fn{gp_idx}, '.mat'));
+    path = "data/full-data-matlab/channel_subgroups";
+    for level = 1:length(elimd_gps)
+        path = strcat(path, "/no_", elimd_gps(level));
+    end
+
+    outputFile = fullfile(path, strcat('data_without_', fn{gp_idx}, '.mat'));
     save(outputFile, 'XTest', 'TTest', 'XTrain', 'TTrain', 'p', 'pitch_idx')
 
 end
