@@ -13,3 +13,15 @@ for n = 1:numel(XData)
         Inputs{n} = [XData{n}(:,1:end-k); repmat(0.02, 1, size(XData{n},2)-k)];
     end
 end
+
+resetState(net)
+[net, Z] = predictAndUpdateState(net, Inputs, "ExecutionEnvironment","auto");
+
+RMSEs = zeros(1, numel(XData));
+
+for n = 1:numel(XData)
+    RMSEs(n) = sqrt(immse(single(Resp{n}), Z{n})); 
+end
+
+figure
+plot(RMSEs)
