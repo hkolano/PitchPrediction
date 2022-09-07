@@ -16,11 +16,20 @@ fn = fieldnames(chan_idxs);
 load(fullfile(path, "data_without_xyz_poses.mat"))
 numChannels = size(XTrain{1}, 1);
 
+%%
 % Initialize constants
 % ks =[5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 100, 125, 150, 175, 200];
 k = 25;
 numUnits = 384;
 
-load('C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\data\networks\full-nets\simple_w_stretch_factor\stretch_1_take_1.mat')
+nets = {};
 
-plot_simple_forecast(net, XData{1}, 100, 25)
+for stretch = 1:6
+
+    load(strcat('data\networks\full-nets\simple_w_stretch_factor\stretch_', string(stretch), '_take_2.mat'))
+    nets{stretch} = net;
+end
+%%
+plot_stretch_forecast(nets, XTest{200}, 100, 25, pitch_idx, 400)
+% need to stretch it out by the stretch factor!! Not quite as bad as it
+% looks
