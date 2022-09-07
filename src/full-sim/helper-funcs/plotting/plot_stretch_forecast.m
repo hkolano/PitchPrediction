@@ -47,4 +47,12 @@ title(t, "Pitch Prediction Over Increasing Time Spans")
 set(t, ...
     'TileSpacing', 'compact')
 
+h=gcf;
+set(h,'PaperOrientation','landscape');
+set(h, 'PaperPositionMode', 'auto');
+set(h, 'Position', [100 100 1000 400]);
+% set(h,'PaperUnits','normalized');
+% set(h,'PaperPosition', [0 0 1 1]);
+print(gcf, '-dpdf', 'data\plots\stretch_viz.pdf');
+
 end
