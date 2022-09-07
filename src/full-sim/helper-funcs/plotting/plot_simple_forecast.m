@@ -2,7 +2,7 @@ function plot_simple_forecast(net, data, n, k)
 
 % Make prediction
 resetState(net)
-[new_net, Z] = predictAndUpdateState(net, data(:,1:n), "ExecutionEnvironment","auto");
+[new_net, Z] = predictAndUpdateState(net, [data(:,1:end-k); repmat(0.02, 1, size(data,2)-k)], "ExecutionEnvironment","auto");
 
 close all; 
 plot(data(16,:), 'Color', '#DDCC77', 'LineWidth', 1)
