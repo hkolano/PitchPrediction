@@ -40,7 +40,7 @@ vis = Visualizer()
 mech_sea_alpha = parse_urdf(urdf_file; floating=true, gravity = [0.0, 0.0, 0.0])
 # mech_sea_alpha = parse_urdf(urdf_file; gravity = [0.0, 0.0, 0.0])
 
-delete!(vis)
+# delete!(vis)
 
 # Create visuals of the URDFs
 visuals = URDFVisuals(urdf_file)
@@ -198,8 +198,8 @@ final_time = 5.0
 goal_freq = 50
 sample_rate = Int(floor((1/Δt)/goal_freq))
 
-per_error = 0.01
-subfolder = "1percent"
+# per_error = 0.5
+# subfolder = "50percent"
 
 fs = 8e3
 wav_ts = 0.0:1/fs:prevfloat(1.0)
@@ -214,148 +214,155 @@ include(traj_file)
 # ----------------------------------------------------------
 #                      Gather Sim Data
 # ----------------------------------------------------------
+errors = [.01, .1, .5]
+subf_names = ["1percent", "10percent", "50percent"]
 
-for trial = 1:3
-    # Randomize some of the hydrodynamics
+for num = 1:3
+    per_error = errors[num]
+    subfolder = subf_names[num]
 
-    # noisy_param = "vehicle-linear-drag"
-    # global d_lin_coeffs = [randomize_value(d, per_error) for d in og_d_lin_coeffs]
-    global d_lin_coeffs = og_d_lin_coeffs
+    for trial = 1:10
+        # Randomize some of the hydrodynamics
 
-    # noisy_param = "vehicle-quadratic-drag"
-    # global d_nonlin_coeffs = [randomize_value(d, per_error) for d in og_d_nonlin_coeffs]
-    global d_nonlin_coeffs = og_d_nonlin_coeffs
+        # noisy_param = "vehicle-linear-drag"
+        # global d_lin_coeffs = [randomize_value(d, per_error) for d in og_d_lin_coeffs]
+        global d_lin_coeffs = og_d_lin_coeffs
 
-    # noisy_param = "vehicle-added-mass"
-    # randomize_vehicle_added_mass(mech_sea_alpha, per_error)
-    reset_vehicle_added_mass(mech_sea_alpha)
+        # noisy_param = "vehicle-quadratic-drag"
+        # global d_nonlin_coeffs = [randomize_value(d, per_error) for d in og_d_nonlin_coeffs]
+        global d_nonlin_coeffs = og_d_nonlin_coeffs
 
-    # noisy_param = "arm-linear-drag"
-    # global link_drag_coeffs = randomize_link_drag(og_link_drag_coeffs, per_error)
-    global link_drag_coeffs = og_link_drag_coeffs
+        # noisy_param = "vehicle-added-mass"
+        # randomize_vehicle_added_mass(mech_sea_alpha, per_error)
+        reset_vehicle_added_mass(mech_sea_alpha)
 
-    noisy_param = "arm-added-mass"
-    randomize_arm_added_masses(mech_sea_alpha, per_error)
-    # reset_arm_added_masses(mech_sea_alpha)
+        # noisy_param = "arm-linear-drag"
+        # global link_drag_coeffs = randomize_link_drag(og_link_drag_coeffs, per_error)
+        global link_drag_coeffs = og_link_drag_coeffs
 
-    num_trajs = 50
-    prev_n = 0
+        # noisy_param = "arm-added-mass"
+        # randomize_arm_added_masses(mech_sea_alpha, per_error)
+        reset_arm_added_masses(mech_sea_alpha)
 
-    # Create (num_trajs) different trajectories and save to csvs
-    for n in ProgressBar(prev_n+1:prev_n+num_trajs)
+        num_trajs = 50
+        prev_n = 0
 
-        # Reset the sim to the equilibrium position
-        reset_to_equilibrium!(state)
-        # Start up the controller
-        ctlr_cache = PIDCtlr.CtlrCache(Δt, mech_sea_alpha)
+        # Create (num_trajs) different trajectories and save to csvs
+        for n in ProgressBar(prev_n+1:prev_n+num_trajs)
 
-        # ----------------------------------------------------------
-        #                          Simulate
-        # ----------------------------------------------------------
-        # Generate a random waypoint and see if there's a valid trajectory to it
-        wp = TrajGen.gen_rand_waypoints_from_equil()
-        traj = TrajGen.find_trajectory(wp)
+            # Reset the sim to the equilibrium position
+            reset_to_equilibrium!(state)
+            # Start up the controller
+            ctlr_cache = PIDCtlr.CtlrCache(Δt, mech_sea_alpha)
 
-        # Keep trying until a good trajectory is found
-        while traj === nothing
+            # ----------------------------------------------------------
+            #                          Simulate
+            # ----------------------------------------------------------
+            # Generate a random waypoint and see if there's a valid trajectory to it
             wp = TrajGen.gen_rand_waypoints_from_equil()
             traj = TrajGen.find_trajectory(wp)
-        end
 
-        # Scale that trajectory to 1x-3x "top speed"
-        scaled_traj = TrajGen.scale_trajectory(traj...)
-        params = scaled_traj[1]
-        duration = scaled_traj[2]
-        poses = scaled_traj[3]
-        vels = scaled_traj[4]
-
-        # Make vector of waypoint values and time step to save to csv
-        waypoints = [Δt*sample_rate params.wp.start.θs... params.wp.goal.θs... params.wp.start.dθs... params.wp.goal.dθs...]
-        wp_data = Tables.table(waypoints)
-
-        # If there are no errors in simulation, simulate and save the trajectory and waypoints
-        try
-            # Simulate the trajectory
-            println("Trying to simulate...")
-            ts, qs, vs = simulate_with_ext_forces(state, duration, params, ctlr_cache, hydro_calc!, PIDCtlr.pid_control!; Δt=Δt)
-
-            # make the first column into a vector to check for nans
-            q0s = [qs[i][1] for i in 1:sample_rate:length(qs)]
-
-            # Check for nans in the first orientation vector
-            if !any(isnan.(q0s))
-                # If it's the first trajectory, create a new csv; if not, make a new line in the existing CSV with the new waypoints
-                if n == 1
-                    goal_headers = ["dt", "E_start", "D_start", "C_start", "B_start", "E_end", "D_end", "C_end", "B_end", "dE_start", "dD_start", "dC_start", "dB_start", "dE_end", "dD_end", "dC_end", "dB_end"]
-                    CSV.write("data/full-sim-with-hydro/single-model-$(subfolder)/$(noisy_param)/waypoints_model$(trial)_082622.csv", wp_data, header=goal_headers)
-                else 
-                    CSV.write("data/full-sim-with-hydro/single-model-$(subfolder)/$(noisy_param)/waypoints_model$(trial)_082622.csv", wp_data, header=false, append=true)
-                end
-
-                # Downsample to 50Hz
-                ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
-                des_vs = [TrajGen.get_desv_at_t(t, params) for t in ts_down]
-                paths = OrderedDict();
-
-                # Convert qs and vs to single column vectors for the table
-                paths["qs0"] = [qs[i][1] for i in 1:sample_rate:length(qs)]
-                for idx = 1:10
-                    joint_poses = [qs[i][idx+1] for i in 1:sample_rate:length(qs)]
-                    paths[string("qs", idx)] = joint_poses
-                end
-                for idx = 1:10
-                    joint_vels = [vs[i][idx] for i in 1:sample_rate:length(vs)]
-                    paths[string("vs", idx)] = joint_vels
-                end
-
-                # Write the trajectories to an array -> Table -> CSV
-                num_rows = 25
-                data = Array{Float64}(undef, length(ts_down), num_rows-4)
-                fill!(data, 0.0)
-                labels = Array{String}(undef, num_rows-4)
-
-                # Put the quaternion data in a different file 
-                quat_data = Array{Float64}(undef, length(ts_down), 4)
-                quat_labels = Array{String}(undef, 4)
-                row_n = 1
-                for (key, value) in paths
-                    if row_n < 5
-                        quat_labels[row_n] = key 
-                        quat_data[:,row_n] = value
-                    else
-                        labels[row_n-4] = key
-                        data[:,row_n-4] = value 
-                    end
-                    row_n = row_n + 1
-                end
-                for actuated_idx = 5:8
-                    # println([des_vs[m][actuated_idx] for m in 1:length(des_vs)])
-                    data[:,row_n-4] = [des_vs[m][actuated_idx] for m in 1:length(des_vs)]
-                    row_n = row_n + 1
-                end
-                labels[18:21] = ["des_vsE", "des_vsD", "des_vsC", "des_vsB"]
-                
-                # Save the trajectory data to CSV
-                tab = Tables.table(data)
-                CSV.write("data/full-sim-with-hydro/single-model-$(subfolder)/$(noisy_param)/data-no-orientation-model$(trial)/states$(n).csv", tab, header=labels)
-                quat_tab = Tables.table(quat_data)
-                CSV.write("data/full-sim-with-hydro/single-model-$(subfolder)/$(noisy_param)/data-quat-model$(trial)/quats$(n).csv", quat_tab, header=quat_labels)
-                
-                # MeshCatMechanisms.animate(mvis, ts, qs; realtimerate = 1.0)
-            else
-                println("NaNs detected. Not saving.")
+            # Keep trying until a good trajectory is found
+            while traj === nothing
+                wp = TrajGen.gen_rand_waypoints_from_equil()
+                traj = TrajGen.find_trajectory(wp)
             end
 
-        catch 
-            println("Error in simulation; not saved")
+            # Scale that trajectory to 1x-3x "top speed"
+            scaled_traj = TrajGen.scale_trajectory(traj...)
+            params = scaled_traj[1]
+            duration = scaled_traj[2]
+            poses = scaled_traj[3]
+            vels = scaled_traj[4]
+
+            # Make vector of waypoint values and time step to save to csv
+            waypoints = [Δt*sample_rate params.wp.start.θs... params.wp.goal.θs... params.wp.start.dθs... params.wp.goal.dθs...]
+            wp_data = Tables.table(waypoints)
+
+            # If there are no errors in simulation, simulate and save the trajectory and waypoints
+            # try
+                # Simulate the trajectory
+                println("Trying to simulate...")
+                ts, qs, vs = simulate_with_ext_forces(state, duration, params, ctlr_cache, hydro_calc!, PIDCtlr.pid_control!; Δt=Δt)
+
+                # make the first column into a vector to check for nans
+                q0s = [qs[i][1] for i in 1:sample_rate:length(qs)]
+
+                # Check for nans in the first orientation vector
+                if !any(isnan.(q0s))
+                    # If it's the first trajectory, create a new csv; if not, make a new line in the existing CSV with the new waypoints
+                    if n == 1
+                        goal_headers = ["dt", "E_start", "D_start", "C_start", "B_start", "E_end", "D_end", "C_end", "B_end", "dE_start", "dD_start", "dC_start", "dB_start", "dE_end", "dD_end", "dC_end", "dB_end"]
+                        CSV.write("data/full-sim-with-hydro/single-model-$(subfolder)/$(noisy_param)/waypoints_model$(trial)_082622.csv", wp_data, header=goal_headers)
+                    else 
+                        CSV.write("data/full-sim-with-hydro/single-model-$(subfolder)/$(noisy_param)/waypoints_model$(trial)_082622.csv", wp_data, header=false, append=true)
+                    end
+
+                    # Downsample to 50Hz
+                    ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
+                    des_vs = [TrajGen.get_desv_at_t(t, params) for t in ts_down]
+                    paths = OrderedDict();
+
+                    # Convert qs and vs to single column vectors for the table
+                    paths["qs0"] = [qs[i][1] for i in 1:sample_rate:length(qs)]
+                    for idx = 1:10
+                        joint_poses = [qs[i][idx+1] for i in 1:sample_rate:length(qs)]
+                        paths[string("qs", idx)] = joint_poses
+                    end
+                    for idx = 1:10
+                        joint_vels = [vs[i][idx] for i in 1:sample_rate:length(vs)]
+                        paths[string("vs", idx)] = joint_vels
+                    end
+
+                    # Write the trajectories to an array -> Table -> CSV
+                    num_rows = 25
+                    data = Array{Float64}(undef, length(ts_down), num_rows-4)
+                    fill!(data, 0.0)
+                    labels = Array{String}(undef, num_rows-4)
+
+                    # Put the quaternion data in a different file 
+                    quat_data = Array{Float64}(undef, length(ts_down), 4)
+                    quat_labels = Array{String}(undef, 4)
+                    row_n = 1
+                    for (key, value) in paths
+                        if row_n < 5
+                            quat_labels[row_n] = key 
+                            quat_data[:,row_n] = value
+                        else
+                            labels[row_n-4] = key
+                            data[:,row_n-4] = value 
+                        end
+                        row_n = row_n + 1
+                    end
+                    for actuated_idx = 5:8
+                        # println([des_vs[m][actuated_idx] for m in 1:length(des_vs)])
+                        data[:,row_n-4] = [des_vs[m][actuated_idx] for m in 1:length(des_vs)]
+                        row_n = row_n + 1
+                    end
+                    labels[18:21] = ["des_vsE", "des_vsD", "des_vsC", "des_vsB"]
+                    
+                    # Save the trajectory data to CSV
+                    tab = Tables.table(data)
+                    CSV.write("data/full-sim-with-hydro/single-model-$(subfolder)/$(noisy_param)/data-no-orientation-model$(trial)/states$(n).csv", tab, header=labels)
+                    quat_tab = Tables.table(quat_data)
+                    CSV.write("data/full-sim-with-hydro/single-model-$(subfolder)/$(noisy_param)/data-quat-model$(trial)/quats$(n).csv", quat_tab, header=quat_labels)
+                    
+                    # MeshCatMechanisms.animate(mvis, ts, qs; realtimerate = 1.0)
+                else
+                    println("NaNs detected. Not saving.")
+                end
+
+            # catch 
+            #     println("Error in simulation; not saved")
+            # end
+
         end
 
     end
-
 end
 
 println("Simulation finished.")
-wavplay(y, fs)
+# wavplay(y, fs)
 
 
 # function plot_state_errors()
