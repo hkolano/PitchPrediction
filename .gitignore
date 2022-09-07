@@ -8,3 +8,4 @@ data/full-data-matlab
 data/full-sim-with-hydro
 data/networks/full-nets/simple_network_unit_testing/checkpoints
 *.csv
+*.asv
