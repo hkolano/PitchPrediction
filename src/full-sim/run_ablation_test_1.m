@@ -26,8 +26,9 @@ all_RMSEs = [];
 subgroup_RMSEs = [];
 
 % for idx = 1:length(fn)
-%     load("data/full-data-matlab/FullData_081022.mat")
-    load(strcat(path, "/data_without_", next_elim_gp, ".mat"))
+    load("data/full-data-matlab/FullData_081022.mat")
+    pitch_idx = 23;
+%     load(strcat(path, "/data_without_", next_elim_gp, ".mat"))
     numChannels = size(XTrain{1}, 1);
 %     layers = layerGraph(net);
     clear Resp_Train Inputs_Train Resp_Test Inputs_Test
@@ -72,13 +73,14 @@ subgroup_RMSEs = [];
         ValidationFrequency = 60, ...
         OutputNetwork='best-validation-loss');
 
-   for take_n = 4:4
+   for take_n = 2:3
         [net, info] = trainNetwork(Inputs_Train,Resp_Train,layers,init_options);
         
         subgroup_losses = [subgroup_losses, info.FinalValidationLoss];
         subgroup_RMSEs = [subgroup_RMSEs, info.FinalValidationRMSE];
         %     
-        outputFile = fullfile(strcat("data/networks/full-nets/ablTake2_", string(level_num), "_nets"), strcat('abl_', string(level_num), '_no_', next_elim_gp, '_take', string(take_n), '_droprate.mat'));
+        outputFile = fullfile(strcat("data/networks/full-nets/ablTake2_0_nets"), strcat('abl_0_no__take', string(take_n), '_droprate.mat'));
+%         outputFile = fullfile(strcat("data/networks/full-nets/ablTake2_", string(level_num), "_nets"), strcat('abl_', string(level_num), '_no_', next_elim_gp, '_take', string(take_n), '_droprate.mat'));
 %         outputFile = fullfile("data/networks/full-nets", strcat('pre-ablationtest_', string(take_n), '.mat'));
         save(outputFile, 'net', 'info');
    end

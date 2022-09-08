@@ -1,4 +1,4 @@
-num_inputs = [33, 29, 21, 18, 14, 11, 9, 5, 3];
+num_inputs = [41, 33, 29, 21, 18, 14, 11, 9, 5, 3];
 num_inputs = num_inputs-1;
 
 load("data\networks\full-nets\ablation_rmses.mat");
@@ -26,7 +26,8 @@ er_bars = errorbar(num_inputs, rmse_avgs, rmse_stdevs); %'Color', '#56B4E9')
 my_xlab = xlabel("Number of Channel Inputs");
 my_ylab = ylabel("Prediction RMSE");
 set(gca, 'XDir', 'reverse')
-ylim([.012, .02])
+ylim([.013, .02])
+xlim([0, 42])
 my_title = title('Network Performance on Decreasing Input Channels');
 
 % set(fit_line, ...
@@ -62,3 +63,6 @@ set(gca, ...
   'XColor'      , [.3 .3 .3], ...
   'YColor'      , [.3 .3 .3], ...
   'LineWidth'   , 1         );
+
+set(gcf, ...
+    'Position', [100 100 600 300]);
