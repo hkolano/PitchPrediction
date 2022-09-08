@@ -19,17 +19,41 @@ x = nan(nbars, ngroups);
 close all
 
 figure
-b = bar(param_names, mat);
+b = bar(param_names, mat, 'FaceColor', 'flat');
 hold on 
 
 for i = 1:nbars
     x(i,:) = b(i).XEndPoints;
 end
 
-errorbar(x,mat,stdevs,'k','linestyle','none');
+set(b(1), 'FaceColor', '#117733')
+set(b(2), 'FaceColor', '#88CCEE')
+set(b(3), 'FaceColor', '#DDCC77')
+set(b(4), 'FaceColor', '#CC6677')
+set(b, 'EdgeColor', [.3 .3 .3], ...
+    'LineWidth', 1)
+
+errorbar(x,mat,stdevs,'k','linestyle','none', 'Color', [.3 .3 .3], 'LineWidth', 1);
 ylabel('Average RMSE')
-legend("0 percent", "1 percent", "10 percent", "50 Percent")
+legend("0 percent", "1 percent", "10 percent", "50 percent")
 title("RMSEs on Trajectories with Uncertain Hydrodynamics")
+
+h = gca;
+h.XAxis.TickLength = [0 0];
+h.YAxis.TickLength = [0.02 0.02];
+
+set(gca, ...
+  'Box'         , 'off'     , ...
+  'TickDir'     , 'out'     , ...
+  'YMinorTick'  , 'on'      , ...
+  'YGrid'       , 'on'      , ...
+  'XGrid'       , 'off'     , ...
+  'XColor'      , [.3 .3 .3], ...
+  'YColor'      , [.3 .3 .3], ...
+  'LineWidth'   , 1         );
+
+set(gcf, ...
+    'Position', [100 100 900 350]);
 
 % model_series = [10 40 50 60; 20 50 60 70; 30 60 80 90]; 
 % model_error = [1 4 8 6; 2 5 9 12; 3 6 10 13]; 

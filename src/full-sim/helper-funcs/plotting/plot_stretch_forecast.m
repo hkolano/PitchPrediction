@@ -68,6 +68,13 @@ for sf = [2, 4, 6, 8]
     end
 end
 
+%%
+resetState(net);
+tic
+Z = predictAndUpdateState(net, data2(:,1:end-k));
+toc
+
+%%
 xlabel(t, "Simulation Time (s)");
 ylabel(t, "Vehicle Pitch (rad)")
 leg = legend("Ground Truth", "1 Step Prediction", "25 Step Prediction");
