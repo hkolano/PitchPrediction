@@ -1,8 +1,8 @@
 function plot_stretch_forecast(nets, data, n, k, pitch_idx, p)
 
 close all
-t = tiledlayout(2, 3);
-cutoff = n+k*6+50;
+t = tiledlayout(3, 3);
+cutoff = n+k*9+50;
 
 time_steps = 1:cutoff;
 time_stamps = time_steps/50;
@@ -10,7 +10,7 @@ time_stamps = time_steps/50;
 mu = p.mu(pitch_idx);
 sig = p.sig(pitch_idx);
 
-for sf = 1:6
+for sf = 1:9
     net = nets{sf};
     
     % Make prediction

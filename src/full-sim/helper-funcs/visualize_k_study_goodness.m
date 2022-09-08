@@ -24,7 +24,7 @@ numUnits = 384;
 
 nets = {};
 
-for stretch = 1:6
+for stretch = 1:9
 
     load(strcat('data\networks\full-nets\simple_w_stretch_factor\stretch_', string(stretch), '_take_2.mat'))
     nets{stretch} = net;
