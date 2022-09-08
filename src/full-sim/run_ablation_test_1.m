@@ -3,8 +3,8 @@ load('data/channel_dict.mat')
 chan_idxs = rmfield(chan_idxs, 'pitch');
 chan_idxs = rmfield(chan_idxs, 'dt');
 
-elimd_gps = ["goal_poses", "manip_vels", "goal_vels", "xyz_poses", "manip_des_vels"];
-next_elim_gp = "xyz_vels";
+elimd_gps = ["goal_poses", "manip_vels", "goal_vels", "xyz_poses", "manip_des_vels", "xyz_vels", "ry_vels"];
+next_elim_gp = "ry_poses";
 path = "data/full-data-matlab/channel_subgroups";
 level_num = length(elimd_gps)+1;
 

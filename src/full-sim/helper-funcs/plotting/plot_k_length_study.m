@@ -1,6 +1,6 @@
 % Plot results from k_length study
 
-sfs = 1:6;
+sfs = 1:9;
 lookahead_times = sfs*0.5;
 
 losses = [.0134, .0132, .0120; ...
@@ -20,7 +20,10 @@ RMSES = [.0051, .0051, .0049; ...
     .0151, .0150, .0154; ...
     .0223, .0227, .0223; ...
     .0316, .0304, .0303; ...
-    .0418, .0414, .0419];
+    .0418, .0414, .0419; ...
+    .0531, .0534, .0534; ...
+    .0713, .0695, .0710; ...
+    .0895, .0904, .0913];
 
 % last one is for sf = 6
 
@@ -28,7 +31,7 @@ rmse_avgs = mean(RMSES, 2)
 rmse_stdevs = std(RMSES, 0, 2)
 
 p = polyfit(lookahead_times, rmse_avgs, 2);
-y_fit = polyval(p, [0.5:.1:3]);
+y_fit = polyval(p, [0.5:.1:4.75]);
 
 close all
 
@@ -36,13 +39,13 @@ close all
 f1 = figure
 hold on
 % line_thru = line(lookahead_times, rmse_avgs) %, '-d', 'Color', '#0072B2', 'LineWidth', 1.5)
-fit_line = line([0.5:.1:3], y_fit);
+fit_line = line([0.5:.1:4.75], y_fit);
 er_bars = plot(lookahead_times,rmse_avgs');
 my_xlab = xlabel('Prediction Length (s)');
 my_ylab = ylabel('RMSE');
 my_title = title('RMSEs on Increasing Prediction Length');
-xlim([0.25, 3.25])
-ylim([0, .045])
+xlim([0.25, 5])
+ylim([0, .1])
 
 % Fancying it up
 % set(line_thru, ...
@@ -80,5 +83,8 @@ set(gca, ...
   'XGrid'       , 'off'     , ...
   'XColor'      , [.3 .3 .3], ...
   'YColor'      , [.3 .3 .3], ...
-  'YTick'       , 0:.01:.05, ...
+  'YTick'       , 0:.02:.1, ...
   'LineWidth'   , 1         );
+
+set(gcf, ...
+'Position', [100 100 550 300]);

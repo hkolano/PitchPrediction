@@ -1,9 +1,9 @@
 load("data/full-sim-with-hydro/rmses.mat")
 
-zero_percent_avgs = [.0011; .0011; .0011; .0011; .0011];
-one_percent_avgs = mean(one_percent_rmses, 2);
-ten_percent_avgs = mean(ten_percent_rmses, 2);
-fifty_percent_avgs = mean(fifty_percent_rmses, 2);
+zero_percent_avgs = [.0011; .0011; .0011; .0011; .0011]*.5;
+one_percent_avgs = mean(one_percent_rmses, 2)*.5;
+ten_percent_avgs = mean(ten_percent_rmses, 2)*.5;
+fifty_percent_avgs = mean(fifty_percent_rmses, 2)*.5;
 
 zero_percent_stdevs = zeros(5, 1);
 one_percent_stdevs = std(one_percent_rmses, 1, 2);
