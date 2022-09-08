@@ -24,12 +24,12 @@ numUnits = 384;
 
 nets = {};
 
-for stretch = 1:6
+for stretch = 1:9
 
     load(strcat('data\networks\full-nets\simple_w_stretch_factor\stretch_', string(stretch), '_take_2.mat'))
     nets{stretch} = net;
 end
 %%
-plot_stretch_forecast(nets, XTest{200}, 100, 25, pitch_idx, 400)
+plot_stretch_forecast(nets, XTest{200}, 100, 25, pitch_idx, p)
 % need to stretch it out by the stretch factor!! Not quite as bad as it
 % looks
