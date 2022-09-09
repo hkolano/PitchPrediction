@@ -30,6 +30,6 @@ for stretch = 1:9
     nets{stretch} = net;
 end
 %%
-plot_stretch_forecast(nets, XTest{200}, 100, 25, pitch_idx, p)
+plot_stretch_forecast(nets, XTest{155}, XTest{8}, 100, 25, pitch_idx, p)
 % need to stretch it out by the stretch factor!! Not quite as bad as it
 % looks

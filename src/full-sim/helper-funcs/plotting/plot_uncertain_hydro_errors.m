@@ -36,7 +36,7 @@ set(b, 'EdgeColor', [.3 .3 .3], ...
 errorbar(x,mat,stdevs,'k','linestyle','none', 'Color', [.3 .3 .3], 'LineWidth', 1);
 ylabel('Average RMSE')
 legend("0 percent", "1 percent", "10 percent", "50 percent")
-title("RMSEs on Trajectories with Uncertain Hydrodynamics")
+% title("RMSEs on Trajectories with Uncertain Hydrodynamics")
 
 h = gca;
 h.XAxis.TickLength = [0 0];
