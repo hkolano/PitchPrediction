@@ -94,7 +94,7 @@ set(t, ...
 h=gcf;
 set(h,'PaperOrientation','landscape');
 set(h, 'PaperPositionMode', 'auto');
-set(h, 'Position', [100 100 1000 425]);
+set(h, 'Position', [100 100 1000 325]);
 % set(h,'PaperUnits','normalized');
 % set(h,'PaperPosition', [0 0 1 1]);
 print(gcf, '-dpdf', 'data\plots\stretch_viz.pdf');

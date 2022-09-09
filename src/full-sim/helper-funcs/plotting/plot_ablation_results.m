@@ -26,7 +26,7 @@ er_bars = errorbar(num_inputs, rmse_avgs, rmse_stdevs); %'Color', '#56B4E9')
 my_xlab = xlabel("Number of Channel Inputs");
 my_ylab = ylabel("Prediction RMSE");
 set(gca, 'XDir', 'reverse')
-ylim([.013, .02])
+ylim([.013, .0195])
 xlim([0, 42])
 % my_title = title('Network Performance on Decreasing Input Channels');
 
@@ -65,4 +65,4 @@ set(gca, ...
   'LineWidth'   , 1         );
 
 set(gcf, ...
-    'Position', [100 100 600 350]);
+    'Position', [100 100 600 250]);
