@@ -1,61 +1,86 @@
 %% Load data
-% load('data/full-data-matlab/channel_subgroups/no_goal_poses/no_manip_vels/no_goal_vels/data_without_xyz_poses.mat')
-folder_trajs = "data\full-sim-data\data-no-orientation";
-folder_rpys = "data\full-sim-data\data-rpy";
+load('data/full-data-matlab/channel_subgroups/no_goal_poses/no_manip_vels/no_goal_vels/data_without_xyz_poses.mat')
+for n = 1:numel(XTrain)
+    XTrain{n} = XTrain{n}(1:end-1,:);
+end
 
-rpy_tables_ds = fileDatastore(folder_rpys, "ReadFcn", @read_rpy_to_table);
+for n = 1:numel(XTest)
+    XTest{n} = XTest{n}(1:end-1,:);
+end
 
-foo = @(input) read_trajs_and_combine(input, rpy_tables_ds);
-traj_ds = fileDatastore(folder_trajs, "ReadFcn", foo);
-% data = readall(traj_ds);
+XTrain = XTrain';
+XTest = XTest';
+disp("Data loaded.")
 
-%% Set up partitions
-nFiles = length(traj_ds.Files);
-n95percent = round(0.95*nFiles);
+%%
+dsXTrain = arrayDatastore( XTrain, 'IterationDimension', 1, 'OutputType', 'same');
+dsTTrain = arrayDatastore( TTrain, 'IterationDimension', 1, 'OutputType', 'same');
+dsTrain = combine(dsXTrain, dsTTrain);
 
-traj_ds_Train = subset(traj_ds, 1:n95percent);
-traj_ds_Val = subset(traj_ds, n95percent+1:nFiles);
-traj_data_Train = readall(traj_ds_Train);
-traj_data_Val = readall(traj_ds_Val);
+mbqTrain = minibatchqueue(  dsXTrain, 1, ...
+                          'MiniBatchSize', 16, ...
+                          'PartialMiniBatch', 'discard', ...
+                          'MiniBatchFcn', @concatSequenceData, ...
+                          'MiniBatchFormat', 'SCT', ...
+                          'OutputAsDlarray', 1);
+
+disp("Minibatches created.")
 
 %% Set up network
-layers = setup_abl_residual_gru(17);
+layers = setup_abl_residual_gru_no_output(17);
+net = dlnetwork(layers);
 
 numEpochs = 10;
 miniBatchSize = 16; 
 initialLearnRate = 0.001; 
 
-mbq = minibatchqueue(traj_ds_Train, ...
-    MiniBatchSize = miniBatchSize);
+figure
+C = colororder;
+lineLossTrain = animatedline(Color=C(2,:));
+ylim([0 inf])
+xlabel("Iteration")
+ylabel("Loss")
+grid on
+
+disp("Network set up.")
+
+%% Iterate
+for iteration = 1:10
+    
+    traj_indices = zeros(1, 16);
+    traj_inputs = {};
+    traj_outputs = {};
+
+    for it_num = 1:miniBatchSize
+        traj_idx = randi(size(XTrain, 2));
+        traj_indices(it_num) = traj_idx;
+        traj_inputs{it_num} = XTrain{traj_idx};
+        traj_outputs{it_num} = TTrain{traj_idx};
+    end
+
+    [loss,gradients,state] = dlfeval(@modelLoss,net, traj_inputs,traj_outputs);
+
+end
 
 %% Functions
-function data = read_trajs_and_combine(input, rpy_table)
-    data_traj = readtable(input);
-    data_rpy = read(rpy_table);
-    combo_table = [data_traj data_rpy];
-    combo_table = removevars(combo_table, {'qs4', 'qs5', 'qs6', 'vs7', 'vs8', 'vs9', 'vs10'});
-    data = table2array(combo_table);
+function [loss, gradients, state] = modelLoss(net, X, T)
+
+% Forward data through network
+[Y, state] = forward(net, X);
+
+% Calculate the loss
+loss = immse(Y, T);
+
+% Calculate gradients wrt learnable parameters
+gradients = dlgradient(loss, net.Learnables);
+
 end
 
-function data = read_rpy_to_table(input)
-    data = readtable(input);
-%     data = table2array(data)';
+function x = concatSequenceData(x)
+x = padsequences(x,2);
+% y = padsequences(y, 2);
+% y = onehotencode(cat(2,y{:}),1);
 end
-
-% function data = import_traj_no_orientation(folder)
-% % Import the data from 
-%     fds = fileDatastore(folder,"ReadFcn",@read_to_array);
-%     data = readall(fds);
-%     function data = smooth_velocities(data)
-%         window = 15;
-%         for data_idx = 8:17
-%             for i = 1:numel(data)
-%                 data{i}(data_idx,:) = movmean(data{i}(data_idx,:), window);
-%             end
-%         end
-%     end
-% 
-% end
 
 
 
