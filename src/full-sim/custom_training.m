@@ -17,12 +17,12 @@ dsXTrain = arrayDatastore( XTrain, 'IterationDimension', 1, 'OutputType', 'same'
 dsTTrain = arrayDatastore( TTrain, 'IterationDimension', 1, 'OutputType', 'same');
 dsTrain = combine(dsXTrain, dsTTrain);
 
-mbqTrain = minibatchqueue(  dsXTrain, 1, ...
+mbqTrain = minibatchqueue(  dsTrain, 2, ...
                           'MiniBatchSize', 16, ...
                           'PartialMiniBatch', 'discard', ...
                           'MiniBatchFcn', @concatSequenceData, ...
-                          'MiniBatchFormat', 'SCT', ...
-                          'OutputAsDlarray', 1);
+                          'MiniBatchFormat', {'CT', 'CT'}, ...
+                          'OutputAsDlarray', [1, 1]);
 
 disp("Minibatches created.")
 
@@ -30,7 +30,7 @@ disp("Minibatches created.")
 layers = setup_abl_residual_gru_no_output(17);
 net = dlnetwork(layers);
 
-numEpochs = 10;
+numEpochs = 2;
 miniBatchSize = 16; 
 initialLearnRate = 0.001; 
 
@@ -45,40 +45,43 @@ grid on
 disp("Network set up.")
 
 %% Iterate
-for iteration = 1:10
+iteration = 0;
+for epoch = 1:numEpochs
     
-    traj_indices = zeros(1, 16);
-    traj_inputs = {};
-    traj_outputs = {};
+    % Shuffle data
+    shuffle(mbqTrain);
 
-    for it_num = 1:miniBatchSize
-        traj_idx = randi(size(XTrain, 2));
-        traj_indices(it_num) = traj_idx;
-        traj_inputs{it_num} = XTrain{traj_idx};
-        traj_outputs{it_num} = TTrain{traj_idx};
+    % Loop over mini-batches
+    while hasdata(mbqTrain)
+        iteration = iteration + 1;
+
+        % read mini-batch of data
+        [X, Y] = next(mbqTrain);
+
+        [loss,gradients,state] = dlfeval(@modelLoss,net, X,Y);
     end
 
-    [loss,gradients,state] = dlfeval(@modelLoss,net, traj_inputs,traj_outputs);
-
 end
+
+disp("Reached end of training.")
 
 %% Functions
 function [loss, gradients, state] = modelLoss(net, X, T)
 
-% Forward data through network
-[Y, state] = forward(net, X);
-
-% Calculate the loss
-loss = immse(Y, T);
-
-% Calculate gradients wrt learnable parameters
-gradients = dlgradient(loss, net.Learnables);
+    % Forward data through network
+    [Z, state] = forward(net, X);
+    
+    % Calculate the loss
+    loss = mse(Z, T);
+    
+    % Calculate gradients wrt learnable parameters
+    gradients = dlgradient(loss, net.Learnables);
 
 end
 
-function x = concatSequenceData(x)
+function [x, y] = concatSequenceData(x, y)
 x = padsequences(x,2);
-% y = padsequences(y, 2);
+y = padsequences(y, 2);
 % y = onehotencode(cat(2,y{:}),1);
 end
 
