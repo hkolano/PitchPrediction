@@ -1,4 +1,4 @@
-function [lgraph, options] = setup_full_residual_gru(num_channels, num_recurrent_channels, XTest, TTest)
+function lgraph = setup_full_residual_gru(num_channels, num_recurrent_channels)
     % Initialize layer graph object
     
     lgraph = layerGraph();
@@ -18,7 +18,7 @@ function [lgraph, options] = setup_full_residual_gru(num_channels, num_recurrent
     % Left side: LSTM on the sequence data
     tempLayers = [
         split_1st
-        gruLayer(1024,"Name","GRU", 'OutputMode', 'sequence')];
+        gruLayer(384,"Name","GRU", 'OutputMode', 'sequence')];
     lgraph = addLayers(lgraph,tempLayers);
     lgraph = connectLayers(lgraph,"State Input","Splitting-1st");
 
@@ -41,15 +41,4 @@ function [lgraph, options] = setup_full_residual_gru(num_channels, num_recurrent
 
     % clean up helper variable
     clear tempLayers;
-
-    % Make all the connections
-    
-    options = trainingOptions("adam", ...
-        MaxEpochs=100, ...
-        SequencePaddingDirection="left", ...
-        Shuffle="every-epoch", ...
-        Plots="training-progress", ...
-        Verbose=0, ...
-        ValidationData={XTest, TTest}, ...
-        ValidationFrequency = 25);
 end

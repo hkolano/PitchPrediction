@@ -1,7 +1,7 @@
 %% Import data
 
 % Load data set
-load('data/full-data-matlab/FullData_NoVehXYZ_noB_noWaypoints_081522.mat')
+load('data/full-data-matlab/channel_subgroups/no_goal_poses/no_manip_vels/no_goal_vels/data_without_xyz_poses.mat')
 
 % Load network to retrain
 load('data/networks/full-nets/A_3_nets/net_A_3_1000its.mat')

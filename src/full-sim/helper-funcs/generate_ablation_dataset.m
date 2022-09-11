@@ -11,7 +11,7 @@ fields = {'pitch', 'dt'};
 chan_idxs = rmfield(chan_idxs, fields);
 
 %% ADD THE NEXT ELIMINATED ONE HERE
-elimd_gps = ["goal_poses", "manip_vels", "goal_vels", "xyz_poses", "manip_des_vels", "xyz_vels", "ry_vels"];
+elimd_gps = ["goal_poses", "manip_vels", "goal_vels"] %, "xyz_poses", "manip_des_vels", "xyz_vels", "ry_vels"];
 
 all_idxs = [1:41];
 rnd_idxs = all_idxs;
@@ -41,6 +41,7 @@ for gp_idx = 1:length(fn)
     end
     [sequenceLengths, idx] = sort(sequenceLengths, 'descend');
     XTest = XTest(idx);
+    TTest = TTest(idx);
 
     path = "data/full-data-matlab/channel_subgroups";
     for level = 1:length(elimd_gps)

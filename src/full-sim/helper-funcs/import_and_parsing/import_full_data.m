@@ -2,6 +2,7 @@
 %% Data import and processing
 sequence_data = import_traj_no_orientation("data/full-sim-data/data-no-orientation");
 orientation_data = import_orientations("data/full-sim-data/data-rpy");
+
 %%
 %{
 X(:,1) is a column vector.
