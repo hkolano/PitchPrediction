@@ -49,12 +49,13 @@ net = dlnetwork(layers);
 executionEnvironment = "gpu";
 
 k = 25;
-validate = @(net) validate_net(net, mbqVal, val_ns, k);
 
 numEpochs = 1;
 miniBatchSize = 16; 
 initialLearnRate = 0.001;
 save_freq = 5; % epochs
+
+validate = @(net) validate_net(net, mbqVal, val_ns, k, miniBatchSize);
 
 figure
 C = colororder;
@@ -72,9 +73,7 @@ start = tic;
 averageGrad = [];
 averageSqGrad = [];
 
-tic
-first_error = validate(net);
-toc
+first_error = validate(net)
 %%
 
 for epoch = 1:numEpochs
@@ -114,6 +113,7 @@ disp("Reached end of training.")
 %% Functions
 function [loss, gradients, state] = modelLoss(net, X, T)
 
+    
     % Forward data through network
     [Z, state] = forward(net, X);
     
@@ -131,46 +131,13 @@ y = padsequences(y, 2); %, "Length", 1007); % for val set only
 % y = onehotencode(cat(2,y{:}),1);
 end
 
-function error = validate_net(net, X_test_queue, ns, k)
+function error = validate_net(net, X_test_queue, ns, k, mbs)
     % Reset necessary variables
     reset(X_test_queue);
     net = resetState(net);
     [X_test, T_test] = next(X_test_queue);
 
-    % Make predictions up to n
-    [Z, net_state] = predict(net, X_test);
-    net.State = net_state;
-    Z_og = extractdata(Z);
-
-    % Setup forecast arrays
-    last_preds = zeros(17, 16);
-    all_preds = zeros(17, 16, k);
-
-    % Get last prediction (at n)
-    for i = 1:16
-        last_preds(:,i,1) = Z_og(:,i,ns(i));
-        if size(Z_og(:,i,:),3) > ns(i)
-            Z_og(:,i,ns(i)+1:end) = zeros(17, 1, size(Z_og,3)-ns(i));
-        end
-    end
-
-    all_preds(:,:,1) = last_preds;
-    last_preds_dl = dlarray(last_preds, 'CBT');
-    for i = 1:k-1
-        [output, net_state] = predict(net, last_preds_dl);
-        net.State = net_state;
-        last_preds_dl = output;
-        last_preds = extractdata(last_preds_dl);
-        all_preds(:,:,i+1) = last_preds;
-    end
-
-    space_for_forecasts = zeros(17,16,k);
-    cat(3, Z_og, space_for_forecasts);
-    for i = 1:16
-        Z_og(:,i,ns(i)+1:ns(i)+k) = all_preds(:,i,:);
-    end
-
-    Z_dl = dlarray(Z_og, 'CBT');
+    Z_dl = minibatch_forecast(net, X_test, ns, k, mbs, false);
 
     rmses = zeros(1, 16);
     for i = 1:16
@@ -180,14 +147,5 @@ function error = validate_net(net, X_test_queue, ns, k)
     end
 
     error = sum(rmses.*ns(1:16))/sum(ns(1:16));
-%     parfor i = 1:numel(X_test)
-%         pred = full_forecast_no_recur(net, X_test{i}, ns(i), k);
-% %         size(pred)
-%         pred = pred(:,end-k+1:end);
-%         g_truth = X_test{i}(1:num_recur,ns(i)+1:ns(i)+k);
-%         rmse = sqrt(immse(pred, single(g_truth)));
-%         error = error + rmse;
-%     end
-%     error = error/numel(X_test);
 end
 
