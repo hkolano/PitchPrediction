@@ -1,18 +1,18 @@
 %% Load data
-load('data/full-data-matlab/channel_subgroups/no_goal_poses/no_manip_vels/no_goal_vels/data_without_xyz_poses.mat')
-for n = 1:numel(XTrain)
-    XTrain{n} = XTrain{n}(1:end-1,:);
-end
-
-for n = 1:numel(XTest)
-    XTest{n} = XTest{n}(1:end-1,:);
-end
-
-XTrain = XTrain';
-TTrain = TTrain';
-XTest = XTest';
-TTest = TTest';
-disp("Data loaded.")
+% load('data/full-data-matlab/channel_subgroups/no_goal_poses/no_manip_vels/no_goal_vels/data_without_xyz_poses.mat')
+% for n = 1:numel(XTrain)
+%     XTrain{n} = XTrain{n}(1:end-1,:);
+% end
+% 
+% for n = 1:numel(XTest)
+%     XTest{n} = XTest{n}(1:end-1,:);
+% end
+% 
+% XTrain = XTrain';
+% TTrain = TTrain';
+% XTest = XTest';
+% TTest = TTest';
+% disp("Data loaded.")
 
 %%
 dsXTrain = arrayDatastore( XTrain, 'IterationDimension', 1, 'OutputType', 'same');
@@ -31,8 +31,9 @@ disp("Minibatches created.")
 %% Set up network
 layers = setup_abl_residual_gru_no_output(17);
 net = dlnetwork(layers);
+executionEnvironment = "gpu";
 
-numEpochs = 2;
+numEpochs = 1;
 miniBatchSize = 16; 
 initialLearnRate = 0.001; 
 
@@ -58,8 +59,8 @@ for epoch = 1:numEpochs
     shuffle(mbqTrain);
 
     % Loop over mini-batches
-%     while hasdata(mbqTrain)
-    for ct = 1:10
+    while hasdata(mbqTrain)
+%     for ct = 1:10
         iteration = iteration + 1
 
         % read mini-batch of data
@@ -67,6 +68,7 @@ for epoch = 1:numEpochs
 
         if canUseGPU
             X = gpuArray(X);
+            Y = gpuArray(Y);
         end
 
         [loss,gradients,state] = dlfeval(@modelLoss,net, X,Y);
@@ -105,34 +107,3 @@ y = padsequences(y, 2);
 % y = onehotencode(cat(2,y{:}),1);
 end
 
-
-
-%%
-% numChannels = size(XTrain{1}, 1);
-% numRecChannels = size(TTrain{1}, 1);
-% layers = setup_full_residual_gru(numChannels, numRecChannels);
-% 
-
-% 
-% mbq = minibatchqueue(XTrain, ...
-%     MiniBatchSize = miniBatchSize);
-% 
-% %%
-% %     MaxEpochs=5, ...
-% init_options = trainingOptions("adam", ...
-%     MaxEpochs=100, ...
-%     MiniBatchSize=16, ...
-%     InitialLearnRate=0.001, ...
-%     LearnRateDropPeriod = 5,...
-%     LearnRateSchedule= 'piecewise', ...
-%     LearnRateDropFactor= .9, ...
-%     SequencePaddingDirection="right", ...
-%     Plots="training-progress", ...
-%     Shuffle='every-epoch', ...
-%     ValidationData={XTest, TTest}, ...
-%     ValidationFrequency = 60, ...
-%     OutputNetwork='best-validation-loss');
-% [net, info] = trainNetwork(XTrain,TTrain,layers,init_options);
-% %     
-% outputFile = fullfile("data/networks/full-nets", 'SingleStepNet_18chan_384units.mat');
-% save(outputFile, 'net', 'info');
