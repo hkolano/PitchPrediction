@@ -58,11 +58,16 @@ for epoch = 1:numEpochs
     shuffle(mbqTrain);
 
     % Loop over mini-batches
-    while hasdata(mbqTrain)
+%     while hasdata(mbqTrain)
+    for ct = 1:10
         iteration = iteration + 1
 
         % read mini-batch of data
         [X, Y] = next(mbqTrain);
+
+        if canUseGPU
+            X = gpuArray(X);
+        end
 
         [loss,gradients,state] = dlfeval(@modelLoss,net, X,Y);
         net.State = state;
