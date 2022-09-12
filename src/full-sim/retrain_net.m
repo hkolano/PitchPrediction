@@ -1,20 +1,20 @@
 %% Import data
 
 % Load data set
-load('data/full-data-matlab/channel_subgroups/no_goal_poses/no_manip_vels/no_goal_vels/data_without_xyz_poses.mat')
-
-% Load network to retrain
-load('data/networks/full-nets/A_3_nets/net_A_3_1000its.mat')
-
-% Load validation set definition
-load('data/full-data-matlab/val_set_081122.mat')
+% load('data/full-data-matlab/channel_subgroups/no_goal_poses/no_manip_vels/no_goal_vels/data_without_xyz_poses.mat')
+% 
+% % Load network to retrain
+% load('data/networks/full-nets/SingleStepNet_18chan_384units.mat')
+% 
+% % Load validation set definition
+% load('data/full-data-matlab/val_set_post_abl.mat')
 
 
 %% Initialization
 
 k = 25;     % Number of time steps to forecast (0.5s)
 mbatch = 4;
-num_trajs_before_update = 20;
+num_trajs_before_update = 16;
 val_freq = 25;
 save_freq = 250;
 train_to_val_ratio = val_freq*(num_trajs_before_update/mbatch);
@@ -47,7 +47,7 @@ first_error = validate(net)
 error_vec = [];
 training_rmse_vec = [];
 
-for retrain_idx = 1001:2000
+for retrain_idx = 1:296
 
     traj_indices = [];
     trajs = {};
@@ -92,15 +92,15 @@ for retrain_idx = 1001:2000
 %         plot_errors(training_rmse_vec, error_vec, train_to_val_ratio, "Training Progress")
     end
 
-    if rem(retrain_idx, save_freq) == 0
-        outputFile = fullfile("data/networks/full-nets/A_3_nets", strcat("net_A_3_", string(retrain_idx), "its.mat"));
-        end_it = retrain_idx;
-        start_it = end_it-save_freq+1;
-        save(outputFile, 'net', 'info', "error_vec", "training_rmse_vec", "train_to_val_ratio", "start_it", "end_it")
-        plot_network_error_progression('data/networks/full-nets/A_3_nets', "A-3 Training Progression")
-        error_vec = [];
-        training_rmse_vec = [];
-    end
+%     if rem(retrain_idx, save_freq) == 0
+%         outputFile = fullfile("data/networks/full-nets/A_3_nets", strcat("net_A_3_", string(retrain_idx), "its.mat"));
+%         end_it = retrain_idx;
+%         start_it = end_it-save_freq+1;
+%         save(outputFile, 'net', 'info', "error_vec", "training_rmse_vec", "train_to_val_ratio", "start_it", "end_it")
+%         plot_network_error_progression('data/networks/full-nets/A_3_nets', "A-3 Training Progression")
+%         error_vec = [];
+%         training_rmse_vec = [];
+%     end
     
 end
 

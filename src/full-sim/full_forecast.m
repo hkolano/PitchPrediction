@@ -9,7 +9,7 @@ make_plot: true/false whether to plot the results
 Returns:
 
 %}
-function full_pred = full_forecast(net, X, n, k, p, num_rec_channels, make_plot)
+function full_pred = full_forecast(net, X, n, k, p, make_plot)
     % Reset the state for a new prediction
     net = resetState(net);
     
