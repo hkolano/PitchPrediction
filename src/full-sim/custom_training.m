@@ -9,7 +9,9 @@ for n = 1:numel(XTest)
 end
 
 XTrain = XTrain';
+TTrain = TTrain';
 XTest = XTest';
+TTest = TTest';
 disp("Data loaded.")
 
 %%
@@ -21,7 +23,7 @@ mbqTrain = minibatchqueue(  dsTrain, 2, ...
                           'MiniBatchSize', 16, ...
                           'PartialMiniBatch', 'discard', ...
                           'MiniBatchFcn', @concatSequenceData, ...
-                          'MiniBatchFormat', {'CT', 'CT'}, ...
+                          'MiniBatchFormat', {'CTB', 'CTB'}, ...
                           'OutputAsDlarray', [1, 1]);
 
 disp("Minibatches created.")
@@ -46,6 +48,10 @@ disp("Network set up.")
 
 %% Iterate
 iteration = 0;
+start = tic;
+averageGrad = [];
+averageSqGrad = [];
+
 for epoch = 1:numEpochs
     
     % Shuffle data
@@ -53,12 +59,21 @@ for epoch = 1:numEpochs
 
     % Loop over mini-batches
     while hasdata(mbqTrain)
-        iteration = iteration + 1;
+        iteration = iteration + 1
 
         % read mini-batch of data
         [X, Y] = next(mbqTrain);
 
         [loss,gradients,state] = dlfeval(@modelLoss,net, X,Y);
+        net.State = state;
+
+        [net,averageGrad,averageSqGrad] = adamupdate(net,gradients,averageGrad,averageSqGrad,iteration);
+        
+        D = duration(0,0,toc(start),'Format',"hh:mm:ss");
+        loss = double(loss);
+        addpoints(lineLossTrain,iteration,loss)
+        title("Epoch: " + epoch + ", Elapsed: " + string(D))
+        drawnow
     end
 
 end
