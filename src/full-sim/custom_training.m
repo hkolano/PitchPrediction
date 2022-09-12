@@ -72,8 +72,9 @@ start = tic;
 averageGrad = [];
 averageSqGrad = [];
 
+tic
 first_error = validate(net);
-
+toc
 %%
 
 for epoch = 1:numEpochs
@@ -131,7 +132,6 @@ y = padsequences(y, 2); %, "Length", 1007); % for val set only
 end
 
 function error = validate_net(net, X_test_queue, ns, k)
-    error = 0;
     % Reset necessary variables
     reset(X_test_queue);
     net = resetState(net);
@@ -178,6 +178,8 @@ function error = validate_net(net, X_test_queue, ns, k)
         error_squared = error.^2;
         rmses(i) = sqrt(mean(error_squared, 'all'));
     end
+
+    error = sum(rmses.*ns(1:16))/sum(ns(1:16));
 %     parfor i = 1:numel(X_test)
 %         pred = full_forecast_no_recur(net, X_test{i}, ns(i), k);
 % %         size(pred)
