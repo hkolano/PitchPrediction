@@ -56,7 +56,7 @@ miniBatchSize = 16;
 initialLearnRate = 0.001;
 save_freq = 5; % epochs
 
-validate = @(net) validate_net(net, mbqVal, val_ns, k, miniBatchSize);
+% validate = @(net) validate_net(net, mbqVal, val_ns, k, miniBatchSize);
 forecast_for_training = @(net, X, ns) minibatch_forecast(net, X, ns, k, miniBatchSize, true);
 
 figure
@@ -77,7 +77,7 @@ start = tic;
 averageGrad = [];
 averageSqGrad = [];
 
-first_error = validate(net)
+% first_error = validate(net)
 %%
 
 for epoch = 1:numEpochs
