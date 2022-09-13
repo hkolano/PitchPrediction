@@ -28,43 +28,47 @@ dsXTest = arrayDatastore(XTest_subset_trimmed, 'IterationDimension', 1, 'OutputT
 dsTTest = arrayDatastore(TTest_subset_trimmed, 'IterationDimension', 1, 'OutputType','same');
 dsTest = combine(dsXTest, dsTTest);
 
-mbqTrain = minibatchqueue(  dsTrain, 2, ...
+mbqTrain = minibatchqueue(  dsTrain, 3, ...
                           'MiniBatchSize', 16, ...
                           'PartialMiniBatch', 'discard', ...
                           'MiniBatchFcn', @concatSequenceData, ...
-                          'MiniBatchFormat', {'CTB', 'CTB'}, ...
-                          'OutputAsDlarray', [1, 1]);
+                          'MiniBatchFormat', {'CTB', 'CTB', 'CTB'}, ...
+                          'OutputAsDlarray', [1, 1, 1]);
 
-mbqVal = minibatchqueue(dsTest, 2, ...
+mbqVal = minibatchqueue(dsTest, 3, ...
                         "MiniBatchSize", 16, ...
                         "MiniBatchFcn", @concatSequenceData, ...
-                        "MiniBatchFormat", {'CTB', 'CTB'}, ...
-                        'OutputAsDlarray', [1, 1]);
+                        "MiniBatchFormat", {'CTB', 'CTB', 'CTB'}, ...
+                        'OutputAsDlarray', [1, 1, 1]);
 
 disp("Minibatches created.")
 
 %% Set up network
-layers = setup_abl_residual_gru_no_output(17);
-net = dlnetwork(layers);
+% layers = setup_abl_residual_gru_no_output(17);
+% net = dlnetwork(layers);
+clear net
 executionEnvironment = "gpu";
 
-k = 25;
+k = 2;
 
-numEpochs = 1;
+numEpochs = 2;
 miniBatchSize = 16; 
 initialLearnRate = 0.001;
 save_freq = 5; % epochs
 
 validate = @(net) validate_net(net, mbqVal, val_ns, k, miniBatchSize);
+forecast_for_training = @(net, X, ns) minibatch_forecast(net, X, ns, k, miniBatchSize, true);
 
 figure
 C = colororder;
 lineLossTrain = animatedline(Color=C(2,:));
+lineLossVal = animatedline(Color=C(3,:));
 ylim([0 inf])
 xlabel("Iteration")
 ylabel("Loss")
 grid on
 
+load("data/networks/full-nets/SingleStepNet_17chan_1epoch.mat")
 disp("Network set up.")
 
 %% Iterate
@@ -84,68 +88,83 @@ for epoch = 1:numEpochs
     % Loop over mini-batches
     while hasdata(mbqTrain)
 %     for ct = 1:10
-        iteration = iteration + 1
+        iteration = iteration + 1;
 
         % read mini-batch of data
-        [X, Y] = next(mbqTrain);
+        [X, Y, mask] = next(mbqTrain);
 
         if canUseGPU
             X = gpuArray(X);
             Y = gpuArray(Y);
         end
 
-        [loss,gradients,state] = dlfeval(@modelLoss,net, X,Y);
+        [loss,gradients,state] = dlfeval(@modelLoss,net, X,Y, mask, k, miniBatchSize, forecast_for_training);
         net.State = state;
 
-        [net,averageGrad,averageSqGrad] = adamupdate(net,gradients,averageGrad,averageSqGrad,iteration);
+        [net,averageGrad,averageSqGrad] = adamupdate(net,gradients,averageGrad,averageSqGrad,iteration, .001);
         
         D = duration(0,0,toc(start),'Format',"hh:mm:ss");
         loss = double(loss);
         addpoints(lineLossTrain,iteration,loss)
         title("Epoch: " + epoch + ", Elapsed: " + string(D))
         drawnow
-    end
 
+        if rem(iteration, 10) == 0
+            disp(iteration)
+            error = validate_net(net, mbqVal, val_ns, k, miniBatchSize)
+        end
+    end
 end
 
 disp("Reached end of training.")
 
 %% Functions
-function [loss, gradients, state] = modelLoss(net, X, T)
+function [loss, gradients, state] = modelLoss(net, X, T, mask, k, mbs, custom_forward)
 
-    
+    ns = zeros(mbs, 1);
+    for i = 1:mbs
+        len = extractdata(sum(mask(1,i,:)));
+        ns(i) = randi([2, len-k-1]);
+    end
+    [Z_dl, state] = custom_forward(net, X, ns);
     % Forward data through network
-    [Z, state] = forward(net, X);
-    
+%     [Z, state] = forward(net, X);
+   
     % Calculate the loss
-    loss = mse(Z, T);
+    loss = 0;
+    for i = 1:mbs
+        loss = loss + ns(i)*mse(Z_dl(:,i,1:ns(i)+k-1), T(:,i,1:ns(i)+k-1));
+    end
+    loss = loss/sum(ns, 'all');
+%     loss = mse(Z_dl(:,:,1:end-k+1), T);
+%     loss = mse(Z_dl, T);
     
     % Calculate gradients wrt learnable parameters
     gradients = dlgradient(loss, net.Learnables);
 
 end
 
-function [x, y] = concatSequenceData(x, y)
-x = padsequences(x,2);  %, "Length", 1007); % for val set only
-y = padsequences(y, 2); %, "Length", 1007); % for val set only
-% y = onehotencode(cat(2,y{:}),1);
-end
-
 function error = validate_net(net, X_test_queue, ns, k, mbs)
     % Reset necessary variables
     reset(X_test_queue);
     net = resetState(net);
-    [X_test, T_test] = next(X_test_queue);
+    [X_test, T_test, ~] = next(X_test_queue);
 
-    Z_dl = minibatch_forecast(net, X_test, ns, k, mbs, false);
+    [Z_dl, ~] = minibatch_forecast(net, X_test, ns, k, mbs, false);
 
-    rmses = zeros(1, 16);
-    for i = 1:16
+    rmses = zeros(1, mbs);
+    for i = 1:mbs
         error = T_test(:,i,1:ns(i))-Z_dl(:,i,1:ns(i));
         error_squared = error.^2;
         rmses(i) = sqrt(mean(error_squared, 'all'));
     end
 
-    error = sum(rmses.*ns(1:16))/sum(ns(1:16));
+    error = sum(rmses.*ns(1:mbs))/sum(ns(1:mbs));
+end
+
+function [x, y, mask] = concatSequenceData(x, y)
+[x, mask] = padsequences(x,2);
+y = padsequences(y, 2);
+% y = onehotencode(cat(2,y{:}),1);
 end
 
