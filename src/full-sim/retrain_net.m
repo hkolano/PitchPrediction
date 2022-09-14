@@ -4,7 +4,7 @@
 load('data/full-data-matlab/FullData_17chan_10Hz.mat')
 
 % Load network to retrain
-load('data/networks/full-nets/SingleStepNet_17chan_384units.mat')
+load('data/networks/full-nets/SingleStepNet_10hz__17chan_384units_alltrajs.mat')
 
 % Load validation set definition
 load('data/full-data-matlab/val_set_post_abl.mat')
@@ -12,16 +12,18 @@ load('data/full-data-matlab/val_set_post_abl.mat')
 
 %% Initialization
 
-k = 10;     % Number of time steps to forecast (0.5s)
+% k = 5;     % Number of time steps to forecast (0.5s)
+ks = [5 10 20 30 40];
 mbatch = 16;
 num_trajs_before_update = 16;
 val_freq = 50;
 train_to_val_ratio = val_freq*(num_trajs_before_update/mbatch);
-num_epochs = 50;
-save_freq = 5; %epochs
+num_epochs = 2;
+save_freq = 1; %epochs
+init_learning_rate = .001;
 
 retrain_options = trainingOptions("adam", ...
-    InitialLearnRate=0.0005,...
+    InitialLearnRate= init_learning_rate,...
     MaxEpochs=1, ...
     MiniBatchSize=mbatch, ...
     SequencePaddingDirection="right",...
@@ -29,86 +31,99 @@ retrain_options = trainingOptions("adam", ...
     GradientThreshold=1.0,...
     ExecutionEnvironment="auto");
 
+XTest = XTest_10hz;
+XTrain = XTrain_10hz;
+TTest = TTest_10hz;
+TTrain = TTrain_10hz;
+
 num_rec_vars = size(TTest{1}, 1);
 
 XTest_subset = XTest(val_idxs);
+val_ns = floor(val_ns./5);
 validate = @(net) validate_net(net, XTest_subset, val_ns, k, p);
 % validate_pitch = @(net) validate_pitch_only(net, XTest_subset, val_ns, k, p, num_rec_vars);
 
 
 %% Train on predictions
-first_error = validate(net)
-error_vec = [];
-error_vec_its = [];
-training_rmse_vec = [];
-total_it = 1;
-start_it = total_it;
-
-tic
-
-for epoch_n = 1:num_epochs
-
-    for retrain_idx = 1:296
+for k_val = 1:length(ks)
+    load('data/networks/full-nets/SingleStepNet_10hz__17chan_384units_alltrajs.mat')
+    k = ks(k_val);
+    first_error = validate(net)
+    error_vec = [first_error];
+    error_vec_its = [1];
+    training_rmse_vec = []; %these_epochs_training_RMSE_vec; %[];
+    total_it = 1;
+    start_it = total_it;
+    retrain_options.InitialLearnRate = init_learning_rate;
     
-        traj_indices = [];
-        trajs = {};
+    tic
     
-        for it_num = 1:num_trajs_before_update
-            traj_idx = randi(size(XTrain, 2));
-            traj_indices = [traj_indices traj_idx];
-            trajs{it_num} = XTrain{traj_idx};
-        end
+    for epoch_n = 1:num_epochs
+    
+        for retrain_idx = 1:296
         
-        parfor it_num = 1:num_trajs_before_update
-            data = trajs{it_num};
-            top_n_lim = size(data, 2) - k - 1;
-            if top_n_lim <= k + 1
-                n = top_n_lim;
-            else
-                n = randi([k, top_n_lim]);
+            traj_indices = [];
+            trajs = {};
+        
+            for it_num = 1:num_trajs_before_update
+                traj_idx = randi(size(XTrain, 2));
+                traj_indices = [traj_indices traj_idx];
+                trajs{it_num} = XTrain{traj_idx};
             end
             
-            % Generate a prediction
-            pred = full_forecast_norecur(net, data, n, k, p);
-    
-            preds{it_num} = pred;
-            g_truth{it_num} = data(:,2:n+k);
-        end
-    
-        nan_idxs = ID_nans(preds);
-        if sum(nan_idxs) ~= 0
-            disp(nan_idxs)
-            disp("NaNs detected in prediction!")
-        end
+            parfor it_num = 1:num_trajs_before_update
+                data = trajs{it_num};
+                top_n_lim = size(data, 2) - k - 1;
+                if top_n_lim <= k + 1
+                    n = top_n_lim;
+                else
+                    n = randi([k, top_n_lim]);
+                end
+                
+                % Generate a prediction
+                pred = full_forecast_norecur(net, data, n, k, p);
         
-        [net,info] = trainNetwork(preds, g_truth, layerGraph(net), retrain_options);
-        this_test_rmse = info.TrainingRMSE;
-        training_rmse_vec = [training_rmse_vec this_test_rmse];
+                preds{it_num} = pred;
+                g_truth{it_num} = data(:,2:n+k);
+            end
         
-        if rem(retrain_idx, val_freq) == 0
-            error = validate(net)
-            disp(total_it)
-            toc
-            error_vec = [error_vec error];
-            error_vec_its = [error_vec_its total_it];
-            plot_training(error_vec, error_vec_its, training_rmse_vec);
-    %         plot_errors(training_rmse_vec, error_vec, train_to_val_ratio, "Training Progress")
+            nan_idxs = ID_nans(preds);
+            if sum(nan_idxs) ~= 0
+                disp(nan_idxs)
+                disp("NaNs detected in prediction!")
+            end
+            
+            [net,info] = trainNetwork(preds, g_truth, layerGraph(net), retrain_options);
+            this_test_rmse = info.TrainingRMSE;
+            training_rmse_vec = [training_rmse_vec this_test_rmse];
+            
+            if rem(retrain_idx, val_freq) == 0
+                error = validate(net)
+                disp(total_it)
+                toc
+                error_vec = [error_vec error];
+                error_vec_its = [error_vec_its total_it];
+                plot_training(error_vec, error_vec_its, training_rmse_vec);
+        %         plot_errors(training_rmse_vec, error_vec, train_to_val_ratio, "Training Progress")
+            end
+            total_it = total_it + 1;
         end
-        total_it = total_it + 1;
+    
+        if rem(epoch_n, save_freq) == 0 || epoch_n > 45
+            outputFile = fullfile(strcat("data/networks/full-nets/10Hz_alltrajs_k", string(k)), strcat("take2_", string(epoch_n), "epochs.mat"));
+            end_it = total_it-1;
+            these_epochs_training_RMSE_vec = training_rmse_vec(start_it:end_it);
+            save(outputFile, 'net', 'info', "error_vec", "error_vec_its", "these_epochs_training_RMSE_vec", "start_it", "end_it");
+    %         plot_network_error_progression('data/networks/full-nets/A_3_nets', "A-3 Training Progression")
+            start_it = total_it;
+            retrain_options.InitialLearnRate = retrain_options.InitialLearnRate*.9;
+        end
+    
     end
-
-    if rem(epoch_n, save_freq) == 0
-        outputFile = fullfile("data/networks/full-nets/10Hz_k5", strcat("take1_", string(epoch_n), "epochs.mat"));
-        end_it = total_it-1;
-        these_epochs_training_RMSE_vec = training_rmse_vec(start_it:end_it);
-        save(outputFile, 'net', 'info', "error_vec", "error_vec_its", "these_epochs_training_RMSE_vec", "start_it", "end_it")
-%         plot_network_error_progression('data/networks/full-nets/A_3_nets', "A-3 Training Progression")
-        start_it = total_it;
-        retrain_options.InitialLearnRate = retrain_options.InitialLearnRate*.9;
-    end
-
 end
 
+% take 1: learning rate = .000387
+% take 2: learning rate = .001
 % pred = toy_forecast(net, XTest{1}, 100, 25, p, true);
 
 % Save the output
