@@ -13,14 +13,14 @@ load('data/full-data-matlab/val_set_post_abl_k40.mat')
 %% Initialization
 
 % k = 5;     % Number of time steps to forecast (0.5s)
-ks = [30 40];
+ks = [5];%[30 40];
 mbatch = 16;
 num_trajs_before_update = 16;
 val_freq = 50;
 train_to_val_ratio = val_freq*(num_trajs_before_update/mbatch);
-num_epochs = 50;
+num_epochs = 100;
 save_freq = 5; %epochs
-init_learning_rate = .0005;
+init_learning_rate = .001;
 
 retrain_options = trainingOptions("adam", ...
     InitialLearnRate= init_learning_rate,...
@@ -48,7 +48,8 @@ val_ns = floor(val_ns./5);
 for k_val = 1:length(ks)
     load('data/networks/full-nets/SingleStepNet_10hz__17chan_384units_alltrajs.mat')
     k = ks(k_val);
-    validate = @(net) validate_net(net, XTest_subset, val_ns, k, p);
+%     validate = @(net) validate_net(net, XTest_subset, val_ns, k, p);
+    validate = @(net) validate_pitch_only(net, XTest_subset, val_ns, k, p, pitch_idx);
     first_error = validate(net)
     error_vec = [first_error];
     error_vec_its = [1];
@@ -111,7 +112,7 @@ for k_val = 1:length(ks)
         end
     
         if rem(epoch_n, save_freq) == 0 || epoch_n > 45
-            outputFile = fullfile(strcat("data/networks/full-nets/10Hz_alltrajs_k", string(k)), strcat("take3_", string(epoch_n), "epochs.mat"));
+            outputFile = fullfile(strcat("data/networks/full-nets/10Hz_alltrajs_k", string(k)), strcat("take2_", string(epoch_n), "epochs.mat"));
             end_it = total_it-1;
             these_epochs_training_RMSE_vec = training_rmse_vec(start_it:end_it);
             save(outputFile, 'net', 'info', "error_vec", "error_vec_its", "these_epochs_training_RMSE_vec", "start_it", "end_it");
@@ -145,6 +146,8 @@ function error = validate_net(net, X_test, ns, k, p)
     error = error/numel(X_test);
 end
 
+
+
 function plot_training(e_vec, e_vec_its, training_vec)
     clf
     plot(e_vec_its, e_vec)
@@ -152,16 +155,3 @@ function plot_training(e_vec, e_vec_its, training_vec)
     plot(movmean(training_vec, 5))
     drawnow;
 end
-
-% function error = validate_pitch_only(net, X_test, ns, k, p, num_recur)
-%     error = 0;
-%     for i = 1:numel(X_test)
-%         pred = full_forecast(net, X_test{i}, ns(i), k, p, num_recur, false);
-% %         size(pred)
-%         pred = pred(14,end-k+1:end);
-%         g_truth = X_test{i}(14,ns(i)+1:ns(i)+k);
-%         rmse = sqrt(immse(pred, single(g_truth)));
-%         error = error + rmse;
-%     end
-%     error = error/numel(X_test);
-% end

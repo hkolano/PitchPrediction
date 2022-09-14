@@ -1,16 +1,13 @@
-[XTrain,YTrain] = japaneseVowelsTrainData;
-miniBatchSize = 27;
-fmt = 'CTB';
-dsXTrain = arrayDatastore( XTrain, 'IterationDimension', 1, 'OutputType', 'same' );
-dsYTrain = arrayDatastore( YTrain, 'IterationDimension', 1 );   
-dsTrain = combine( dsXTrain, dsYTrain );
-% setup the batches
-mbqTrain = minibatchqueue(  dsTrain, 2, ...
-                          'MiniBatchSize', miniBatchSize, ...
-                          'PartialMiniBatch', 'discard', ...
-                          'MiniBatchFcn', @concatSequenceData, ...
-                          'MiniBatchFormat', {fmt, 'CB'});
-function [x, y] = concatSequenceData(x, y)
-x = padsequences(x,2);
-y = onehotencode(cat(2,y{:}),1);
-end
+load('data/full-data-matlab/FullData_17chan_10Hz.mat')
+load('C:\Users\OSU\Documents\GitHub\PitchPrediction\data\networks\full-nets\10Hz_alltrajs_k5\take1_5epochs.mat')
+
+plot_autoreg_forecast(net, XTest_10hz{1}, 50, 5, p, 16, 100)
+
+load('C:\Users\OSU\Documents\GitHub\PitchPrediction\data\networks\full-nets\10Hz_alltrajs_k5\take1_25epochs.mat')
+
+plot_autoreg_forecast(net, XTest_10hz{1}, 50, 5, p, 16, 100)
+
+load('C:\Users\OSU\Documents\GitHub\PitchPrediction\data\networks\full-nets\10Hz_alltrajs_k5\take1_50epochs.mat')
+
+plot_autoreg_forecast(net, XTest_10hz{1}, 50, 5, p, 16, 100)
+
