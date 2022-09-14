@@ -13,14 +13,14 @@ load('data/full-data-matlab/val_set_post_abl_k40.mat')
 %% Initialization
 
 % k = 5;     % Number of time steps to forecast (0.5s)
-ks = [40];
+ks = [2]; % 10 20 30 40];
 mbatch = 16;
 num_trajs_before_update = 16;
 val_freq = 50;
 train_to_val_ratio = val_freq*(num_trajs_before_update/mbatch);
 num_epochs = 50;
-save_freq = 5; %epochs
-init_learning_rate = .0005;
+save_freq = 5; %epoc5
+init_learning_rate = .001;
 
 retrain_options = trainingOptions("adam", ...
     InitialLearnRate= init_learning_rate,...
@@ -112,7 +112,7 @@ for k_val = 1:length(ks)
         end
     
         if rem(epoch_n, save_freq) == 0 || epoch_n > 45
-            outputFile = fullfile(strcat("data/networks/full-nets/10Hz_alltrajs_k", string(k)), strcat("take3_", string(epoch_n), "epochs.mat"));
+            outputFile = fullfile(strcat("data/networks/full-nets/10Hz_alltrajs_k", string(k)), strcat("take2_", string(epoch_n), "epochs.mat"));
             end_it = total_it-1;
             these_epochs_training_RMSE_vec = training_rmse_vec(start_it:end_it);
             save(outputFile, 'net', 'info', "error_vec", "error_vec_its", "these_epochs_training_RMSE_vec", "start_it", "end_it");
