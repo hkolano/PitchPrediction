@@ -1,12 +1,12 @@
 % load('data/full-data-matlab/FullData_NoVehXYZ_noB_noWaypoints_081522.mat') 
 % load('data/full-data-matlab/channel_subgroups/no_goal_poses/no_manip_vels/no_goal_vels/data_without_xyz_poses.mat')
 % load('data/full-data-matlab/FullData_17chan_10Hz.mat')
-load('data/full-data-matlab/FullData_17chan_25Hz.mat')
+load('data/full-data-matlab/FullData_17chan_10Hz.mat')
 
-XTest = XTest_25hz;
-XTrain = XTrain_25hz;
-TTest = TTest_25hz;
-TTrain = TTrain_25hz;
+XTest = XTest_10hz;
+XTrain = XTrain_10hz;
+TTest = TTest_10hz;
+TTrain = TTrain_10hz;
 
 numChannels = size(XTrain{1}, 1);
 numRecChannels = size(TTrain{1}, 1);
@@ -15,7 +15,7 @@ layers = setup_abl_residual_gru(numRecChannels);
 %%
 %     MaxEpochs=5, ...
 init_options = trainingOptions("adam", ...
-    MaxEpochs=50, ...
+    MaxEpochs=5, ...
     MiniBatchSize=16, ...
     InitialLearnRate=0.001, ...
     LearnRateDropPeriod = 5,...
@@ -29,5 +29,5 @@ init_options = trainingOptions("adam", ...
     OutputNetwork='best-validation-loss');
 [net, info] = trainNetwork(XTrain,TTrain,layers,init_options);
 %     
-outputFile = fullfile("data/networks/full-nets", 'SingleStepNet_25hz_17chan_384units_alltrajs.mat');
+outputFile = fullfile("data/networks/full-nets", 'SingleStepNet_10hz_17chan_384units_alltrajs_5ep.mat');
 save(outputFile, 'net', 'info');

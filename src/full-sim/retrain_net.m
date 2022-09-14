@@ -7,19 +7,19 @@ load('data/full-data-matlab/FullData_17chan_10Hz.mat')
 load('data/networks/full-nets/SingleStepNet_10hz__17chan_384units_alltrajs.mat')
 
 % Load validation set definition
-load('data/full-data-matlab/val_set_post_abl.mat')
+load('data/full-data-matlab/val_set_post_abl_k40.mat')
 
 
 %% Initialization
 
 % k = 5;     % Number of time steps to forecast (0.5s)
-ks = [5 10 20 30 40];
+ks = [30 40];
 mbatch = 16;
 num_trajs_before_update = 16;
 val_freq = 50;
 train_to_val_ratio = val_freq*(num_trajs_before_update/mbatch);
-num_epochs = 2;
-save_freq = 1; %epochs
+num_epochs = 50;
+save_freq = 5; %epochs
 init_learning_rate = .0005;
 
 retrain_options = trainingOptions("adam", ...
@@ -31,10 +31,10 @@ retrain_options = trainingOptions("adam", ...
     GradientThreshold=0.9,...
     ExecutionEnvironment="auto");
 
-XTest = XTest_10hz;
-XTrain = XTrain_10hz;
-TTest = TTest_10hz;
-TTrain = TTrain_10hz;
+XTest = XTest_10hz(1:end-5);
+XTrain = XTrain_10hz(1:end-35);
+TTest = TTest_10hz(1:end-5);
+TTrain = TTrain_10hz(1:end-35);
 
 num_rec_vars = size(TTest{1}, 1);
 
@@ -47,8 +47,8 @@ val_ns = floor(val_ns./5);
 %% Train on predictions
 for k_val = 1:length(ks)
     load('data/networks/full-nets/SingleStepNet_10hz__17chan_384units_alltrajs.mat')
-    validate = @(net) validate_net(net, XTest_subset, val_ns, k, p);
     k = ks(k_val);
+    validate = @(net) validate_net(net, XTest_subset, val_ns, k, p);
     first_error = validate(net)
     error_vec = [first_error];
     error_vec_its = [1];
