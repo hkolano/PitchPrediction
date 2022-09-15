@@ -7,20 +7,20 @@ load('data/full-data-matlab/FullData_17chan_10Hz.mat')
 load('data/networks/full-nets/SingleStepNet_10hz__17chan_384units_alltrajs.mat')
 
 % Load validation set definition
-load('data/full-data-matlab/val_set_post_abl_k40.mat')
+load('data/full-data-matlab/val_set_final_50Hz.mat')
 
 
 %% Initialization
 
 % k = 5;     % Number of time steps to forecast (0.5s)
-ks = [2]; % 10 20 30 40];
+ks = [15 25 35];
 mbatch = 16;
 num_trajs_before_update = 16;
 val_freq = 50;
 train_to_val_ratio = val_freq*(num_trajs_before_update/mbatch);
 num_epochs = 50;
 save_freq = 5; %epoc5
-init_learning_rate = .0005314;
+init_learning_rate = .0005;
 
 retrain_options = trainingOptions("adam", ...
     InitialLearnRate= init_learning_rate,...
@@ -46,22 +46,21 @@ val_ns = floor(val_ns./5);
 
 %% Train on predictions
 for k_val = 1:length(ks)
-%     load('data/networks/full-nets/SingleStepNet_10hz__17chan_384units_alltrajs.mat')
-    load('data/networks/full-nets/10Hz_alltrajs_k2/take2_35epochs.mat')
+    load('data/networks/full-nets/SingleStepNet_10hz__17chan_384units_alltrajs.mat')
     k = ks(k_val);
 %     validate = @(net) validate_net(net, XTest_subset, val_ns, k, p);
-    validate = @(net) validate_pitch_only(net, XTest_subset, val_ns, k, p, pitch_idx);
+    validate = @(net) validate_pitch_on_forecast_only(net, XTest_subset, val_ns, k, p, pitch_idx);
     first_error = validate(net)
-%     error_vec = [first_error]; % SWITCH THIS BACK
-%     error_vec_its = [1];      % SWITCH THIS BACK
+    error_vec = [first_error]; % SWITCH THIS BACK
+    error_vec_its = [1];      % SWITCH THIS BACK
     training_rmse_vec = []; %these_epochs_training_RMSE_vec; %[];
-    total_it = 8882;
+    total_it = 1;
     start_it = total_it;
     retrain_options.InitialLearnRate = init_learning_rate;
 
     tic
     
-    for epoch_n = 36:num_epochs
+    for epoch_n = 1:num_epochs
     
         for retrain_idx = 1:296
         
@@ -128,7 +127,7 @@ for k_val = 1:length(ks)
 end
 
 % take 1: learning rate = .000387
-% take 2: learning rate = .001
+% take 2: learning rate = .001 NOW REDO: .0005
 % take 3: learning rate = .0005
 % pred = toy_forecast(net, XTest{1}, 100, 25, p, true);
 
