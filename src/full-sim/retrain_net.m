@@ -20,7 +20,7 @@ val_freq = 50;
 train_to_val_ratio = val_freq*(num_trajs_before_update/mbatch);
 num_epochs = 50;
 save_freq = 5; %epoc5
-init_learning_rate = .001;
+init_learning_rate = .0005314;
 
 retrain_options = trainingOptions("adam", ...
     InitialLearnRate= init_learning_rate,...
@@ -46,21 +46,22 @@ val_ns = floor(val_ns./5);
 
 %% Train on predictions
 for k_val = 1:length(ks)
-    load('data/networks/full-nets/SingleStepNet_10hz__17chan_384units_alltrajs.mat')
+%     load('data/networks/full-nets/SingleStepNet_10hz__17chan_384units_alltrajs.mat')
+    load('data/networks/full-nets/10Hz_alltrajs_k2/take2_35epochs.mat')
     k = ks(k_val);
 %     validate = @(net) validate_net(net, XTest_subset, val_ns, k, p);
     validate = @(net) validate_pitch_only(net, XTest_subset, val_ns, k, p, pitch_idx);
     first_error = validate(net)
-    error_vec = [first_error];
-    error_vec_its = [1];
+%     error_vec = [first_error]; % SWITCH THIS BACK
+%     error_vec_its = [1];      % SWITCH THIS BACK
     training_rmse_vec = []; %these_epochs_training_RMSE_vec; %[];
-    total_it = 1;
+    total_it = 8882;
     start_it = total_it;
     retrain_options.InitialLearnRate = init_learning_rate;
 
     tic
     
-    for epoch_n = 1:num_epochs
+    for epoch_n = 36:num_epochs
     
         for retrain_idx = 1:296
         
