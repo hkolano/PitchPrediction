@@ -20,7 +20,7 @@ urdf_file = joinpath(src_dir, "..", "urdf", "alpha_seabotix.urdf")
 frame_setup_file = joinpath(src_dir, "full-sim", "data-generation", "FrameSetup.jl")
 hydro_calc_file = joinpath(src_dir, "full-sim", "data-generation", "HydroCalc.jl")
 sim_file = joinpath(src_dir, "full-sim", "data-generation", "SimWExt.jl")
-ctlr_file = joinpath(src_dir, "full-sim", "data-generation", "PIDCtlrMain.jl")
+ctlr_file = joinpath(src_dir, "full-sim", "data-generation", "PIDCtlr_vehicleonly.jl")
 traj_file = joinpath(src_dir, "full-sim", "TrajGenMain.jl")
 
 println("Libraries and external files imported.")
@@ -43,7 +43,6 @@ mech_sea_alpha = parse_urdf(urdf_file; floating=true, gravity = [0.0, 0.0, 0.0])
 delete!(vis)
 
 # Create visuals of the URDFs
-visuals = URDFVisuals(urdf_file)
 mvis = MechanismVisualizer(mech_sea_alpha, URDFVisuals(urdf_file), vis[:alpha])
 render(mvis)
 #%%
@@ -133,51 +132,47 @@ include(traj_file)
 # ----------------------------------------------------------
 #                      Gather Sim Data
 # ----------------------------------------------------------
-#%%
-num_trajs = 1
+# Reset the sim to the equilibrium position
+reset_to_equilibrium!(state)
+# Start up the controller
+ctlr_cache = PIDCtlr_vehicleonly.CtlrCache(Δt, mech_sea_alpha)
+# ctlr_cache.taus[:,1] = [0.; 0.; 0.; 0.; 0.; 10.; 0.; 0.; 0.; 0.]
 
-# Create (num_trajs) different trajectories and save to csvs
-# for n in ProgressBar(1:num_trajs)
+# println(ctlr_cache.taus)
 
-    # Reset the sim to the equilibrium position
-    reset_to_equilibrium!(state)
-    # Start up the controller
-    ctlr_cache = PIDCtlr.CtlrCache(Δt, mech_sea_alpha)
+# ----------------------------------------------------------
+#                          Simulate
+# ----------------------------------------------------------
+# Generate a random waypoint and see if there's a valid trajectory to it
+wp = TrajGen.gen_rand_waypoints_from_equil()
+traj = TrajGen.find_trajectory(wp)
 
-    # ----------------------------------------------------------
-    #                          Simulate
-    # ----------------------------------------------------------
-    # Generate a random waypoint and see if there's a valid trajectory to it
-    wp = TrajGen.gen_rand_waypoints_from_equil()
-    traj = TrajGen.find_trajectory(wp)
+# Keep trying until a good trajectory is found
+while traj === nothing
+    global wp = TrajGen.gen_rand_waypoints_from_equil()
+    global traj = TrajGen.find_trajectory(wp)
+end
 
-    # Keep trying until a good trajectory is found
-    while traj === nothing
-        global wp = TrajGen.gen_rand_waypoints_from_equil()
-        global traj = TrajGen.find_trajectory(wp)
-    end
+# Scale that trajectory to 1x-3x "top speed"
+scaled_traj = TrajGen.scale_trajectory(traj...)
+params = scaled_traj[1]
+duration = scaled_traj[2]
+poses = scaled_traj[3]
+vels = scaled_traj[4]
 
-    # Scale that trajectory to 1x-3x "top speed"
-    scaled_traj = TrajGen.scale_trajectory(traj...)
-    params = scaled_traj[1]
-    duration = scaled_traj[2]
-    poses = scaled_traj[3]
-    vels = scaled_traj[4]
+# Make vector of waypoint values and time step to save to csv
+waypoints = [Δt*sample_rate params.wp.start.θs... params.wp.goal.θs... params.wp.start.dθs... params.wp.goal.dθs...]
+wp_data = Tables.table(waypoints)
 
-    ts, qs, vs = simulate_with_ext_forces(state, duration, params, ctlr_cache, hydro_calc!, PIDCtlr.pid_control!; Δt=Δt)
-
-    render(mvis)
-    MeshCatMechanisms.animate(mvis, ts, qs; realtimerate = 1.0)
-# end
-
-#%%
-q0s = [qs[i][1] for i in 1:sample_rate:length(qs)]
+print("Simulating... ")
+ts, qs, vs = simulate_with_ext_forces(state, duration, params, ctlr_cache, hydro_calc!, PIDCtlr_vehicleonly.pid_control!; Δt=Δt)
+# ts, qs, vs = simulate(state_alpha, final_time, simple_control!; Δt = 1e-2)
+println("done.")
 
 ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
 des_vs = [TrajGen.get_desv_at_t(t, params) for t in ts_down]
 paths = OrderedDict();
 
-# Convert qs and vs to single column vectors for the table
 paths["qs0"] = [qs[i][1] for i in 1:sample_rate:length(qs)]
 for idx = 1:10
     joint_poses = [qs[i][idx+1] for i in 1:sample_rate:length(qs)]
@@ -188,69 +183,46 @@ for idx = 1:10
     paths[string("vs", idx)] = joint_vels
 end
 
-# Write the trajectories to an array -> Table -> CSV
-num_rows = 25
-data = Array{Float64}(undef, length(ts_down), num_rows-4)
-fill!(data, 0.0)
-labels = Array{String}(undef, num_rows-4)
+print("Animating... ")
+MeshCatMechanisms.animate(mvis, ts, qs; realtimerate = 1.0)
+println("done.")
 
-# Put the quaternion data in a different file 
-# quat_data = Array{Float64}(undef, length(ts_down), 4)
-# quat_labels = Array{String}(undef, 4)
-# row_n = 1
-# for (key, value) in paths
-#     if row_n < 5
-#         quat_labels[row_n] = key 
-#         quat_data[:,row_n] = value
-#     else
-#         labels[row_n-4] = key
-#         data[:,row_n-4] = value 
-#     end
-#     row_n = row_n + 1
-# end
-# for actuated_idx = 5:8
-#     # println([des_vs[m][actuated_idx] for m in 1:length(des_vs)])
-#     data[:,row_n-4] = [des_vs[m][actuated_idx] for m in 1:length(des_vs)]
-#     row_n = row_n + 1
-# end
-# #%%
-# labels[18:21] = ["des_vsE", "des_vsD", "des_vsC", "des_vsB"]
-                    
-# Save the trajectory data to CSV
-# tab = Tables.table(data)
-# CSV.write("data/traj_viz.csv", tab, header=labels)
-# quat_tab = Tables.table(quat_data)
-# CSV.write("data/traj_viz_quats.csv", quat_tab, header=quat_labels)
 
-println("Simulation finished.")
+l = @layout [a d ; b e ; c f]
+var_names = ["vs1", "vs2", "vs3", "vs4", "vs5", "vs6"]
+plot_hands = []
+for k = 1:6
+    var = var_names[k]
+    push!(plot_hands, plot(ts_down, paths[var], label=var))
+end
+display(plot(plot_hands..., layout=l))
 
-#%%
 
 # function plot_state_errors()
-    # l = @layout [a b ; c d ; e f]
-    # # label = ["q2", "q3", "v2", "v3"]
-    # # Joint E (base joint)
-    # p1 = plot(ts_down, paths["qs8"], label="Joint E", ylim=(-3.0, 3.0))
-    # p1 = plot!(LinRange(0,duration,50), poses[:,1], label="des_qE", legend=:topleft)
-    # p2 = plot(ts_down, paths["vs8"], label="Joint E vels",  ylim=(-0.5, 0.5))
-    # p2 = plot!(LinRange(0, duration, 50), vels[:,1], label="des_vE", legend=:topleft)
-    # # Joint D (shoulder joint)
-    # p3 = plot(ts_down, paths["qs9"], label="Joint D",  ylim=(-.5, 5.5))
-    # p3 = plot!(LinRange(0, duration, 50), poses[:,2], label="des_qD", legend=:topleft)
-    # p4 = plot(ts_down, paths["vs9"], label="Joint D vels",  ylim=(-0.5, 0.5))
-    # p4 = plot!(LinRange(0, duration, 50), vels[:,2], label="des_vD", legend=:topleft)
-    # # Joint C (elbow joint)
-    # p5 = plot(ts_down, paths["qs10"], label="Joint C",  ylim=(-.5, 5.5))
-    # p5 = plot!(LinRange(0, duration, 50), poses[:,3], label="des_qC", legend=:topleft)
-    # p6 = plot(ts_down, paths["vs10"], label="Joint C vels",  ylim=(-0.5, 0.5))
-    # p6 = plot!(LinRange(0, duration, 50), vels[:,3], label="des_vC", legend=:topleft)
-    # # Joint B (wrist joint)
-    # # p7 = plot(ts_down, paths["qs11"], label="Joint B",  ylim=(-1.5, 1.5))
-    # # p7 = plot!(LinRange(0, duration, 50), poses[:,4], label="des_q3", legend=:topleft)
-    # # p8 = plot(ts_down, paths["vs11"], label="Joint B vels",  ylim=(-0.5, 0.5))
-    # # p8 = plot!(LinRange(0, duration, 50), vels[:,4], label="des_v3", legend=:topleft)
-    # # plot(p1, p2, p3, p4, p5, p6, p7, p8, layout=l)
-    # display(plot(p1, p2, p3, p4, p5, p6, layout=l))
+#     l = @layout [a b ; c d ; e f]
+#     # label = ["q2", "q3", "v2", "v3"]
+#     # Joint E (base joint)
+#     p1 = plot(ts_down, paths["qs8"], label="Joint E", ylim=(-3.0, 3.0))
+#     p1 = plot!(LinRange(0,duration,50), poses[:,1], label="des_qE", legend=:topleft)
+#     p2 = plot(ts_down, paths["vs8"], label="Joint E vels",  ylim=(-0.5, 0.5))
+#     p2 = plot!(LinRange(0, duration, 50), vels[:,1], label="des_vE", legend=:topleft)
+#     # Joint D (shoulder joint)
+#     p3 = plot(ts_down, paths["qs9"], label="Joint D",  ylim=(-.5, 5.5))
+#     p3 = plot!(LinRange(0, duration, 50), poses[:,2], label="des_qD", legend=:topleft)
+#     p4 = plot(ts_down, paths["vs9"], label="Joint D vels",  ylim=(-0.5, 0.5))
+#     p4 = plot!(LinRange(0, duration, 50), vels[:,2], label="des_vD", legend=:topleft)
+#     # Joint C (elbow joint)
+#     p5 = plot(ts_down, paths["qs10"], label="Joint C",  ylim=(-.5, 5.5))
+#     p5 = plot!(LinRange(0, duration, 50), poses[:,3], label="des_qC", legend=:topleft)
+#     p6 = plot(ts_down, paths["vs10"], label="Joint C vels",  ylim=(-0.5, 0.5))
+#     p6 = plot!(LinRange(0, duration, 50), vels[:,3], label="des_vC", legend=:topleft)
+#     # Joint B (wrist joint)
+#     # p7 = plot(ts_down, paths["qs11"], label="Joint B",  ylim=(-1.5, 1.5))
+#     # p7 = plot!(LinRange(0, duration, 50), poses[:,4], label="des_q3", legend=:topleft)
+#     # p8 = plot(ts_down, paths["vs11"], label="Joint B vels",  ylim=(-0.5, 0.5))
+#     # p8 = plot!(LinRange(0, duration, 50), vels[:,4], label="des_v3", legend=:topleft)
+#     # plot(p1, p2, p3, p4, p5, p6, p7, p8, layout=l)
+#     display(plot(p1, p2, p3, p4, p5, p6, layout=l))
 # end
 
 # for n = 1:6
