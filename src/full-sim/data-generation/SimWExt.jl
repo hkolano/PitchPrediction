@@ -1,5 +1,5 @@
 using RigidBodyDynamics.OdeIntegrators
-import RigidBodyDynamics: default_constraint_stabilization_gains
+import RigidBodyDynamics: default_constraint_stabilization_gains, MechanismState
 import RigidBodyDynamics
 import RigidBodyDynamics.cache_eltype
 

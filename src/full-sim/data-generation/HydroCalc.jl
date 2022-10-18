@@ -1,4 +1,6 @@
-# Hydrodynamics calculator function
+# Hydrodynamics calculator functions 
+using RigidBodyDynamics
+
 # ------------------------------------------------------------------------
 #                HYDRODYNAMICS (Grav & Buoy) CALCULATOR
 # ------------------------------------------------------------------------

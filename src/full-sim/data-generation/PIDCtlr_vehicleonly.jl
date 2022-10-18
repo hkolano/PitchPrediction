@@ -2,11 +2,9 @@ module PIDCtlr_vehicleonly
 export CtlrCache, pid_control!
 
 using RigidBodyDynamics
-using PitchPrediction
 
-src_dir = dirname(pathof(PitchPrediction))
-traj_file = joinpath(src_dir, "full-sim", "TrajGenMain.jl")
-include(traj_file)
+include("TrajGenMain.jl")
+include("StructDefs.jl")
 
 # ------------------------------------------------------------------------
 #                              SETUP 
@@ -14,9 +12,9 @@ include(traj_file)
 arm_Kp = 30.
 arm_Kd = 0.05
 arm_Ki = 9. 
-v_Kp = 20.
+v_Kp = 50.
 v_Kd = 1.5
-v_Ki = 1.
+v_Ki = 1.5
 default_Kp = [v_Kp, v_Kp, v_Kp, v_Kp, arm_Kp, arm_Kp, arm_Kp, 20.]
 default_Kd = [v_Kd, v_Kd, v_Kd, v_Kd, arm_Kd, arm_Kd, arm_Kd, 0.002]
 default_Ki = [v_Ki, v_Ki, v_Ki, v_Ki, arm_Ki, arm_Ki, arm_Ki, 0.1]
@@ -81,8 +79,8 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         # Set up empty vector for control torques
         c_taus = zeros(10,1)
         if c.step_ctr == 0
-            torques[6] = 8.
-            torques[4] = -1.8
+            torques[6] = 7. # 8
+            torques[4] = -1. # -1.8
         end
         
         # Roll and pitch are not controlled.
@@ -93,7 +91,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         # c.des_vel = TrajGen.get_desv_at_t(t, pars)
         c.des_vel = TrajGen.get_desv_at_t(t, pars)
         # Don't move the manipulator
-        c.des_vel[end-3:end] = zeros(4,1)
+        # c.des_vel[end-3:end] = zeros(4,1)
         # println("Got desired velocity")
 
         # Get forces for vehicle (yaw, surge, sway, heave)
@@ -141,7 +139,7 @@ function PID_ctlr(torque, t, vel_act, idx, c)
 
     # Can only change torque a small amount per time step
     if 3 <= idx <= 6
-        lim = 0.0025
+        lim = 0.005
     else
         lim = 0.05
     end

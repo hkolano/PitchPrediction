@@ -1,6 +1,9 @@
 module TrajGen
-# export gen_rand_waypoints, find_trajectory
 
+include("StructDefs.jl")
+using JLD
+
+#%%
 num_its=50
 num_actuated_dofs = 4
 θa = atan(145.3, 40)
@@ -10,19 +13,9 @@ joint_lims = [[-175*pi/180, 175*pi/180], [0, 200*pi/180], [0, 200*pi/180], [-165
 θc = deg2rad(50)
 vel_lims = [[-θb, θb], [-θb, θb], [-θb, θb], [-θc, θc]]
 
-mutable struct jointState
-    θs::Array{Float64}
-    dθs::Array{Float64}
-end
-
 equil_pose = zeros(num_actuated_dofs)
 equil_pt = jointState(equil_pose, zeros(num_actuated_dofs))
 extended_pt = jointState([0.01, 1.5, 2.6, 0.01], zeros(num_actuated_dofs))
-
-mutable struct Waypoints
-    start::jointState 
-    goal::jointState
-end
 
 # raise_wpts = Waypoints(equil_pt, extended_pt)
 
@@ -49,8 +42,22 @@ function gen_rand_waypoints_from_equil()
     Waypoints(equil_pt, gen_rand_feasible_point()) 
 end
 
+function set_waypoint_from_equil(θs, dθs)
+    Waypoints(equil_pt, jointState(θs, dθs))
+end
+
 function gen_reaching_waypoints()
     Waypoints(equil_pt, extended_pt)
+end
+
+function save_waypoints(wp::Waypoints, name::String)
+    save(string("src/tmp/", name, ".jld"), "start_θs", wp.start.θs, "start_dθs", wp.start.dθs, "end_θs", wp.goal.θs, "end_dθs", wp.goal.dθs)
+end
+
+function load_waypoints(name::String)
+    wp_raw = load(string("src/tmp/", name, ".jld"))
+    new_wp = Waypoints(jointState(wp_raw["start_θs"], wp_raw["start_dθs"]), jointState(wp_raw["end_θs"], wp_raw["end_dθs"]))
+    return new_wp 
 end
 
 function get_coeffs(pts::Waypoints, T, idx)
@@ -143,11 +150,13 @@ function find_trajectory(pts::Waypoints; num_its=num_its, T_init=1.0)
             (poses[:,i], vels[:,i]) = get_path!(poses[:,i], vels[:,i], pts.start.θs[i], pts.goal.θs[i], T, a[i,:])
 
             # Evaluate if possible
-            is_in_range_poses = check_lim(poses, joint_lims, i)
-            is_in_range_vels = check_lim(vels, vel_lims, i)
+            is_in_range_poses = check_lim(poses[:,i], joint_lims, i)
+            is_in_range_vels = check_lim(vels[:,i], vel_lims, i)
             # println("OK poses = $(is_in_range_poses), OK vels = $(is_in_range_vels)")
             if is_in_range_poses == true && is_in_range_vels == true
                 feasible_ct = feasible_ct + 1
+            # else
+                # println("Max joint: $(maximum(poses[:,i])), min joint: $(minimum(poses[:,i]))")
             end
         end
         if feasible_ct < num_actuated_dofs

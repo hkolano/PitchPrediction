@@ -7,31 +7,20 @@ using LinearAlgebra, StaticArrays, DataStructures
 using MeshCat, MeshCatMechanisms, MechanismGeometries
 using CoordinateTransformations
 using GeometryBasics
-using Printf, Plots, CSV, Tables, ProgressBars
-using PitchPrediction
+using Printf, Plots, CSV, Tables, ProgressBars, Revise
+
 
 # include("/home/hkolano/onr-dynamics-julia/simulate_with_ext_forces.jl")
+#%%
+include("StructDefs.jl")
+include("FrameSetup.jl")
+include("HydroCalc.jl")
+include("SimWExt.jl")
+include("PIDCtlr_vehicleonly.jl")
+include("TrajGenMain.jl")
 
-
-# Path of the source directory
-src_dir = dirname(pathof(PitchPrediction))
-# URDF of the seabotix vehicle + alpha arm
-urdf_file = joinpath(src_dir, "..", "urdf", "alpha_seabotix.urdf")
-frame_setup_file = joinpath(src_dir, "full-sim", "data-generation", "FrameSetup.jl")
-hydro_calc_file = joinpath(src_dir, "full-sim", "data-generation", "HydroCalc.jl")
-sim_file = joinpath(src_dir, "full-sim", "data-generation", "SimWExt.jl")
-ctlr_file = joinpath(src_dir, "full-sim", "data-generation", "PIDCtlr_vehicleonly.jl")
-traj_file = joinpath(src_dir, "full-sim", "TrajGenMain.jl")
-
-println("Libraries and external files imported.")
-
-#%% Re-import functions
-include(frame_setup_file)
-include(hydro_calc_file)
-include(sim_file)
-include(ctlr_file)
-include(traj_file)
-
+urdf_file = joinpath("urdf", "alpha_seabotix.urdf")
+#%%
 # ----------------------------------------------------------
 #                 One-Time Mechanism Setup
 # ----------------------------------------------------------
@@ -126,8 +115,9 @@ sample_rate = Int(floor((1/Δt)/goal_freq))
 
 #%%
 # (temporary adds while making changes to ctlr and traj generator)
-include(ctlr_file)
-include(traj_file)
+include("PIDCtlr_vehicleonly.jl")
+include("TrajGenMain.jl")
+# println(TrajGen.num_its)
 
 # ----------------------------------------------------------
 #                      Gather Sim Data
@@ -144,16 +134,20 @@ ctlr_cache = PIDCtlr_vehicleonly.CtlrCache(Δt, mech_sea_alpha)
 #                          Simulate
 # ----------------------------------------------------------
 # Generate a random waypoint and see if there's a valid trajectory to it
-wp = TrajGen.gen_rand_waypoints_from_equil()
-traj = TrajGen.find_trajectory(wp)
+# wp = TrajGen.gen_rand_waypoints_from_equil()
+wp = TrajGen.load_waypoints("unstable_wps_left")
+# wp = TrajGen.set_waypoint_from_equil([-2.03, 1.92, 1.73, 1.18], [0.16, 0.24, -0.08, 0.19])
+println(wp)
+println(TrajGen.num_its)
+traj = TrajGen.find_trajectory(wp; num_its=50, T_init=1.0)
 
-# Keep trying until a good trajectory is found
-while traj === nothing
-    global wp = TrajGen.gen_rand_waypoints_from_equil()
-    global traj = TrajGen.find_trajectory(wp)
-end
+# # Keep trying until a good trajectory is found
+# while traj === nothing
+#     global wp = TrajGen.gen_rand_waypoints_from_equil()
+#     global traj = TrajGen.find_trajectory(wp)
+# end
 
-# Scale that trajectory to 1x-3x "top speed"
+# # Scale that trajectory to 1x-3x "top speed"
 scaled_traj = TrajGen.scale_trajectory(traj...)
 params = scaled_traj[1]
 duration = scaled_traj[2]
@@ -187,16 +181,22 @@ print("Animating... ")
 MeshCatMechanisms.animate(mvis, ts, qs; realtimerate = 1.0)
 println("done.")
 
-
-l = @layout [a d ; b e ; c f]
+print("Plotting...")
+l = @layout[a b; c d; e f]
 var_names = ["vs1", "vs2", "vs3", "vs4", "vs5", "vs6"]
-plot_hands = []
+plot_labels = ["roll", "pitch", "yaw", "x", "y", "z"]
+plot_handles = []
 for k = 1:6
     var = var_names[k]
-    push!(plot_hands, plot(ts_down, paths[var], label=var))
+    lab = plot_labels[k]
+    if k < 4
+        push!(plot_handles, plot(ts_down, paths[var], label=lab))
+    else
+        push!(plot_handles, plot(ts_down, paths[var], label=lab, ylim=(-.001,.01)))
+    end
 end
-display(plot(plot_hands..., layout=l))
-
+display(plot(plot_handles..., layout=l))
+println("done.")
 
 # function plot_state_errors()
 #     l = @layout [a b ; c d ; e f]
@@ -237,6 +237,10 @@ display(plot(plot_hands..., layout=l))
 # p_sway = plot(ts_down, paths["vs5"], label="twist - y",  ylim=(-.5, .5))
 # p_heave = plot(ts_down, paths["vs6"], label="twist - z",  ylim=(-0.5, 0.5))
 # plot(p_yaw, p_surge, p_sway, p_heave, layout=l2)
-
+#%%
 #  Animate
 # render(mvis)
+
+#%%
+# save_waypoints(wp, "unstable_wps_right")
+# noodle = load_waypoints("test_wps")
