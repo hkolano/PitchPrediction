@@ -59,9 +59,12 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
             vel=velocity(state, joints(state.mechanism)[1])
             d_lin_coeffs = [4.5, 8.0, 2.7, 3.4, 4.6, 52.9]
             d_nonlin_coeffs = [11.4, 20.0, 13.5, 34.4, 65.9, 132.3]
-            tau_d = d_lin_coeffs .* abs.(vel) .+ d_nonlin_coeffs .* vel .* abs.(vel)
+            tau_d = -d_lin_coeffs .* vel .+ -d_nonlin_coeffs .* vel .* abs.(vel)
             drag_wrench = Wrench(body_default_frame, tau_d[1:3], tau_d[4:6])  
-            wrench = wrench - drag_wrench
+            # println("Vehicle velocity is $(vel)")
+            # println("Vehicle drag is $(drag_wrench)")
+            
+            wrench = wrench + drag_wrench
             # println("Wrench drag:")
             # println(drag_wrench)
         # ----- Drag on the links (quadratic only) ----
@@ -72,14 +75,17 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
             twist_body = transform(twist_world, inv(root_transform))
             cob_vel = point_velocity(twist_body, Point3D(body_default_frame, translation(inv(def_to_cob))))
             # @show(i)
-
-            F_d = transpose(link_drag_coeffs[i-1]) .* abs.(cob_vel.v) .* cob_vel.v
+            # println("Point Velocity= $(cob_vel.v)")
+            F_d = transpose(-link_drag_coeffs[i-1]) .* abs.(cob_vel.v) .* cob_vel.v
+            # println("Drag Force = $(F_d)")
+            # println("Current Wrench = $(wrench)")
             # println([@printf(" %5.2f", x) for x in twist_body.linear])
             # println([@printf(" %5.2f", x) for x in F_d])
             # Wrench(frame, angular, linear)
             drag_wrench_at_cob = Wrench(cob_frames[i], [0.0, 0.0, 0.0], [F_d[1], F_d[2], F_d[3]])
             drag_wrench_at_default = transform(drag_wrench_at_cob, inv(def_to_cob))
-            # wrench = wrench - drag_wrench_at_default
+            # println("to be added: $(drag_wrench_at_default)")
+            wrench = wrench + drag_wrench_at_default
         end
         # Transform the wrench to the root frame and assign it to the body
         hydro_wrenches[BodyID(bod)] = transform(state, wrench, root_frame(state.mechanism))

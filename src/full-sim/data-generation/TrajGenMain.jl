@@ -3,7 +3,9 @@ module TrajGen
 include("StructDefs.jl")
 using JLD
 
-#%%
+# ----------------------------------------------------------
+#                         Definitions
+# ----------------------------------------------------------
 num_its=50
 num_actuated_dofs = 4
 θa = atan(145.3, 40)
@@ -20,10 +22,19 @@ extended_pt = jointState([0.01, 1.5, 2.6, 0.01], zeros(num_actuated_dofs))
 # raise_wpts = Waypoints(equil_pt, extended_pt)
 
 mutable struct trajParams
-    a::Array
-    wp::Waypoints
+    a::Array        # Array of time scaling coefficients (quintic traj)
+    wp::Waypoints   # Waypoints the traj is going between
+    T::Float64      # Duration of the trajectory
 end
 
+# ----------------------------------------------------------
+#                     Point Generation
+# ----------------------------------------------------------
+""" 
+    gen_rand_feasible_point()
+
+Randomly generates a jointState, checking for joint and velocity limits.
+"""
 function gen_rand_feasible_point()
     θs = Array{Float64}(undef,num_actuated_dofs)    
     dθs = Array{Float64}(undef,num_actuated_dofs)    
@@ -34,32 +45,79 @@ function gen_rand_feasible_point()
     return jointState(θs, dθs)
 end
 
+"""
+    gen_rand_feasible_point_at_rest()
+
+Randomly generates a jointState where the velocity is 0. 
+"""
+function gen_rand_feasible_point_at_rest()
+    jS = gen_rand_feasible_point()
+    jS.dθs = [0.0 0.0 0.0 0.0]
+    return jS
+end
+
+# ----------------------------------------------------------
+#                    Waypoint Generation
+# ----------------------------------------------------------
+"""
+Generates a random Waypoint struct. Not advisable to start a trajectory.  
+"""
 function gen_rand_waypoints()
     Waypoints(gen_rand_feasible_point(), gen_rand_feasible_point())    
 end
 
+"""
+Generates a random Waypoint struct, starting at rest at the home position. 
+"""
 function gen_rand_waypoints_from_equil()
     Waypoints(equil_pt, gen_rand_feasible_point()) 
 end
 
-function set_waypoint_from_equil(θs, dθs)
+"""
+    set_waypoint_from_equil(θs, dθs)
+
+Generates a Waypoint struct. Starts at rest at the home position; ...
+ends at the provided position (θs) and velocity (dθs) of the arm.
+"""
+function set_waypoints_from_equil(θs, dθs)
     Waypoints(equil_pt, jointState(θs, dθs))
 end
 
-function gen_reaching_waypoints()
-    Waypoints(equil_pt, extended_pt)
+function gen_rand_waypoints_to_rest()
+    Waypoints(equil_pt, gen_rand_feasible_point_at_rest())
 end
 
+"""
+    save_waypoints(wp::Waypoints, name::String)
+
+Save an already generated waypoint to a file. The file will be located in "src/tmp/", ...
+and will be called [name].jld
+"""
 function save_waypoints(wp::Waypoints, name::String)
     save(string("src/tmp/", name, ".jld"), "start_θs", wp.start.θs, "start_dθs", wp.start.dθs, "end_θs", wp.goal.θs, "end_dθs", wp.goal.dθs)
 end
 
+""" 
+    load_waypoints(name::String)
+
+Load a waypoint from a file. The file must be located in "src/tmp/" and be in JLD file format.
+"""
 function load_waypoints(name::String)
     wp_raw = load(string("src/tmp/", name, ".jld"))
     new_wp = Waypoints(jointState(wp_raw["start_θs"], wp_raw["start_dθs"]), jointState(wp_raw["end_θs"], wp_raw["end_dθs"]))
     return new_wp 
 end
 
+
+# ----------------------------------------------------------
+#                  Trajectory Generation
+# ----------------------------------------------------------
+""" 
+    get_coeffs(pts::Waypoints, T, idx)
+
+Given a set of waypoints and a time scaling, determine the time scaling coefficients
+for a quintic trajectory. 
+"""
 function get_coeffs(pts::Waypoints, T, idx)
     # λ1 = dθ1/(θ2-θ1)
     λ1 = pts.start.dθs[idx]/(pts.goal.θs[idx]-pts.start.θs[idx])
@@ -100,14 +158,20 @@ function get_path!(poses, vels, θ1, θ2, T, a, num_its=num_its)
     return poses, vels 
 end
 
-# function get_desv_at_t(t, p)
+"""
+    get_desv_at_t(t, p)
+    
+Given a set of trajectory parameters p and a time t, determine what the desired 
+velocity is. 
+"""
 function get_desv_at_t(t, p)
     # println("Got request for desv. Params $(p))")
-    des_vel = Array{Float64}(undef,8)
-    des_vel[1:4] = zeros(4)
-    for i = 1:num_actuated_dofs
-        ds = vel_scale_at_t(p.a[i,:], t)
-        des_vel[i+4] = ds*(p.wp.goal.θs[i]-p.wp.start.θs[i])
+    des_vel = zeros(8)
+    if t <= p.T # If the current time is less than the trajectory duration
+        for i = 1:num_actuated_dofs
+            ds = vel_scale_at_t(p.a[i,:], t)
+            des_vel[i+4] = ds*(p.wp.goal.θs[i]-p.wp.start.θs[i])
+        end
     end
     # fill!(des_vel, 0)
     return des_vel
@@ -122,16 +186,16 @@ function check_lim(vals::Array, lims, idx)
     return is_in_range
 end
 
-function scale_trajectory(params, dur, poses, vels)
+function scale_trajectory(params, poses, vels)
     a = Array{Float64}(undef, num_actuated_dofs, 6)
     scale_factor = rand(1:.01:3)
-    T = dur*scale_factor
+    T = params.T*scale_factor
     # println("Scaling factor: $(scale_factor)")
     for i in 1:num_actuated_dofs
         a[i,:] = get_coeffs(params.wp, T, i)
         (poses[:,i], vels[:,i]) = get_path!(poses[:,i], vels[:,i], params.wp.start.θs[i], params.wp.goal.θs[i], T, a[i,:])
     end
-    return [trajParams(a, params.wp), T, poses, vels]
+    return [trajParams(a, params.wp, T), poses, vels]
 end
 
 function find_trajectory(pts::Waypoints; num_its=num_its, T_init=1.0)
@@ -167,7 +231,7 @@ function find_trajectory(pts::Waypoints; num_its=num_its, T_init=1.0)
     if feasible_ct == num_actuated_dofs
         # println("Trajectory Parameters set")
         # println("Poses: $(poses)")
-        return [trajParams(a, pts), T, poses, vels]
+        return [trajParams(a, pts, T), poses, vels]
         # println("Trajectory parameters set")
     else
         # println("No path between points; try again.")

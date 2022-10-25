@@ -113,11 +113,16 @@ final_time = 5.0
 goal_freq = 50
 sample_rate = Int(floor((1/Δt)/goal_freq))
 
+# Control variables
+do_scale_traj = false   # Scale the trajectory?
+duration_after_traj = 20.0   # How long to simulate after trajectory has ended
+
 #%%
 # (temporary adds while making changes to ctlr and traj generator)
 include("PIDCtlr_vehicleonly.jl")
 include("TrajGenMain.jl")
-# println(TrajGen.num_its)
+include("HydroCalc.jl")
+
 
 # ----------------------------------------------------------
 #                      Gather Sim Data
@@ -128,38 +133,39 @@ reset_to_equilibrium!(state)
 ctlr_cache = PIDCtlr_vehicleonly.CtlrCache(Δt, mech_sea_alpha)
 # ctlr_cache.taus[:,1] = [0.; 0.; 0.; 0.; 0.; 10.; 0.; 0.; 0.; 0.]
 
-# println(ctlr_cache.taus)
-
 # ----------------------------------------------------------
 #                          Simulate
 # ----------------------------------------------------------
 # Generate a random waypoint and see if there's a valid trajectory to it
-# wp = TrajGen.gen_rand_waypoints_from_equil()
-wp = TrajGen.load_waypoints("unstable_wps_left")
-# wp = TrajGen.set_waypoint_from_equil([-2.03, 1.92, 1.73, 1.18], [0.16, 0.24, -0.08, 0.19])
-println(wp)
-println(TrajGen.num_its)
-traj = TrajGen.find_trajectory(wp; num_its=50, T_init=1.0)
+wp = TrajGen.gen_rand_waypoints_to_rest()
+# wp = TrajGen.load_waypoints("unstable_wps_right")
+# wp = TrajGen.set_waypoints_from_equil([-2.03, 1.92, 1.73, 1.18], [0.16, 0.24, -0.08, 0.19])
+
+traj = TrajGen.find_trajectory(wp) 
 
 # # Keep trying until a good trajectory is found
-# while traj === nothing
-#     global wp = TrajGen.gen_rand_waypoints_from_equil()
-#     global traj = TrajGen.find_trajectory(wp)
-# end
+while traj === nothing
+    global wp = TrajGen.gen_rand_waypoints_to_rest()
+    global traj = TrajGen.find_trajectory(wp)
+end
 
 # # Scale that trajectory to 1x-3x "top speed"
-scaled_traj = TrajGen.scale_trajectory(traj...)
+if do_scale_traj == true
+    scaled_traj = TrajGen.scale_trajectory(traj...)
+else
+    scaled_traj = traj 
+end
 params = scaled_traj[1]
-duration = scaled_traj[2]
-poses = scaled_traj[3]
-vels = scaled_traj[4]
+duration = params.T
+poses = scaled_traj[2]
+vels = scaled_traj[3]
 
 # Make vector of waypoint values and time step to save to csv
 waypoints = [Δt*sample_rate params.wp.start.θs... params.wp.goal.θs... params.wp.start.dθs... params.wp.goal.dθs...]
 wp_data = Tables.table(waypoints)
 
 print("Simulating... ")
-ts, qs, vs = simulate_with_ext_forces(state, duration, params, ctlr_cache, hydro_calc!, PIDCtlr_vehicleonly.pid_control!; Δt=Δt)
+ts, qs, vs = simulate_with_ext_forces(state, duration+duration_after_traj, params, ctlr_cache, hydro_calc!, PIDCtlr_vehicleonly.pid_control!; Δt=Δt)
 # ts, qs, vs = simulate(state_alpha, final_time, simple_control!; Δt = 1e-2)
 println("done.")
 
@@ -190,9 +196,9 @@ for k = 1:6
     var = var_names[k]
     lab = plot_labels[k]
     if k < 4
-        push!(plot_handles, plot(ts_down, paths[var], label=lab))
+        push!(plot_handles, plot(ts_down, paths[var], title=lab, legend=false, titlefontsize=12))
     else
-        push!(plot_handles, plot(ts_down, paths[var], label=lab, ylim=(-.001,.01)))
+        push!(plot_handles, plot(ts_down, paths[var], title=lab, ylim=(-.005,.01), legend=false, titlefontsize=12))
     end
 end
 display(plot(plot_handles..., layout=l))
