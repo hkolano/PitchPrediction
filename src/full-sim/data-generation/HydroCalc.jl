@@ -25,6 +25,7 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
         buoy_wrench = Wrench(Point3D(body_default_frame, translation(inv(def_to_cob))), buoy_force_trans)
         push!(buoy_wrenches, buoy_wrench)
 
+
         # -------- Calculate Gravity Wrench -------
         def_to_com = fixed_transform(bod, body_default_frame, com_frames[i])
         grav_force_trans = transform(state, grav_lin_forces[i], body_default_frame)
@@ -75,7 +76,6 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
             twist_body = transform(twist_world, inv(root_transform))
             cob_vel = point_velocity(twist_body, Point3D(body_default_frame, translation(inv(def_to_cob))))
             # @show(i)
-            # println("Point Velocity= $(cob_vel.v)")
             F_d = transpose(-link_drag_coeffs[i-1]) .* abs.(cob_vel.v) .* cob_vel.v
             # println("Drag Force = $(F_d)")
             # println("Current Wrench = $(wrench)")
@@ -84,7 +84,10 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
             # Wrench(frame, angular, linear)
             drag_wrench_at_cob = Wrench(cob_frames[i], [0.0, 0.0, 0.0], [F_d[1], F_d[2], F_d[3]])
             drag_wrench_at_default = transform(drag_wrench_at_cob, inv(def_to_cob))
-            # println("to be added: $(drag_wrench_at_default)")
+            # if i == 3
+            #     println("Point Velocity= $(cob_vel.v)")
+            #     println("to be added: $(drag_wrench_at_default)")
+            # end
             wrench = wrench + drag_wrench_at_default
         end
         # Transform the wrench to the root frame and assign it to the body

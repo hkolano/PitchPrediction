@@ -20,7 +20,7 @@ include("PIDCtlr_vehicleonly.jl")
 include("TrajGenMain.jl")
 
 urdf_file = joinpath("urdf", "alpha_seabotix.urdf")
-#%%
+
 # ----------------------------------------------------------
 #                 One-Time Mechanism Setup
 # ----------------------------------------------------------
@@ -116,7 +116,7 @@ sample_rate = Int(floor((1/Δt)/goal_freq))
 
 # Control variables
 do_scale_traj = false   # Scale the trajectory?
-duration_after_traj = 20.0   # How long to simulate after trajectory has ended
+duration_after_traj = 5.0   # How long to simulate after trajectory has ended
 
 #%%
 # (temporary adds while making changes to ctlr and traj generator)
@@ -199,7 +199,7 @@ for k = 1:6
     if k < 4
         push!(plot_handles, plot(ts_down, paths[var], title=lab, legend=false, titlefontsize=12))
     else
-        push!(plot_handles, plot(ts_down, paths[var], title=lab, ylim=(-.005,.01), legend=false, titlefontsize=12))
+        push!(plot_handles, plot(ts_down, paths[var], title=lab, ylim=(-.05,.05), legend=false, titlefontsize=12))
     end
 end
 display(plot(plot_handles..., layout=l))

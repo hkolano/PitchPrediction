@@ -1,5 +1,5 @@
 function setup_frames!(mech, frame_names_cob, frame_names_com, cob_vecs, com_vecs, cob_frames, com_frames)
-    vis_element = 5
+    vis_element = 2
     for i in 1:5
         bod = bodies(mech_sea_alpha)[i+1]
         frame_cob = CartesianFrame3D(frame_names_cob[i])
