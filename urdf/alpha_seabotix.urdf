@@ -155,7 +155,7 @@
       <origin rpy="0 0 0" xyz="0 .19 -.3"/>
     </joint>
 
-  <!-- ======= Front/Back Bumpers ======= -->
+<!-- ======= Front/Back Bumpers ======= -->
   <link name="front_bumper">
     <visual>
       <geometry>
@@ -183,7 +183,7 @@
       <origin rpy="1.57579632679 0 0" xyz="-0.25 0 0"/>
     </joint>
 
-  <!-- ======= Front Arrow ======= -->
+<!-- ======= Front Arrow ======= -->
   <link name="l_arrow">
     <visual>
       <geometry>
@@ -211,7 +211,7 @@
       <origin rpy="0 0 -0.787898163397" xyz="0.05 -0.095 0.075"/>
     </joint>
 
-  <!-- ======= Thrusters ======= -->
+<!-- ======= Thrusters ======= -->
   <link name="sf_fan">
     <visual>
       <geometry>
@@ -336,9 +336,9 @@
     <parent link="vehicle_base_link"/>
     <child link="r5m_base_link"/>
   </joint>
-  <!-- ======================================= -->
-  <!--               ALPHA LINKS               -->
-  <!-- ======================================= -->
+<!-- ======================================= -->
+<!--               ALPHA LINKS               -->
+<!-- ======================================= -->
   <link name="r5m_base_link">
     <visual>
       <geometry>
@@ -362,6 +362,7 @@
       <inertia ixx="0.000106" ixy="0.000139" ixz="0.000115" iyy="0.00433" iyz="0.000003" izz="0.004348"/>
     </inertial>
   </link>
+
   <joint name="r5m_joint5" type="revolute">
     <parent link="r5m_base_link"/>
     <child link="r5m_shoulder_link"/>
@@ -370,6 +371,7 @@
     <axis xyz="0 0 1"/>
     <limit effort="9.0" lower="0.0" upper="6.2" velocity="0.5"/>
   </joint>
+
   <link name="r5m_shoulder_link">
     <visual>
       <geometry>
@@ -393,6 +395,7 @@
       <inertia ixx="0.000196" ixy="0.000005" ixz="0.000054" iyy="0.000220" iyz="0.000003" izz="0.000067"/>
     </inertial>
   </link>
+
   <joint name="r5m_joint4" type="revolute">
     <parent link="r5m_shoulder_link"/>
     <child link="r5m_upper_arm_link"/>
@@ -401,6 +404,7 @@
     <axis xyz="0 0 1"/>
     <limit effort="9.0" lower="0.0" upper="3.5" velocity="0.5"/>
   </joint>
+
   <link name="r5m_upper_arm_link">
     <visual>
       <geometry>
@@ -429,6 +433,7 @@
       <inertia ixx="0.000087" ixy="-0.000076" ixz="-0.000010" iyy="0.004906" iyz="0.000000" izz="0.004929"/>
     </inertial>
   </link>
+
   <joint name="r5m_joint3" type="revolute">
     <parent link="r5m_upper_arm_link"/>
     <child link="r5m_forearm_link"/>
@@ -436,6 +441,7 @@
     <axis xyz="0 0 1"/>
     <limit effort="9.0" lower="0.0" upper="3.5" velocity="0.5"/>
   </joint>
+
   <link name="r5m_forearm_link">
     <visual>
       <geometry>
@@ -457,13 +463,15 @@
       <inertia ixx="0.000127" ixy="-0.000061" ixz="-0.000001" iyy="0.000062" iyz="0.000000" izz="0.000163"/>
     </inertial>
   </link>
-    <joint name="r5m_joint2" type="revolute">
+
+  <joint name="r5m_joint2" type="revolute">
     <parent link="r5m_forearm_link"/>
     <child link="r5m_wrist_link"/>
     <origin rpy="-1.57075 -0.5 0" xyz="0.020 0 0"/>
     <axis xyz="0 0 1"/>
     <limit effort="5.0" lower="0.0" upper="6.0" velocity="1.0"/>
   </joint>
+
   <link name="r5m_wrist_link">
     <visual>
       <geometry>
@@ -485,6 +493,7 @@
       <inertia ixx="0.006152" ixy="-0.000002" ixz="-0.000004" iyy="0.006177" iyz="0.000000" izz="0.000079"/>
     </inertial>
   </link>
+
   <link name="r5m_jaw1">
     <visual>
       <geometry>
@@ -507,6 +516,7 @@
       <inertia ixx="0.000010" ixy="0.0" ixz="0.0" iyy="0.000010" iyz="0.0" izz="0.000010"/>
     </inertial>
   </link>
+
   <link name="r5m_jaw2">
     <visual>
       <geometry>
@@ -524,11 +534,12 @@
     </collision>
     <!-- TODO: GET APPROPOATE MASSES -(this is 50g ball at end)  -->
     <inertial>
-      <mass value="0.5"/>
+      <mass value="0.05"/>
       <origin xyz="0.01 -0.045 0.0"/>
       <inertia ixx="0.000010" ixy="0.0" ixz="0.0" iyy="0.000010" iyz="0.0" izz="0.000010"/>
     </inertial>
   </link>
+
   <joint name="r5m_joint1_1" type="fixed">
     <parent link="r5m_wrist_link"/>
     <child link="r5m_jaw2"/>
@@ -536,6 +547,7 @@
     <axis xyz="0 0 -1"/>
     <limit effort="5.0" lower="0.0" upper="0.5" velocity="0.5"/>
   </joint>
+
   <joint name="r5m_joint1_2" type="fixed">
     <parent link="r5m_wrist_link"/>
     <child link="r5m_jaw1"/>
@@ -543,6 +555,7 @@
     <axis xyz="0 0 1"/>
     <limit effort="5.0" lower="0.0" upper="0.5" velocity="0.5"/>
   </joint>  
+
   <link name="r5m_jaw"/>
   <joint name="r5m_joint_jaw" type="fixed">
     <parent link="r5m_wrist_link"/>

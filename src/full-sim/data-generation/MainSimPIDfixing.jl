@@ -33,8 +33,7 @@ delete!(vis)
 
 # Create visuals of the URDFs
 mvis = MechanismVisualizer(mech_sea_alpha, URDFVisuals(urdf_file), vis[:alpha])
-render(mvis)
-#%%
+# render(mvis)
 
 # Name the joints and bodies of the mechanism
 vehicle_joint, base_joint, shoulder_joint, elbow_joint, wrist_joint = joints(mech_sea_alpha)
@@ -52,33 +51,34 @@ base_frame = root_frame(mech_sea_alpha)
 println("Mechanism built.")
 
 # ----------------------------------------------------------
-#                 Buoyancy Setup
+#                 COM and COB Frame Setup
 # ----------------------------------------------------------
-#%%
+
 frame_names_cob = ["vehicle_cob", "shoulder_cob", "ua_cob", "elbow_cob", "wrist_cob"]
 frame_names_com = ["vehicle_com", "shoulder_com", "ua_com", "elbow_com", "wrist_com"]
-cob_vecs = [SVector{3, Float64}([0.0, 0.0, -.01]), SVector{3, Float64}([-0.001, -0.003, .032]), SVector{3, Float64}([0.073, 0.0, -0.002]), SVector{3, Float64}([0.015, -0.012, -.003]), SVector{3, Float64}([0.0, 0.0, -.098])]
+cob_vecs = [SVector{3, Float64}([0.0, 0.0, -.01]), SVector{3, Float64}([-0.001, -0.003, .032]), SVector{3, Float64}([0.073, 0.0, -0.002]), SVector{3, Float64}([0.003, 0.001, -0.017]), SVector{3, Float64}([0.0, 0.0, -.098])]
 com_vecs = [SVector{3, Float64}([0.0, 0.0, -0.06]), SVector{3, Float64}([0.005, -.001, 0.016]), SVector{3, Float64}([0.073, 0.0, 0.0]), SVector{3, Float64}([0.017, -0.026, -0.002]), SVector{3, Float64}([0.0, 0.003, -.098])]
 cob_frames = []
 com_frames = []
 setup_frames!(mech_sea_alpha, frame_names_cob, frame_names_com, cob_vecs, com_vecs, cob_frames, com_frames)
 
+#%%
 # buoyancy force setup
-# ------------------------------------------------------------------------
-#                           BUOYANCY SETUP
-# ------------------------------------------------------------------------
+# ---------------------------------------------------------------
+#                       BUOYANCY SETUP
+# ---------------------------------------------------------------
 # f = rho * g * V
 # f = 997 (kg/m^3) * 9.81 (m/s^2) * V_in_L *.001 (m^3) = kg m / s^2
 # One time setup of buoyancy forces
 rho = 997
 volumes = [22.2/(.001*rho), .018, .203, .025, .155, .202] # vehicle, shoulder, ua, elbow, wrist, armbase
-buoy_force_mags = volumes * 997 * 9.81 * .001
+buoy_force_mags = volumes * rho * 9.81 * .001
 buoy_lin_forces = []
 for mag in buoy_force_mags
     lin_force = FreeVector3D(base_frame, [0.0, 0.0, mag])
     push!(buoy_lin_forces, lin_force)
 end
-print(buoy_lin_forces)
+# println(buoy_lin_forces)
 
 masses = [22.2, .194, .429, .115, .333, .341]
 grav_forces = masses*9.81
@@ -87,6 +87,7 @@ for f_g in grav_forces
     lin_force = FreeVector3D(base_frame, [0.0, 0.0, -f_g])
     push!(grav_lin_forces, lin_force)
 end
+# println(grav_lin_forces)
 
 drag_link1 = [0.26 0.26 0.3]*rho
 drag_link2 = [0.3 1.6 1.6]*rho
