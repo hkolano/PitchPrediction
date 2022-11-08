@@ -16,7 +16,7 @@ include("StructDefs.jl")
 include("FrameSetup.jl")
 include("HydroCalc.jl")
 include("SimWExt.jl")
-include("PIDCtlr_vehicleonly.jl")
+include("PIDCtlr.jl")
 include("TrajGenMain.jl")
 
 urdf_file = joinpath("urdf", "alpha_seabotix.urdf")
@@ -105,6 +105,7 @@ println("CoM and CoB frames initialized. \n")
 function reset_to_equilibrium!(state)
     zero!(state)
     set_configuration!(state, vehicle_joint, [.993607, 0., 0.11289, 0.00034, 0., 0., 0.])
+    set_velocity!(state, vehicle_joint, [0., 0., 0., 0., 0.05, 0.])
 end
 
 # Constants
@@ -116,11 +117,11 @@ sample_rate = Int(floor((1/Δt)/goal_freq))
 
 # Control variables
 do_scale_traj = false   # Scale the trajectory?
-duration_after_traj = 5.0   # How long to simulate after trajectory has ended
+duration_after_traj = 2.0   # How long to simulate after trajectory has ended
 
 #%%
 # (temporary adds while making changes to ctlr and traj generator)
-include("PIDCtlr_vehicleonly.jl")
+include("PIDCtlr.jl")
 include("TrajGenMain.jl")
 include("HydroCalc.jl")
 
@@ -131,7 +132,7 @@ include("HydroCalc.jl")
 # Reset the sim to the equilibrium position
 reset_to_equilibrium!(state)
 # Start up the controller
-ctlr_cache = PIDCtlr_vehicleonly.CtlrCache(Δt, mech_sea_alpha)
+ctlr_cache = PIDCtlr.CtlrCache(Δt, mech_sea_alpha)
 # ctlr_cache.taus[:,1] = [0.; 0.; 0.; 0.; 0.; 10.; 0.; 0.; 0.; 0.]
 
 # ----------------------------------------------------------
@@ -139,7 +140,7 @@ ctlr_cache = PIDCtlr_vehicleonly.CtlrCache(Δt, mech_sea_alpha)
 # ----------------------------------------------------------
 # Generate a random waypoint and see if there's a valid trajectory to it
 wp = TrajGen.gen_rand_waypoints_to_rest()
-# wp = TrajGen.load_waypoints("unstable_wps_right")
+# wp = TrajGen.load_waypoints("pid_test")
 # wp = TrajGen.set_waypoints_from_equil([-2.03, 1.92, 1.73, 1.18], [0.16, 0.24, -0.08, 0.19])
 
 traj = TrajGen.find_trajectory(wp) 
@@ -166,7 +167,7 @@ waypoints = [Δt*sample_rate params.wp.start.θs... params.wp.goal.θs... params
 wp_data = Tables.table(waypoints)
 
 print("Simulating... ")
-ts, qs, vs = simulate_with_ext_forces(state, duration+duration_after_traj, params, ctlr_cache, hydro_calc!, PIDCtlr_vehicleonly.pid_control!; Δt=Δt)
+ts, qs, vs = simulate_with_ext_forces(state, duration+duration_after_traj, params, ctlr_cache, hydro_calc!, PIDCtlr.pid_control!; Δt=Δt)
 # ts, qs, vs = simulate(state_alpha, final_time, simple_control!; Δt = 1e-2)
 println("done.")
 
@@ -204,6 +205,16 @@ for k = 1:6
 end
 display(plot(plot_handles..., layout=l))
 println("done.")
+
+tau_plot_handles = []
+tau_plot_lims = [[-3, 3], [-6, 0], [-3, 3], [4, 10]]
+tl = @layout[a b; c d]
+for k = 3:6
+    lab = plot_labels[k]
+        push!(tau_plot_handles, plot(ctlr_cache.taus[k,2:end], title=lab, legend=false, ylim=tau_plot_lims[k-2]))
+end
+display(plot(tau_plot_handles..., layout=tl))
+
 
 # function plot_state_errors()
 #     l = @layout [a b ; c d ; e f]

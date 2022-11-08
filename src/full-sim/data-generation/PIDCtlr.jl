@@ -1,4 +1,4 @@
-module PIDCtlr_vehicleonly
+module PIDCtlr
 export CtlrCache, pid_control!
 
 using RigidBodyDynamics
@@ -13,8 +13,8 @@ arm_Kp = 30.
 arm_Kd = 0.05
 arm_Ki = 9. 
 v_Kp = 50.
-v_Kd = 1.5
-v_Ki = 1.5
+v_Kd = 1.0
+v_Ki = 1.25
 default_Kp = [v_Kp, v_Kp, v_Kp, v_Kp, arm_Kp, arm_Kp, arm_Kp, 20.]
 default_Kd = [v_Kd, v_Kd, v_Kd, v_Kd, arm_Kd, arm_Kd, arm_Kd, 0.002]
 default_Ki = [v_Ki, v_Ki, v_Ki, v_Ki, arm_Ki, arm_Ki, arm_Ki, 0.1]
@@ -26,7 +26,7 @@ mutable struct CtlrCache
     Ki::Array{Float64}
     time_step::Float64
     vel_error_cache::Array{Float64}
-    vel_int_error::Float64
+    vel_int_error_cache::Array{Float64}
     step_ctr::Int
     joint_vec
     des_vel::Array{Float64}
@@ -37,7 +37,7 @@ mutable struct CtlrCache
         vehicle_joint, jointE, jointD, jointC, jointB = joints(mechanism)
         joint_vec = [vehicle_joint, jointE, jointD, jointC, jointB]
         new(default_Kp, default_Kd, default_Ki, #=
-        =# dt, zeros(8), 0., 0, joint_vec, #=
+        =# dt, zeros(8), zeros(8), 0, joint_vec, #=
         =# zeros(8), default_torque_lims, Array{Float64}(undef, 10, 1)) 
     end
 end
@@ -80,6 +80,8 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         c_taus = zeros(10,1)
         if c.step_ctr == 0
             torques[6] = 7. # 8
+            torques[3] = 0.
+            torques[5] = 0.
             torques[4] = -1. # -1.8
         end
         
@@ -133,15 +135,17 @@ function PID_ctlr(torque, t, vel_act, idx, c)
     vel_error = vel_act[1] - d_vel
     d_vel_error = (vel_error - c.vel_error_cache[actuated_idx])/c.time_step
     # println("D_Velocity error on idx$(j_idx): $(d_vel_error)")
-    c.vel_int_error = c.vel_int_error + vel_error*c.time_step
-    d_tau = -c.Kp[actuated_idx]*vel_error - c.Kd[actuated_idx]*d_vel_error - c.Ki[actuated_idx]*c.vel_int_error
+    c.vel_int_error_cache[actuated_idx] = c.vel_int_error_cache[actuated_idx] + vel_error*c.time_step
+    d_tau = -c.Kp[actuated_idx]*vel_error - c.Kd[actuated_idx]*d_vel_error - c.Ki[actuated_idx]*c.vel_int_error_cache[actuated_idx]
     # println("Ideal tau: $(d_tau)")
 
     # Can only change torque a small amount per time step
-    if 3 <= idx <= 6
-        lim = 0.005
+    if 5 <= actuated_idx <= 8
+        # if it's an arm joint
+        lim = 0.01
     else
-        lim = 0.05
+        # if it's a vehicle "thruster"
+        lim = 0.001
     end
     d_tau = limit_d_tau(d_tau, lim)
     
