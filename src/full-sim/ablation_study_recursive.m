@@ -1,13 +1,12 @@
 % Load in the data
-load("data/full-data-matlab/FullData_081022.mat")
+load("data/full-sim-data-110822/FullData.mat")
 
 %%
 load('data/channel_dict.mat')
 chan_idxs = rmfield(chan_idxs, 'pitch');
 chan_idxs = rmfield(chan_idxs, 'dt');
 
-
-chan_idxs = rmfield(chan_idxs, {'xyz_poses', 'xyz_vels', 'ry_vels', 'manip_vels', 'manip_des_vels', 'goal_poses'});
+% chan_idxs = rmfield(chan_idxs, {'xyz_poses', 'xyz_vels', 'ry_vels', 'manip_vels', 'manip_des_vels', 'goal_poses'});
 % Make a list of all channel indices
 all_idxs = 1:1:41;
 
@@ -22,7 +21,7 @@ all_RMSEs = {};
 removed_features = {};
 feature_group_list = {};
 
-for level_num = 1:2
+for level_num = 1:1
     fn = fieldnames(chan_idxs)
     feature_group_list{level_num} = fn;
     level_losses = [];
@@ -91,7 +90,8 @@ save(outputfile, 'all_losses', 'all_RMSEs', 'feature_group_list', 'removed_featu
 % disp(all_RMSEs)
 % beep
 
-% end
+% To close all plots:
+% delete(findall(0));
 
 % ------------------------------------------------------------------------
 %                                Functions
@@ -116,7 +116,7 @@ function init_options = define_new_opts(val_inputs, val_outputs)
         LearnRateDropPeriod=5, ...
         LearnRateSchedule='piecewise', ...
         LearnRateDropFactor=.8, ...
-        MaxEpochs = 1, ...
+        MaxEpochs = 50, ...
         MiniBatchSize=16, ...
         SequencePaddingDirection="right", ...
         Plots="training-progress", ...
