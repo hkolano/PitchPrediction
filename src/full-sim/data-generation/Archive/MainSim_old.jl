@@ -168,13 +168,7 @@ for n in ProgressBar(1:num_trajs)
     waypoints = [Δt*sample_rate params.wp.start.θs... params.wp.goal.θs... params.wp.start.dθs... params.wp.goal.dθs...]
     wp_data = Tables.table(waypoints)
 
-    # Save waypoints (start and goal positions, velocities) to CSV file
-    if n == 1
-        goal_headers = ["dt", "E_start", "D_start", "C_start", "B_start", "E_end", "D_end", "C_end", "B_end", "dE_start", "dD_start", "dC_start", "dB_start", "dE_end", "dD_end", "dC_end", "dB_end"]
-        CSV.write("data/full-sim-data/full-sim-waypoints_080622.csv", wp_data, header=goal_headers)
-    else 
-        CSV.write("data/full-sim-data/full-sim-waypoints_080622.csv", wp_data, header=false, append=true)
-    end
+
 
     ts, qs, vs = simulate_with_ext_forces(state, duration, params, ctlr_cache, hydro_calc!, PIDCtlr.pid_control!; Δt=Δt)
     # ts, qs, vs = simulate(state_alpha, final_time, simple_control!; Δt = 1e-2)
