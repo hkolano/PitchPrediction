@@ -1,26 +1,26 @@
 %% Setup
-% load('data/full-data-matlab/FullData_NoVehXYZ_noB_noWaypoints_081522.mat') 
+load("data/full-sim-data-110822/FullData.mat")
+
+%%
 load('data/channel_dict.mat')
 chan_idxs = rmfield(chan_idxs, 'pitch');
 chan_idxs = rmfield(chan_idxs, 'dt');
 
-elimd_gps = ["goal_poses", "manip_vels", "goal_vels"];
-path = "data/full-data-matlab/channel_subgroups";
-level_num = length(elimd_gps)+1;
+elimd_gps = ["xyz_poses", "xyz_vels", "goal_poses", "manip_des_vels", "goal_vels"];
 
-for rnd_num = 1:length(elimd_gps)
-    rnd_name = elimd_gps(rnd_num);
-    chan_idxs = rmfield(chan_idxs, rnd_name);
-    path = strcat(path, "/no_", elimd_gps(rnd_num));
+all_idxs = 1:1:41;
+% Take out 
+for i = 1:length(elimd_gps) 
+    group_name = elimd_gps(i);
+    all_idxs = all_idxs(~ismember(all_idxs, chan_idxs.(group_name)));
+    chan_idxs = rmfield(chan_idxs, group_name);
 end
-fn = fieldnames(chan_idxs);
 
-load(fullfile(path, "data_without_xyz_poses.mat"))
-numChannels = size(XTrain{1}, 1);
-
+%%
 % Initialize constants
 % ks =[5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 100, 125, 150, 175, 200];
 k = 25;
+pitch_idx = 23;
 numUnits = 384;
 stretches = [1, 2, 3, 4, 5, 6, 7, 8];
 % stretches = [7, 8, 9];
@@ -35,8 +35,6 @@ for idx = 1:length(stretches)
     clear Resp_Train Inputs_Train Resp_Test Inputs_Test
 
     sf = stretches(idx);
-
-    layers = setup_lookahead_rnn(numChannels, k, numUnits);
     subgroup_losses = [];
     subgroup_RMSEs = [];
 
@@ -47,7 +45,7 @@ for idx = 1:length(stretches)
                 resp(:,t) = XTrain{n}(pitch_idx, t+sf:sf:t+sf*k)';
             end
             Resp_Train{n} = resp;
-            Inputs_Train{n} = XTrain{n}(:,1:end-sf*k);
+            Inputs_Train{n} = XTrain{n}(all_idxs,1:end-sf*k);
         end
     end
     
@@ -58,9 +56,12 @@ for idx = 1:length(stretches)
                 resp(:,t) = XTest{n}(pitch_idx, t+sf:sf:t+sf*k)';
             end
             Resp_Test{n} = resp;
-            Inputs_Test{n} = XTest{n}(:,1:end-sf*k);
+            Inputs_Test{n} = XTest{n}(all_idxs,1:end-sf*k);
         end
     end
+
+    numChannels = size(Inputs_Train{1}, 1);
+    layers = setup_lookahead_rnn(numChannels, k, numUnits);
     
     init_options = trainingOptions("adam", ...
         InitialLearnRate=0.001,...
@@ -70,7 +71,7 @@ for idx = 1:length(stretches)
         MaxEpochs = 100, ...
         MiniBatchSize=16, ...
         SequencePaddingDirection="right", ...
-        Plots="training-progress", ...
+        Plots="none", ...
         Shuffle='every-epoch', ...
         ValidationData={Inputs_Test, Resp_Test}, ...
         ValidationFrequency = 60, ...
@@ -83,7 +84,7 @@ for idx = 1:length(stretches)
         subgroup_losses = [subgroup_losses, info.FinalValidationLoss];
         subgroup_RMSEs = [subgroup_RMSEs, info.FinalValidationRMSE];
         %     
-        outputFile = fullfile("data/networks/full-nets/simple_w_stretch_factor", strcat('stretch_', string(sf), '_take_', string(take_n), '.mat'));
+        outputFile = fullfile("data/networks/icra-redo-nets/simple_w_stretch_factor", strcat('stretch_', string(sf), '_take_', string(take_n), '.mat'));
 %         outputFile = fullfile("data/networks/full-nets", strcat('pre-ablationtest_', string(take_n), '.mat'));
         save(outputFile, 'net', 'info');
    end
@@ -97,7 +98,7 @@ disp("Final Losses:")
 disp(all_losses)
 disp("Final RMSEs:")
 disp(all_RMSEs)
-beep
+% beep
 
 % end
 

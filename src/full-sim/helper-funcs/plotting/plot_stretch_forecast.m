@@ -7,8 +7,8 @@ cutoff = n+k*9+50;
 time_steps = 1:cutoff;
 time_stamps = time_steps/50;
 
-mu = p.mu(pitch_idx);
-sig = p.sig(pitch_idx);
+mu = p.mu(23);
+sig = p.sig(23);
 
 % dark blue: '#332288'
 % dark green: '#117733'
