@@ -37,43 +37,12 @@ subgroup_RMSEs = [];
     subgroup_losses = [];
     subgroup_RMSEs = [];
 
-    for n = 1:numel(XTrain)
-        resp = zeros(k, size(XTrain{n}, 2)-k);
-        if size(XTrain{n}, 2) > 1.1*k
-            for t = 1:size(XTrain{n}, 2)-k
-                resp(:,t) = XTrain{n}(pitch_idx, t+1:t+k)';
-            end
-            Resp_Train{n} = resp;
-            Inputs_Train{n} = XTrain{n}(:,1:end-k);
-        end
-    end
+    [Inputs_Train, Resp_Train] = split_data(XTrain, pitch_idx, k);
+    [Inputs_Test, Resp_Test] = split_data(XTest, pitch_idx, k);
     
-    for n = 1:numel(XTest)
-        resp = zeros(k, size(XTest{n}, 2)-k);
-        if size(XTest{n}, 2) > 1.1*k
-            for t = 1:size(XTest{n}, 2)-k
-                resp(:,t) = XTest{n}(pitch_idx, t+1:t+k)';
-            end
-            Resp_Test{n} = resp;
-            Inputs_Test{n} = XTest{n}(:,1:end-k);
-        end
-    end
-    
-    init_options = trainingOptions("adam", ...
-        InitialLearnRate=0.001,...
-        LearnRateDropPeriod=5, ...
-        LearnRateSchedule='piecewise', ...
-        LearnRateDropFactor=.8, ...
-        MaxEpochs = 50, ...
-        MiniBatchSize=16, ...
-        SequencePaddingDirection="right", ...
-        Plots="training-progress", ...
-        Shuffle='every-epoch', ...
-        ValidationData={Inputs_Test, Resp_Test}, ...
-        ValidationFrequency = 60, ...
-        OutputNetwork='best-validation-loss');
+    init_options = define_new_opts(Inputs_Test, Resp_Test);
 
-   for take_n = 2:3
+   for take_n = 1:1 % 3
         [net, info] = trainNetwork(Inputs_Train,Resp_Train,layers,init_options);
         
         subgroup_losses = [subgroup_losses, info.FinalValidationLoss];
@@ -96,6 +65,39 @@ disp(all_RMSEs)
 beep
 
 % end
+
+% ------------------------------------------------------------------------
+%                                Functions
+% ------------------------------------------------------------------------
+
+function [inputs, outputs] = split_data(data, pitch_idx, k)
+    for n = 1:numel(data)
+        resp = zeros(k, size(data{n}, 2)-k);
+        if size(data{n}, 2) > 1.1*k
+            for t = 1:size(data{n}, 2)-k
+                resp(:,t) = data{n}(pitch_idx, t+1:t+k)';
+            end
+            outputs{n} = resp;
+            inputs{n} = data{n}(:,1:end-k);
+        end
+    end
+end
+
+function init_options = define_new_opts(val_inputs, val_outputs)
+    init_options = trainingOptions("adam", ...
+        InitialLearnRate=0.001,...
+        LearnRateDropPeriod=5, ...
+        LearnRateSchedule='piecewise', ...
+        LearnRateDropFactor=.8, ...
+        MaxEpochs = 1, ...
+        MiniBatchSize=16, ...
+        SequencePaddingDirection="right", ...
+        Plots="training-progress", ...
+        Shuffle='every-epoch', ...
+        ValidationData={val_inputs, val_outputs}, ...
+        ValidationFrequency = 60, ...
+        OutputNetwork='best-validation-loss');
+end
 
 
 
