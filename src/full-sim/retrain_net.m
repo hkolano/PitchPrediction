@@ -1,19 +1,35 @@
 %% Import data
 
 % Load data set
-load('data/full-data-matlab/FullData_17chan_10Hz.mat')
+load('data/full-sim-data-110822/FullData_10Hz.mat')
 
 % Load network to retrain
-load('data/networks/full-nets/SingleStepNet_10hz__17chan_384units_alltrajs.mat')
+load('data/networks/icra-redo-nets/SingleStepNet_10Hz.mat')
 
 % Load validation set definition
-load('data/full-data-matlab/val_set_final_50Hz.mat')
+load('data/full-sim-data-110822/val_set_10Hz.mat')
+
+
+%%
+load('data/channel_dict.mat')
+chan_idxs = rmfield(chan_idxs, 'pitch');
+chan_idxs = rmfield(chan_idxs, 'dt');
+
+elimd_gps = ["xyz_poses", "xyz_vels", "goal_poses", "manip_des_vels", "goal_vels"];
+
+all_idxs = 1:1:41;
+% Take out 
+for i = 1:length(elimd_gps) 
+    group_name = elimd_gps(i);
+    all_idxs = all_idxs(~ismember(all_idxs, chan_idxs.(group_name)));
+    chan_idxs = rmfield(chan_idxs, group_name);
+end
 
 
 %% Initialization
 
 % k = 5;     % Number of time steps to forecast (0.5s)
-ks = [15 25 35];
+ks = [5 10];
 mbatch = 16;
 num_trajs_before_update = 16;
 val_freq = 50;
@@ -21,6 +37,7 @@ train_to_val_ratio = val_freq*(num_trajs_before_update/mbatch);
 num_epochs = 50;
 save_freq = 5; %epoc5
 init_learning_rate = .0005;
+pitch_idx = 13;
 
 retrain_options = trainingOptions("adam", ...
     InitialLearnRate= init_learning_rate,...
@@ -31,25 +48,40 @@ retrain_options = trainingOptions("adam", ...
     GradientThreshold=0.9,...
     ExecutionEnvironment="auto");
 
-XTest = XTest_10hz(1:end-5);
-XTrain = XTrain_10hz(1:end-35);
-TTest = TTest_10hz(1:end-5);
-TTrain = TTrain_10hz(1:end-35);
+XTest = XTest_10hz;
+[~,I] = sort(cellfun(@length,XTest));
+XTest = XTest(I);
+XTest = XTest(3:end);
 
-num_rec_vars = size(TTest{1}, 1);
+for i = 1:numel(XTest)
+    XTest{i} = XTest{i}(all_idxs, :);
+end
 
-XTest_subset = XTest(val_idxs);
-val_ns = floor(val_ns./5);
+XTest = XTest(val_idxs);
+
+% disp(numel(XTrain_10hz))
+for i = 1:numel(XTrain_10hz)
+    XTrain{i} = XTrain_10hz{i}(all_idxs, :);
+end
+
+[~,I] = sort(cellfun(@length,XTrain));
+XTrain = XTrain(I);
+XTrain = XTrain(40:end);
+% disp(size(XTrain{40}, 2))
+% num_rec_vars = size(XTrain{1}, 1);
+
+
+% val_ns = floor(val_ns./5);
 % validate = @(net) validate_net(net, XTest_subset, val_ns, k, p);
 % validate_pitch = @(net) validate_pitch_only(net, XTest_subset, val_ns, k, p, num_rec_vars);
 
 
 %% Train on predictions
 for k_val = 1:length(ks)
-    load('data/networks/full-nets/SingleStepNet_10hz__17chan_384units_alltrajs.mat')
+    load('data/networks/icra-redo-nets/SingleStepNet_10Hz.mat')
     k = ks(k_val);
 %     validate = @(net) validate_net(net, XTest_subset, val_ns, k, p);
-    validate = @(net) validate_pitch_on_forecast_only(net, XTest_subset, val_ns, k, p, pitch_idx);
+    validate = @(net) validate_pitch_on_forecast_only(net, XTest, val_ns, k, p, pitch_idx);
     first_error = validate(net)
     error_vec = [first_error]; % SWITCH THIS BACK
     error_vec_its = [1];      % SWITCH THIS BACK
@@ -112,7 +144,7 @@ for k_val = 1:length(ks)
         end
     
         if rem(epoch_n, save_freq) == 0 || epoch_n > 45
-            outputFile = fullfile(strcat("data/networks/full-nets/10Hz_alltrajs_k", string(k)), strcat("take2_", string(epoch_n), "epochs.mat"));
+            outputFile = fullfile(strcat("data/networks/icra-redo-nets/10Hz_k", string(k)), strcat("take1_", string(epoch_n), "epochs.mat"));
             end_it = total_it-1;
             these_epochs_training_RMSE_vec = training_rmse_vec(start_it:end_it);
             save(outputFile, 'net', 'info', "error_vec", "error_vec_its", "these_epochs_training_RMSE_vec", "start_it", "end_it");

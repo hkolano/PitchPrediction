@@ -16,7 +16,7 @@ all_losses = [.000115, .0001291, .000094; ...
 loss_avgs = mean(all_losses, 2);
 loss_stdevs = std(all_losses, 0, 2);
 
-rmse_avgs = mean(ablation_rmses, 2);
+rmse_avgs = mean(ablation_rmses, 2)
 rmse_stdevs = std(ablation_rmses, 0, 2);
     
 figure

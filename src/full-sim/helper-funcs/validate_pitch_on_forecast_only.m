@@ -2,6 +2,7 @@ function pitch_error = validate_pitch_on_forecast_only(net, X_test, ns, k, p, pi
     error = 0;
     for i = 1:numel(X_test)
         traj_size = (size(X_test{i}));
+%         disp(i)
         pred = full_forecast_norecur(net, X_test{i}, ns(i), k, p);
         pred_size = size(pred);
         if pred_size <= traj_size
