@@ -1,4 +1,11 @@
 %{ 
+Takes the full dataset and parses it for the k length study.
+Inputs are sliced by input_idxs (certain feature groups are removed).
+Ouput is a k x traj_length vector of pitches, where k is the number of steps to look
+forward on the pitch.
+
+Last modified 12/5/22
+
 Inputs:
 data: XTrain or XTest. Includes all data channels.
 sf: "stretch factor" sf=1 --> predicts every 0.02s
