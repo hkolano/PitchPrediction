@@ -18,7 +18,7 @@ function rem_idxs = get_remaining_idxs(elimd_gps)
 
     for i = 1:length(elimd_gps)
         group_name = elimd_gps(i);
-        all_idxs = all_idxs(~ismember(all_idcs, chan_idxs.(group_name)));
+        all_idxs = all_idxs(~ismember(all_idxs, chan_idxs.(group_name)));
         chan_idxs = rmfield(chan_idxs, group_name);
     end
     rem_idxs = all_idxs;
