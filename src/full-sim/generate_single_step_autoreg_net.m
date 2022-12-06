@@ -4,19 +4,8 @@ XTrain = XTrain_10hz;
 XTest = XTest_10hz;
 
 %%
-load('data/channel_dict.mat')
-chan_idxs = rmfield(chan_idxs, 'pitch');
-chan_idxs = rmfield(chan_idxs, 'dt');
-
 elimd_gps = ["xyz_poses", "xyz_vels", "goal_poses", "manip_des_vels", "goal_vels"];
-
-all_idxs = 1:1:41;
-% Take out 
-for i = 1:length(elimd_gps) 
-    group_name = elimd_gps(i);
-    all_idxs = all_idxs(~ismember(all_idxs, chan_idxs.(group_name)));
-    chan_idxs = rmfield(chan_idxs, group_name);
-end
+all_idxs = get_remaining_idxs(elimd_gps);
 
 %%
 % Initialize constants
