@@ -28,7 +28,7 @@ function [Input_Data, Resp_Data] = transform_data_for_stretch_study(data, sf, k,
             Input_Data{n} = data{n}(input_idxs, 1:end-sf*k);
             traj_len = size(Input_Data{n}, 2);
             responses = zeros(k, traj_len);
-            for t = 1:traj_len-sf*k
+            for t = 1:traj_len
                 responses(:,t) = data{n}(pitch_idx, t+sf:sf:t+sf*k)';
             end
             Resp_Data{n} = responses;

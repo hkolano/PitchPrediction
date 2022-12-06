@@ -24,12 +24,12 @@ numUnits = 384;
 
 nets = {};
 
-for stretch = 1:7
+for stretch = 1:8
 
     load(strcat('data\networks\icra-redo-nets\simple_w_stretch_factor\stretch_', string(stretch), '_take_2.mat'))
     nets{stretch} = net;
 end
 %%
-plot_stretch_forecast(nets, Inputs_Test{155}, Inputs_Test{8}, 100, 25, 13, p)
+plot_stretch_forecast(nets, Inputs_Test{5}, Inputs_Test{129}, 50, 25, 13, p)
 % need to stretch it out by the stretch factor!! Not quite as bad as it
 % looks
