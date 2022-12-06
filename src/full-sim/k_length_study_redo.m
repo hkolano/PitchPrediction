@@ -1,20 +1,10 @@
 %% Setup
+% Load data set
 load("data/full-sim-data-110822/FullData.mat")
 
-%%
-load('data/channel_dict.mat')
-chan_idxs = rmfield(chan_idxs, 'pitch');
-chan_idxs = rmfield(chan_idxs, 'dt');
-
+% get indices of remaining feature groups
 elimd_gps = ["xyz_poses", "xyz_vels", "goal_poses", "manip_des_vels", "goal_vels"];
-
-all_idxs = 1:1:41;
-% Take out 
-for i = 1:length(elimd_gps) 
-    group_name = elimd_gps(i);
-    all_idxs = all_idxs(~ismember(all_idxs, chan_idxs.(group_name)));
-    chan_idxs = rmfield(chan_idxs, group_name);
-end
+all_idxs = get_remaining_idxs(elimd_gps);
 
 %%
 % Initialize constants
@@ -22,8 +12,7 @@ end
 k = 25;
 pitch_idx = 23;
 numUnits = 384;
-stretches = [8]; %[1, 2, 3, 4, 5, 6, 7, 8];
-% stretches = [7, 8, 9];
+stretches = [1, 2, 3, 4, 5, 6, 7, 8];
 
 all_losses = [];
 subgroup_losses = [];
@@ -50,7 +39,7 @@ for idx = 1:length(stretches)
         LearnRateDropPeriod=5, ...
         LearnRateSchedule='piecewise', ...
         LearnRateDropFactor=.9, ...
-        MaxEpochs = 50, ...
+        MaxEpochs = 100, ...
         MiniBatchSize=16, ...
         SequencePaddingDirection="right", ...
         Plots="none", ...
@@ -60,7 +49,7 @@ for idx = 1:length(stretches)
         OutputNetwork='best-validation-loss');
 
     %% Train the net
-   for take_n = 1:1
+   for take_n = 1:3
         [net, info] = trainNetwork(Inputs_Train,Resp_Train,layers,init_options);
         
         subgroup_losses = [subgroup_losses, info.FinalValidationLoss];
@@ -68,11 +57,11 @@ for idx = 1:length(stretches)
         %     
         outputFile = fullfile("data/networks/icra-redo-nets/simple_w_stretch_factor", strcat('stretch_', string(sf), '_take_', string(take_n), '.mat'));
 %         outputFile = fullfile("data/networks/full-nets", strcat('pre-ablationtest_', string(take_n), '.mat'));
-%         save(outputFile, 'net', 'info');
+        save(outputFile, 'net', 'info');
    end
 % 
-%    all_losses = [all_losses; subgroup_losses]
-%    all_RMSEs = [all_RMSEs; subgroup_RMSEs]
+   all_losses = [all_losses; subgroup_losses]
+   all_RMSEs = [all_RMSEs; subgroup_RMSEs]
 
 end
 

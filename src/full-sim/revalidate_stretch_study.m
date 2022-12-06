@@ -1,4 +1,4 @@
-load("data/full-data-matlab/FullData_18chan_50Hz.mat")
+load("data/full-sim-data-110822/FullData.mat")
 load('data/channel_dict.mat')
 val_set = 'data/full-data-matlab/val_set_final_50hz.mat';
 
@@ -12,16 +12,7 @@ stretch_forecast_errors2 = zeros(1,8);
 for idx = 1:length(stretches)
     load(val_set)
     sf = stretches(idx);
-    for n = 1:numel(XTest)
-        resp = zeros(k, size(XTest{n}, 2)-sf*k);
-        if size(XTest{n}, 2) > (sf+.1)*k
-            for t = 1:size(XTest{n}, 2)-sf*k
-                resp(:,t) = XTest{n}(pitch_idx, t+sf:sf:t+sf*k)';
-            end
-            Resp_Test{n} = resp;
-            Inputs_Test{n} = XTest{n}(:,1:end-sf*k);
-        end
-    end
+    [Inputs_Test, Resp_Test] = transform_data_for_stretch_study(XTest, sf, k, all_idxs, pitch_idx);
 
     XTest_subset = Inputs_Test(val_idxs);
     Gtruth_subset = Resp_Test(val_idxs);
