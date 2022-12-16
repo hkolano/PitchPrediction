@@ -1,7 +1,7 @@
 % function train_toy_data()
 %% Data import and processing
-sequence_data = import_traj_no_orientation("data/full-sim-data/data-no-orientation");
-orientation_data = import_orientations("data/full-sim-data/data-rpy");
+sequence_data = import_traj_no_orientation("data/full-sim-data-110822/data-no-orientation");
+orientation_data = import_orientations("data/full-sim-data-110822/data-rpy");
 
 %%
 %{
@@ -20,7 +20,7 @@ X(:,1) is a column vector.
 X(:,1:6) are fed to the LSTM, while X(:,7:end) are sent directly to the
 FCN.
 %}
-waypoint_data = import_waypoint_data("data/full-sim-data/full-sim-waypoints_080622.csv");
+waypoint_data = import_waypoint_data("data/full-sim-data-110822/full-sim-waypoints_110822.csv");
 for idx = 1:numel(sequence_data)
     combo_data{idx} = [sequence_data{idx}; orientation_data{idx}];
 end
@@ -37,10 +37,10 @@ bad_ids = ID_outliers(combo_data)
 
 %%
 % Remove outliers (from highest idx to lowest idx)
-for idx = length(bad_ids):-1:1
-    combo_data(bad_ids(idx)) = [];
-    waypoint_data(:, bad_ids(idx)) = [];
-end
+% for idx = length(bad_ids):-1:1
+%     combo_data(bad_ids(idx)) = [];
+%     waypoint_data(:, bad_ids(idx)) = [];
+% end
 
 %%
 % Determine division between train and test data
@@ -83,7 +83,7 @@ XTrain = XTrain(idx);
 TTrain = TTrain(idx);
 
 %% Save the output
-outputFile = fullfile("data/full-data-matlab", 'FullData_081022.mat');
+outputFile = fullfile("data/full-sim-data-110822", 'FullData.mat');
 save(outputFile, 'XTest', 'TTest', 'XTrain', 'TTrain', 'p')
 
 

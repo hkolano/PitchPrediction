@@ -105,7 +105,7 @@ println("CoM and CoB frames initialized. \n")
 function reset_to_equilibrium!(state)
     zero!(state)
     set_configuration!(state, vehicle_joint, [.993607, 0., 0.11289, 0.00034, 0., 0., 0.])
-    set_velocity!(state, vehicle_joint, [0., 0., 0., 0., 0.05, 0.])
+    # set_velocity!(state, vehicle_joint, [0., 0., 0., 0., 0.0, 0.])
 end
 
 # Constants
@@ -116,8 +116,8 @@ goal_freq = 50
 sample_rate = Int(floor((1/Δt)/goal_freq))
 
 # Control variables
-do_scale_traj = false   # Scale the trajectory?
-duration_after_traj = 2.0   # How long to simulate after trajectory has ended
+do_scale_traj = true   # Scale the trajectory?
+duration_after_traj = 0.0   # How long to simulate after trajectory has ended
 
 #%%
 # (temporary adds while making changes to ctlr and traj generator)
@@ -129,93 +129,153 @@ include("HydroCalc.jl")
 # ----------------------------------------------------------
 #                      Gather Sim Data
 # ----------------------------------------------------------
-# Reset the sim to the equilibrium position
-reset_to_equilibrium!(state)
-# Start up the controller
-ctlr_cache = PIDCtlr.CtlrCache(Δt, mech_sea_alpha)
-# ctlr_cache.taus[:,1] = [0.; 0.; 0.; 0.; 0.; 10.; 0.; 0.; 0.; 0.]
 
-# ----------------------------------------------------------
-#                          Simulate
-# ----------------------------------------------------------
-# Generate a random waypoint and see if there's a valid trajectory to it
-wp = TrajGen.gen_rand_waypoints_to_rest()
-# wp = TrajGen.load_waypoints("pid_test")
-# wp = TrajGen.set_waypoints_from_equil([-2.03, 1.92, 1.73, 1.18], [0.16, 0.24, -0.08, 0.19])
+num_trajs = 2 
+save_to_csv = true
+show_animation = false
+plot_velocities = false
+plot_control_taus = false
 
-traj = TrajGen.find_trajectory(wp) 
+# Create (num_trajs) different trajectories and save to csvs 
+for n in ProgressBar(1:num_trajs)
 
-# # Keep trying until a good trajectory is found
-while traj === nothing
-    global wp = TrajGen.gen_rand_waypoints_to_rest()
-    global traj = TrajGen.find_trajectory(wp)
-end
+    # Reset the sim to the equilibrium position
+    reset_to_equilibrium!(state)
+    # Start up the controller
+    ctlr_cache = PIDCtlr.CtlrCache(Δt, mech_sea_alpha)
+    # ctlr_cache.taus[:,1] = [0.; 0.; 0.; 0.; 0.; 10.; 0.; 0.; 0.; 0.]
 
-# # Scale that trajectory to 1x-3x "top speed"
-if do_scale_traj == true
-    scaled_traj = TrajGen.scale_trajectory(traj...)
-else
-    scaled_traj = traj 
-end
-params = scaled_traj[1]
-duration = params.T
-poses = scaled_traj[2]
-vels = scaled_traj[3]
+    # ----------------------------------------------------------
+    #                          Simulate
+    # ----------------------------------------------------------
+    # Generate a random waypoint and see if there's a valid trajectory to it
+    # wp = TrajGen.gen_rand_waypoints_to_rest()
+    wp = TrajGen.gen_rand_waypoints_from_equil()
+    # wp = TrajGen.load_waypoints("pid_test")
+    # wp = TrajGen.set_waypoints_from_equil([-2.03, 1.92, 1.73, 1.18], [0.16, 0.24, -0.08, 0.19])
 
-# Make vector of waypoint values and time step to save to csv
-waypoints = [Δt*sample_rate params.wp.start.θs... params.wp.goal.θs... params.wp.start.dθs... params.wp.goal.dθs...]
-wp_data = Tables.table(waypoints)
+    traj = TrajGen.find_trajectory(wp) 
 
-print("Simulating... ")
-ts, qs, vs = simulate_with_ext_forces(state, duration+duration_after_traj, params, ctlr_cache, hydro_calc!, PIDCtlr.pid_control!; Δt=Δt)
-# ts, qs, vs = simulate(state_alpha, final_time, simple_control!; Δt = 1e-2)
-println("done.")
+    # # Keep trying until a good trajectory is found
+    while traj === nothing
+        wp = TrajGen.gen_rand_waypoints_to_rest()
+        traj = TrajGen.find_trajectory(wp)
+    end
 
-ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
-des_vs = [TrajGen.get_desv_at_t(t, params) for t in ts_down]
-paths = OrderedDict();
-
-paths["qs0"] = [qs[i][1] for i in 1:sample_rate:length(qs)]
-for idx = 1:10
-    joint_poses = [qs[i][idx+1] for i in 1:sample_rate:length(qs)]
-    paths[string("qs", idx)] = joint_poses
-end
-for idx = 1:10
-    joint_vels = [vs[i][idx] for i in 1:sample_rate:length(vs)]
-    paths[string("vs", idx)] = joint_vels
-end
-
-print("Animating... ")
-MeshCatMechanisms.animate(mvis, ts, qs; realtimerate = 1.0)
-println("done.")
-
-print("Plotting...")
-l = @layout[a b; c d; e f]
-var_names = ["vs1", "vs2", "vs3", "vs4", "vs5", "vs6"]
-plot_labels = ["roll", "pitch", "yaw", "x", "y", "z"]
-plot_handles = []
-for k = 1:6
-    var = var_names[k]
-    lab = plot_labels[k]
-    if k < 4
-        push!(plot_handles, plot(ts_down, paths[var], title=lab, legend=false, titlefontsize=12))
+    # # Scale that trajectory to 1x-3x "top speed"
+    if do_scale_traj == true
+        scaled_traj = TrajGen.scale_trajectory(traj...)
     else
-        push!(plot_handles, plot(ts_down, paths[var], title=lab, ylim=(-.05,.05), legend=false, titlefontsize=12))
+        scaled_traj = traj 
+    end
+    params = scaled_traj[1]
+    duration = params.T
+    poses = scaled_traj[2]
+    vels = scaled_traj[3]
+
+    # Make vector of waypoint values and time step to save to csv
+    waypoints = [Δt*sample_rate params.wp.start.θs... params.wp.goal.θs... params.wp.start.dθs... params.wp.goal.dθs...]
+    wp_data = Tables.table(waypoints)
+
+    # Save waypoints (start and goal positions, velocities) to CSV file
+    if save_to_csv == true
+        if n == 1
+            goal_headers = ["dt", "E_start", "D_start", "C_start", "B_start", "E_end", "D_end", "C_end", "B_end", "dE_start", "dD_start", "dC_start", "dB_start", "dE_end", "dD_end", "dC_end", "dB_end"]
+            CSV.write("data/full-sim-data-110822/full-sim-waypoints_110822.csv", wp_data, header=goal_headers)
+        else 
+            CSV.write("data/full-sim-data-110822/full-sim-waypoints_110822.csv", wp_data, header=false, append=true)
+        end
+    end
+
+    # Simulate the trajectory
+    if save_to_csv != true; print("Simulating... ") end
+    ts, qs, vs = simulate_with_ext_forces(state, duration+duration_after_traj, params, ctlr_cache, hydro_calc!, PIDCtlr.pid_control!; Δt=Δt)
+    if save_to_csv != true; println("done.") end
+
+    # Downsample the desired velocities
+    ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
+    des_vs = [TrajGen.get_desv_at_t(t, params) for t in ts_down]
+    paths = OrderedDict();
+
+    # Downsample the simulation output
+    paths["qs0"] = [qs[i][1] for i in 1:sample_rate:length(qs)]
+    for idx = 1:10
+        joint_poses = [qs[i][idx+1] for i in 1:sample_rate:length(qs)]
+        paths[string("qs", idx)] = joint_poses
+    end
+    for idx = 1:10
+        joint_vels = [vs[i][idx] for i in 1:sample_rate:length(vs)]
+        paths[string("vs", idx)] = joint_vels
+    end
+
+    if show_animation == true
+        print("Animating... ")
+        MeshCatMechanisms.animate(mvis, ts, qs; realtimerate = 1.0)
+        println("done.")
+    end
+
+    if plot_velocities == true
+        print("Plotting...")
+        l = @layout[a b; c d; e f]
+        var_names = ["vs1", "vs2", "vs3", "vs4", "vs5", "vs6"]
+        plot_labels = ["roll", "pitch", "yaw", "x", "y", "z"]
+        plot_handles = []
+        for k = 1:6
+            var = var_names[k]
+            lab = plot_labels[k]
+            if k < 4
+                push!(plot_handles, plot(ts_down, paths[var], title=lab, legend=false, titlefontsize=12))
+            else
+                push!(plot_handles, plot(ts_down, paths[var], title=lab, ylim=(-.05,.05), legend=false, titlefontsize=12))
+            end
+        end
+        display(plot(plot_handles..., layout=l))
+        println("done.")
+    end
+
+    if plot_control_taus == true
+        tau_plot_handles = []
+        tau_plot_lims = [[-3, 3], [-6, 0], [-3, 3], [4, 10]]
+        tl = @layout[a b; c d]
+        for k = 3:6
+            lab = plot_labels[k]
+                push!(tau_plot_handles, plot(ctlr_cache.taus[k,2:end], title=lab, legend=false, ylim=tau_plot_lims[k-2]))
+        end
+        display(plot(tau_plot_handles..., layout=tl))
+    end
+
+    if save_to_csv == true
+        num_rows = 25
+        data = Array{Float64}(undef, length(ts_down), num_rows-4)
+        fill!(data, 0.0)
+        labels = Array{String}(undef, num_rows-4)
+
+        quat_data = Array{Float64}(undef, length(ts_down), 4)
+        quat_labels = Array{String}(undef, 4)
+        row_n = 1
+        for (key, value) in paths
+            if row_n < 5
+                quat_labels[row_n] = key 
+                quat_data[:,row_n] = value
+            else
+                labels[row_n-4] = key
+                data[:,row_n-4] = value 
+            end
+            row_n = row_n + 1
+        end
+        for actuated_idx = 5:8
+            # println([des_vs[m][actuated_idx] for m in 1:length(des_vs)])
+            data[:,row_n-4] = [des_vs[m][actuated_idx] for m in 1:length(des_vs)]
+            row_n = row_n + 1
+        end
+        labels[18:21] = ["des_vsE", "des_vsD", "des_vsC", "des_vsB"]
+        
+        tab = Tables.table(data)
+        CSV.write("data/full-sim-data-110822/data-no-orientation/states$(n).csv", tab, header=labels)
+        quat_tab = Tables.table(quat_data)
+        CSV.write("data/full-sim-data-110822/data-quat/quats$(n).csv", quat_tab, header=quat_labels)
     end
 end
-display(plot(plot_handles..., layout=l))
-println("done.")
-
-tau_plot_handles = []
-tau_plot_lims = [[-3, 3], [-6, 0], [-3, 3], [4, 10]]
-tl = @layout[a b; c d]
-for k = 3:6
-    lab = plot_labels[k]
-        push!(tau_plot_handles, plot(ctlr_cache.taus[k,2:end], title=lab, legend=false, ylim=tau_plot_lims[k-2]))
-end
-display(plot(tau_plot_handles..., layout=tl))
-
-
 # function plot_state_errors()
 #     l = @layout [a b ; c d ; e f]
 #     # label = ["q2", "q3", "v2", "v3"]
@@ -255,10 +315,3 @@ display(plot(tau_plot_handles..., layout=tl))
 # p_sway = plot(ts_down, paths["vs5"], label="twist - y",  ylim=(-.5, .5))
 # p_heave = plot(ts_down, paths["vs6"], label="twist - z",  ylim=(-0.5, 0.5))
 # plot(p_yaw, p_surge, p_sway, p_heave, layout=l2)
-#%%
-#  Animate
-# render(mvis)
-
-#%%
-# save_waypoints(wp, "unstable_wps_right")
-# noodle = load_waypoints("test_wps")
