@@ -1,0 +1,75 @@
+<robot name="bluerov">
+
+<!-- Materials -->
+    <material name="white">
+        <color rgba="0.8 0.8 0.8 0.8"/>
+    </material>
+    <material name="gray">
+        <color rgba="0.3 0.3 0.3 1"/>
+    </material>
+    <material name="transparent" >
+        <color rgba="0.3 0.3 0.3 0.25" />
+    </material>
+    <material name="red" >
+        <color rgba="1 0 0 0.8" />
+    </material>
+    <material name="green">
+        <color rgba="0.5 0.9 0.3 1"/>
+    </material>
+    <material name="blue">
+        <color rgba="0.25 0.5 0.62 1"/>
+    </material>
+    <material name="black">
+        <color rgba=".1 .1 .1 1"/>
+    </material>
+
+<!-- Links -->
+    <link name="vehicle_frame">
+        <visual>
+            <geometry>
+                <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\bluerov_black.obj"/>
+            </geometry>
+            <origin rpy="1.57075 0 3.1415" xyz="0 0 0"/>
+            <material name="gray"/>
+        </visual>
+        <inertial>
+            <!-- Actual = 10 kg (5.5 x, 12.7 y, 14.57 z (avg 10.9))-->
+            <mass value="20.9"/>
+            <origin xyz="0 0 -.02"/>
+            <inertia ixx="0.28" ixy="0" ixz="0" iyy="0.28" iyz="0" izz="0.28"/>
+        </inertial> 
+    </link>
+
+    <link name="vehicle_ballast">
+        <visual>
+            <geometry>
+                <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\bluerov_blue.obj"/>
+            </geometry>
+            <origin rpy="1.57075 0 3.1415" xyz="0 0 0"/>
+            <material name="blue"/>
+        </visual>
+    </link>
+
+    <joint name="frame_to_ballast" type="fixed">
+        <parent link = "vehicle_frame"/>
+        <child link = "vehicle_ballast"/>
+        <origin rpy="0 0 0"/>
+    </joint>
+
+    <link name="vehicle_cans">
+        <visual>
+            <geometry>
+                <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\bluerov_white.obj"/>
+            </geometry>
+            <origin rpy="1.57075 0 3.1415" xyz="0 0 0"/>
+            <material name="white"/>
+        </visual>
+    </link>
+
+    <joint name="frame_to_cans" type="fixed">
+        <parent link = "vehicle_frame"/>
+        <child link = "vehicle_cans"/>
+        <origin rpy="0 0 0"/>
+    </joint>
+
+</robot>
