@@ -19,25 +19,25 @@ include("SimWExt.jl")
 include("PIDCtlr.jl")
 include("TrajGenMain.jl")
 
-urdf_file = joinpath("urdf", "alpha_seabotix.urdf")
+urdf_file = joinpath("urdf", "blue_rov.urdf")
 
 # ----------------------------------------------------------
 #                 One-Time Mechanism Setup
 # ----------------------------------------------------------
-
+#%%
 vis = Visualizer()
-mech_sea_alpha = parse_urdf(urdf_file; floating=true, gravity = [0.0, 0.0, 0.0])
-# mech_sea_alpha = parse_urdf(urdf_file; gravity = [0.0, 0.0, 0.0])
+mech_blue_alpha = parse_urdf(urdf_file; floating=true, gravity = [0.0, 0.0, 0.0])
+# mech_blue_alpha = parse_urdf(urdf_file; gravity = [0.0, 0.0, 0.0])
 
 delete!(vis)
 
 # Create visuals of the URDFs
-mvis = MechanismVisualizer(mech_sea_alpha, URDFVisuals(urdf_file), vis[:alpha])
+mvis = MechanismVisualizer(mech_blue_alpha, URDFVisuals(urdf_file), vis[:alpha])
 # render(mvis)
 
 # Name the joints and bodies of the mechanism
-vehicle_joint, base_joint, shoulder_joint, elbow_joint, wrist_joint = joints(mech_sea_alpha)
-~, vehicle_body, shoulder_body, upper_arm_body, elbow_body, wrist_body = bodies(mech_sea_alpha)
+vehicle_joint, base_joint, shoulder_joint, elbow_joint, wrist_joint = joints(mech_blue_alpha)
+~, vehicle_body, shoulder_body, upper_arm_body, elbow_body, wrist_body = bodies(mech_blue_alpha)
 num_virtual_links = 0
 
 body_frame = default_frame(vehicle_body)
@@ -45,7 +45,7 @@ shoulder_frame = default_frame(shoulder_body)
 upper_arm_frame = default_frame(upper_arm_body)
 elbow_frame = default_frame(elbow_body)
 wrist_frame = default_frame(wrist_body)
-base_frame = root_frame(mech_sea_alpha)
+base_frame = root_frame(mech_blue_alpha)
 # setelement!(mvis_alpha, shoulder_frame)
 
 println("Mechanism built.")
@@ -53,14 +53,14 @@ println("Mechanism built.")
 # ----------------------------------------------------------
 #                 COM and COB Frame Setup
 # ----------------------------------------------------------
-
 frame_names_cob = ["vehicle_cob", "shoulder_cob", "ua_cob", "elbow_cob", "wrist_cob"]
 frame_names_com = ["vehicle_com", "shoulder_com", "ua_com", "elbow_com", "wrist_com"]
-cob_vecs = [SVector{3, Float64}([0.0, 0.0, -.01]), SVector{3, Float64}([-0.001, -0.003, .032]), SVector{3, Float64}([0.073, 0.0, -0.002]), SVector{3, Float64}([0.003, 0.001, -0.017]), SVector{3, Float64}([0.0, 0.0, -.098])]
-com_vecs = [SVector{3, Float64}([0.0, 0.0, -0.06]), SVector{3, Float64}([0.005, -.001, 0.016]), SVector{3, Float64}([0.073, 0.0, 0.0]), SVector{3, Float64}([0.017, -0.026, -0.002]), SVector{3, Float64}([0.0, 0.003, -.098])]
+# Assume default frame = COM
+cob_vecs = [SVector{3, Float64}([0.0, 0.0, 0.02]), SVector{3, Float64}([-0.001, -0.003, .032]), SVector{3, Float64}([0.073, 0.0, -0.002]), SVector{3, Float64}([0.003, 0.001, -0.017]), SVector{3, Float64}([0.0, 0.0, -.098])]
+com_vecs = [SVector{3, Float64}([0.0, 0.0, 0.0]), SVector{3, Float64}([0.005, -.001, 0.016]), SVector{3, Float64}([0.073, 0.0, 0.0]), SVector{3, Float64}([0.017, -0.026, -0.002]), SVector{3, Float64}([0.0, 0.003, -.098])]
 cob_frames = []
 com_frames = []
-setup_frames!(mech_sea_alpha, frame_names_cob, frame_names_com, cob_vecs, com_vecs, cob_frames, com_frames)
+setup_frames!(mech_blue_alpha, frame_names_cob, frame_names_com, cob_vecs, com_vecs, cob_frames, com_frames)
 
 #%%
 # buoyancy force setup
@@ -71,7 +71,7 @@ setup_frames!(mech_sea_alpha, frame_names_cob, frame_names_com, cob_vecs, com_ve
 # f = 997 (kg/m^3) * 9.81 (m/s^2) * V_in_L *.001 (m^3) = kg m / s^2
 # One time setup of buoyancy forces
 rho = 997
-volumes = [22.2/(.001*rho), .018, .203, .025, .155, .202] # vehicle, shoulder, ua, elbow, wrist, armbase
+volumes = [10.23/(.001*rho), .018, .203, .025, .155, .202] # vehicle, shoulder, ua, elbow, wrist, armbase
 buoy_force_mags = volumes * rho * 9.81 * .001
 buoy_lin_forces = []
 for mag in buoy_force_mags
@@ -80,7 +80,7 @@ for mag in buoy_force_mags
 end
 # println(buoy_lin_forces)
 
-masses = [22.2, .194, .429, .115, .333, .341]
+masses = [10.0, .194, .429, .115, .333, .341]
 grav_forces = masses*9.81
 grav_lin_forces = []
 for f_g in grav_forces
@@ -109,7 +109,7 @@ function reset_to_equilibrium!(state)
 end
 
 # Constants
-state = MechanismState(mech_sea_alpha)
+state = MechanismState(mech_blue_alpha)
 Δt = 1e-3
 final_time = 5.0
 goal_freq = 50
@@ -130,10 +130,10 @@ include("HydroCalc.jl")
 #                      Gather Sim Data
 # ----------------------------------------------------------
 
-num_trajs = 2 
-save_to_csv = true
-show_animation = false
-plot_velocities = false
+num_trajs = 1 
+save_to_csv = false
+show_animation = true
+plot_velocities = true
 plot_control_taus = false
 
 # Create (num_trajs) different trajectories and save to csvs 
@@ -142,7 +142,7 @@ for n in ProgressBar(1:num_trajs)
     # Reset the sim to the equilibrium position
     reset_to_equilibrium!(state)
     # Start up the controller
-    ctlr_cache = PIDCtlr.CtlrCache(Δt, mech_sea_alpha)
+    ctlr_cache = PIDCtlr.CtlrCache(Δt, mech_blue_alpha)
     # ctlr_cache.taus[:,1] = [0.; 0.; 0.; 0.; 0.; 10.; 0.; 0.; 0.; 0.]
 
     # ----------------------------------------------------------
