@@ -20,10 +20,6 @@ zero!(state)
 # set_configuration!(state, vehicle_joint, [.993607, 0., 0.11289, 0.00034, 1., 0., 0.])
 set_configuration!(state, vehicle_joint, [1., 0., 0., 0., 0., 0., 0.])
 
-# moore-penrose pseudo-inverse
-# noodle = [1; 2]
-# noodle_mpp = pinv(noodle)
-
 #%%
 p_arm = RigidBodyDynamics.path(mech_blue_alpha, world_body, jaw_body)
 act_dof_idxs = 3:10
@@ -44,7 +40,13 @@ function calc_ori_jacobian(state)
     return calculate_actuated_jacobian(state)[1:3, act_dof_idxs]
 end
 
-floop = calc_pos_jacobian(state)
+# Moore-Penrose Pseudo-Inverse
+function get_mp_pinv(J_mat)
+    return pinv(J_mat)
+end
+
+floop = calculate_actuated_jacobian(state)
+Jt = get_mp_pinv(floop)
 
 
 
