@@ -36,15 +36,15 @@ mvis = MechanismVisualizer(mech_blue_alpha, URDFVisuals(urdf_file), vis[:alpha])
 # render(mvis)
 
 # Name the joints and bodies of the mechanism
-vehicle_joint, base_joint, shoulder_joint, elbow_joint, wrist_joint = joints(mech_blue_alpha)
-~, vehicle_body, shoulder_body, upper_arm_body, elbow_body, wrist_body = bodies(mech_blue_alpha)
-num_virtual_links = 0
+vehicle_joint, base_joint, shoulder_joint, elbow_joint, wrist_joint, jaw_joint = joints(mech_blue_alpha)
+~, vehicle_body, shoulder_body, upper_arm_body, elbow_body, wrist_body, jaw_body = bodies(mech_blue_alpha)
 
 body_frame = default_frame(vehicle_body)
 shoulder_frame = default_frame(shoulder_body)
 upper_arm_frame = default_frame(upper_arm_body)
 elbow_frame = default_frame(elbow_body)
 wrist_frame = default_frame(wrist_body)
+jaw_frame = default_frame(jaw_body)
 base_frame = root_frame(mech_blue_alpha)
 # setelement!(mvis_alpha, shoulder_frame)
 
@@ -53,11 +53,11 @@ println("Mechanism built.")
 # ----------------------------------------------------------
 #                 COM and COB Frame Setup
 # ----------------------------------------------------------
-frame_names_cob = ["vehicle_cob", "shoulder_cob", "ua_cob", "elbow_cob", "wrist_cob"]
-frame_names_com = ["vehicle_com", "shoulder_com", "ua_com", "elbow_com", "wrist_com"]
+frame_names_cob = ["vehicle_cob", "shoulder_cob", "ua_cob", "elbow_cob", "wrist_cob", "jaw_cob"]
+frame_names_com = ["vehicle_com", "shoulder_com", "ua_com", "elbow_com", "wrist_com", "jaw_com"]
 # Assume default frame = COM
-cob_vecs = [SVector{3, Float64}([0.0, 0.0, 0.02]), SVector{3, Float64}([-0.001, -0.003, .032]), SVector{3, Float64}([0.073, 0.0, -0.002]), SVector{3, Float64}([0.003, 0.001, -0.017]), SVector{3, Float64}([0.0, 0.0, -.098])]
-com_vecs = [SVector{3, Float64}([0.0, 0.0, 0.0]), SVector{3, Float64}([0.005, -.001, 0.016]), SVector{3, Float64}([0.073, 0.0, 0.0]), SVector{3, Float64}([0.017, -0.026, -0.002]), SVector{3, Float64}([0.0, 0.003, -.098])]
+cob_vecs = [SVector{3, Float64}([0.0, 0.0, 0.02]), SVector{3, Float64}([-0.001, -0.003, .032]), SVector{3, Float64}([0.073, 0.0, -0.002]), SVector{3, Float64}([0.003, 0.001, -0.017]), SVector{3, Float64}([0.0, 0.0, -.098]), SVector{3, Float64}([0.0, 0.0, 0.0])]
+com_vecs = [SVector{3, Float64}([0.0, 0.0, 0.0]), SVector{3, Float64}([0.005, -.001, 0.016]), SVector{3, Float64}([0.073, 0.0, 0.0]), SVector{3, Float64}([0.017, -0.026, -0.002]), SVector{3, Float64}([0.0, 0.003, -.098]), SVector{3, Float64}([0.0, 0.0, 0.0])]
 cob_frames = []
 com_frames = []
 setup_frames!(mech_blue_alpha, frame_names_cob, frame_names_com, cob_vecs, com_vecs, cob_frames, com_frames)
@@ -71,7 +71,7 @@ setup_frames!(mech_blue_alpha, frame_names_cob, frame_names_com, cob_vecs, com_v
 # f = 997 (kg/m^3) * 9.81 (m/s^2) * V_in_L *.001 (m^3) = kg m / s^2
 # One time setup of buoyancy forces
 rho = 997
-volumes = [10.23/(.001*rho), .018, .203, .025, .155, .202] # vehicle, shoulder, ua, elbow, wrist, armbase
+volumes = [10.23/(.001*rho), .018, .203, .025, .155, 0.01, .202] # vehicle, shoulder, ua, elbow, wrist, jaw, armbase
 buoy_force_mags = volumes * rho * 9.81 * .001
 buoy_lin_forces = []
 for mag in buoy_force_mags
@@ -80,7 +80,7 @@ for mag in buoy_force_mags
 end
 # println(buoy_lin_forces)
 
-masses = [10.0, .194, .429, .115, .333, .341]
+masses = [10.0, .194, .429, .115, .333, 0.01, .341]
 grav_forces = masses*9.81
 grav_lin_forces = []
 for f_g in grav_forces
@@ -124,6 +124,7 @@ duration_after_traj = 0.0   # How long to simulate after trajectory has ended
 include("PIDCtlr.jl")
 include("TrajGenMain.jl")
 include("HydroCalc.jl")
+include("SimWExt.jl")
 
 
 # ----------------------------------------------------------
@@ -137,7 +138,7 @@ plot_velocities = true
 plot_control_taus = false
 
 # Create (num_trajs) different trajectories and save to csvs 
-for n in ProgressBar(1:num_trajs)
+# for n in ProgressBar(1:num_trajs)
 
     # Reset the sim to the equilibrium position
     reset_to_equilibrium!(state)
@@ -158,8 +159,8 @@ for n in ProgressBar(1:num_trajs)
 
     # # Keep trying until a good trajectory is found
     while traj === nothing
-        wp = TrajGen.gen_rand_waypoints_to_rest()
-        traj = TrajGen.find_trajectory(wp)
+        global wp = TrajGen.gen_rand_waypoints_to_rest()
+        global traj = TrajGen.find_trajectory(wp)
     end
 
     # # Scale that trajectory to 1x-3x "top speed"
@@ -188,8 +189,9 @@ for n in ProgressBar(1:num_trajs)
     end
 
     # Simulate the trajectory
-    if save_to_csv != true; print("Simulating... ") end
+    if save_to_csv != true; println("Simulating... ") end
     ts, qs, vs = simulate_with_ext_forces(state, duration+duration_after_traj, params, ctlr_cache, hydro_calc!, PIDCtlr.pid_control!; Δt=Δt)
+    # ts, qs, vs = simulate_with_ext_forces(state, .002, params, ctlr_cache, hydro_calc!, PIDCtlr.pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
     # Downsample the desired velocities
@@ -275,7 +277,7 @@ for n in ProgressBar(1:num_trajs)
         quat_tab = Tables.table(quat_data)
         CSV.write("data/full-sim-data-110822/data-quat/quats$(n).csv", quat_tab, header=quat_labels)
     end
-end
+# end
 # function plot_state_errors()
 #     l = @layout [a b ; c d ; e f]
 #     # label = ["q2", "q3", "v2", "v3"]

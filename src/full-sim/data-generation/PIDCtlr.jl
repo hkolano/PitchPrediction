@@ -34,11 +34,11 @@ mutable struct CtlrCache
     taus
     
     function CtlrCache(dt, mechanism)
-        vehicle_joint, jointE, jointD, jointC, jointB = joints(mechanism)
-        joint_vec = [vehicle_joint, jointE, jointD, jointC, jointB]
+        vehicle_joint, jointE, jointD, jointC, jointB, jointJaw = joints(mechanism)
+        joint_vec = [vehicle_joint, jointE, jointD, jointC, jointB, jointJaw]
         new(default_Kp, default_Kd, default_Ki, #=
         =# dt, zeros(8), zeros(8), 0, joint_vec, #=
-        =# zeros(8), default_torque_lims, Array{Float64}(undef, 10, 1)) 
+        =# zeros(8), default_torque_lims, Array{Float64}(undef, 11, 1)) 
     end
 end
 
@@ -77,7 +77,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
     # println("Made it inside the function! Ctr = $(time_step_ctr)")
     if rem(c.step_ctr, 4) == 0
         # Set up empty vector for control torques
-        c_taus = zeros(10,1)
+        c_taus = zeros(11,1)
         if c.step_ctr == 0
             torques[6] = 7. # 8
             torques[3] = 0.
@@ -85,9 +85,10 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             torques[4] = -1. # -1.8
         end
         
-        # Roll and pitch are not controlled.
+        # Roll and pitch are not controlled
         torques[1] = 0.
         torques[2] = 0.
+        torques[11] = 0.
         
         # println("Requesting des vel from trajgen")
         # c.des_vel = TrajGen.get_desv_at_t(t, pars)

@@ -7,9 +7,9 @@ using RigidBodyDynamics
 function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::MechanismState)
     buoy_wrenches = []
     grav_wrenches = []
-    names = ["cob1", "cob2", "cob3", "cob4", "cob5"]
+    names = ["cob1", "cob2", "cob3", "cob4", "cob5", "cob6"]
     # Iterate through each body 
-    for i in 1:5
+    for i in 1:6
         # Get the body
         bod = bodies(state.mechanism)[i+1]
         # Get default frame of the body
@@ -20,6 +20,7 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
         # TODO: don't use fixed_transform because it's bad for computation time
         def_to_cob = fixed_transform(bod, body_default_frame, cob_frames[i])
         # Transform buoyancy force vector to the body's default frame (rotation only)
+        # NAN on third iteration
         buoy_force_trans = transform(state, buoy_lin_forces[i], body_default_frame)
         # Make the wrench: the buoyancy force through a point, the center of buoyancy.
         buoy_wrench = Wrench(Point3D(body_default_frame, translation(inv(def_to_cob))), buoy_force_trans)
@@ -29,6 +30,7 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
         # -------- Calculate Gravity Wrench -------
         def_to_com = fixed_transform(bod, body_default_frame, com_frames[i])
         grav_force_trans = transform(state, grav_lin_forces[i], body_default_frame)
+        # println(grav_force_trans)
         # Make the wrench: the buoyancy force through a point, the center of buoyancy.
         grav_wrench = Wrench(Point3D(body_default_frame, translation(inv(def_to_com))), grav_force_trans)
         # Add wrench to buoy_wrenches
@@ -43,10 +45,10 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
         # ----- Special calculaitons for the vehicle -----
         if i == 1
             # ----- Grav/buoy for arm base link ----- 
-            def_to_armbase_cob = fixed_transform(bod, body_default_frame, cob_frames[6])
-            def_to_armbase_com = fixed_transform(bod, body_default_frame, com_frames[6])
-            buoy_force_trans_armbase = transform(state, buoy_lin_forces[6], body_default_frame)
-            grav_force_trans_armbase = transform(state, grav_lin_forces[6], body_default_frame)
+            def_to_armbase_cob = fixed_transform(bod, body_default_frame, cob_frames[7])
+            def_to_armbase_com = fixed_transform(bod, body_default_frame, com_frames[7])
+            buoy_force_trans_armbase = transform(state, buoy_lin_forces[7], body_default_frame)
+            grav_force_trans_armbase = transform(state, grav_lin_forces[7], body_default_frame)
             buoy_wrench_arm = Wrench(Point3D(body_default_frame, translation(inv(def_to_armbase_cob))), buoy_force_trans_armbase)
             grav_wrench_arm = Wrench(Point3D(body_default_frame, translation(inv(def_to_armbase_com))), grav_force_trans_armbase)
             wrench = wrench + buoy_wrench_arm + grav_wrench_arm
@@ -57,7 +59,9 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
             # println(wrench)
 
             # ----- Drag of the vehicle -----
+            # NANs on second iteration
             vel=velocity(state, joints(state.mechanism)[1])
+            # println(vel)
             d_lin_coeffs = [4.03, 6.22, 5.18, .07, .07, .07]
             d_nonlin_coeffs = [18.18, 21.66, 36.99, 1.55, 1.55, 1.55]
             tau_d = -d_lin_coeffs .* vel .+ -d_nonlin_coeffs .* vel .* abs.(vel)
@@ -69,7 +73,7 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
             # println("Wrench drag:")
             # println(drag_wrench)
         # ----- Drag on the links (quadratic only) ----
-        else
+        elseif i != 6
             twist_world = twist_wrt_world(state, bod)
             root_transform = transform_to_root(state, bod)
             # COB_point = Point3D(body_default_frame, translation(inv(def_to_cob)))
@@ -93,6 +97,7 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
         # Transform the wrench to the root frame and assign it to the body
         hydro_wrenches[BodyID(bod)] = transform(state, wrench, root_frame(state.mechanism))
     end
+    
 end;
 
 

@@ -1,6 +1,6 @@
 function setup_frames!(mech, frame_names_cob, frame_names_com, cob_vecs, com_vecs, cob_frames, com_frames)
     vis_element = 6
-    for i in 1:5
+    for i in 1:6
         bod = bodies(mech)[i+1]
         frame_cob = CartesianFrame3D(frame_names_cob[i])
         frame_com = CartesianFrame3D(frame_names_com[i])

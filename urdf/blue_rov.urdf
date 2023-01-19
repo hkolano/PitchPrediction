@@ -230,6 +230,21 @@
     </inertial>
   </link>
 
+  <link name="r5m_jaw">
+    <inertial>
+      <mass value="0.01"/>
+      <origin xyz="0. 0. 0."/>
+      <inertia ixx="0.000010" ixy="0.0" ixz="0.0" iyy="0.000010" iyz="0.0" izz="0.000010"/>
+    </inertial>
+  </link>
+
+  <joint name="r5m_joint_jaw" type="prismatic">
+    <parent link="r5m_wrist_link"/>
+    <child link="r5m_jaw"/>
+    <axis xyz="0 0 1"/>
+    <origin rpy="0 0 0" xyz="0 0 -0.190"/>
+  </joint>
+
   <link name="r5m_jaw1">
     <visual>
       <geometry>
@@ -292,12 +307,6 @@
     <limit effort="5.0" lower="0.0" upper="0.5" velocity="0.5"/>
   </joint>  
 
-  <link name="r5m_jaw"/>
-  <joint name="r5m_joint_jaw" type="prismatic">
-    <parent link="r5m_wrist_link"/>
-    <child link="r5m_jaw"/>
-    <axis xyz="0 0 1"/>
-    <origin rpy="0 0 0" xyz="0 0 -0.190"/>
-  </joint>
+
 
 </robot>

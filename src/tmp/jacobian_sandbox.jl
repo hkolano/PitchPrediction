@@ -26,12 +26,26 @@ set_configuration!(state, vehicle_joint, [1., 0., 0., 0., 0., 0., 0.])
 
 #%%
 p_arm = RigidBodyDynamics.path(mech_blue_alpha, world_body, jaw_body)
-J_arm_from_veh_in_world = geometric_jacobian(state, p_arm)
+act_dof_idxs = 3:10
 
-J_arm_from_veh_mat = Array(J_arm_from_veh_in_world)
+function calculate_full_ee_jacobian(state)
+    return geometric_jacobian(state, p_arm)
+end
 
-# J_pos_0 = J_arm_from_armbase_mat[4:6, 7:10]
-# J_ori_0 = J_arm_from_armbase_mat[1:3, 7:10]
+function calculate_actuated_jacobian(state)
+    return Array(calculate_full_ee_jacobian(state))
+end
+
+function calc_pos_jacobian(state)
+    return calculate_actuated_jacobian(state)[4:6,act_dof_idxs]
+end
+
+function calc_ori_jacobian(state)
+    return calculate_actuated_jacobian(state)[1:3, act_dof_idxs]
+end
+
+floop = calc_pos_jacobian(state)
+
 
 
 
