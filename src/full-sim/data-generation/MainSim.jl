@@ -104,7 +104,7 @@ println("CoM and CoB frames initialized. \n")
 
 function reset_to_equilibrium!(state)
     zero!(state)
-    set_configuration!(state, vehicle_joint, [.993607, 0., 0.11289, 0.00034, 0., 0., 0.])
+    set_configuration!(state, vehicle_joint, [.9777, -.0019, 0.2098, .0079, 0., 0., 0.])
     # set_velocity!(state, vehicle_joint, [0., 0., 0., 0., 0.0, 0.])
 end
 
@@ -117,7 +117,7 @@ sample_rate = Int(floor((1/Δt)/goal_freq))
 
 # Control variables
 do_scale_traj = true   # Scale the trajectory?
-duration_after_traj = 0.0   # How long to simulate after trajectory has ended
+duration_after_traj = 1.0   # How long to simulate after trajectory has ended
 
 #%%
 # (temporary adds while making changes to ctlr and traj generator)
@@ -135,7 +135,7 @@ num_trajs = 1
 save_to_csv = false
 show_animation = true
 plot_velocities = true
-plot_control_taus = false
+plot_control_taus = true
 
 # Create (num_trajs) different trajectories and save to csvs 
 # for n in ProgressBar(1:num_trajs)
@@ -175,7 +175,7 @@ plot_control_taus = false
     vels = scaled_traj[3]
 
     # Make vector of waypoint values and time step to save to csv
-    waypoints = [Δt*sample_rate params.wp.start.θs... params.wp.goal.θs... params.wp.start.dθs... params.wp.goal.dθs...]
+    waypoints = [Δt*sample_rate params.wp.start.θs[1:4]... params.wp.goal.θs[1:4]... params.wp.start.dθs[1:4]... params.wp.goal.dθs[1:4]...]
     wp_data = Tables.table(waypoints)
 
     # Save waypoints (start and goal positions, velocities) to CSV file
