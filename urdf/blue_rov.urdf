@@ -203,7 +203,8 @@
   <joint name="r5m_joint2" type="revolute">
     <parent link="r5m_forearm_link"/>
     <child link="r5m_wrist_link"/>
-    <origin rpy="-1.57075 -0.5 0" xyz="0.020 0 0"/>
+    <!-- <origin rpy="-1.57075 -0.5 0" xyz="0.020 0 0"/> -->
+    <origin rpy="-1.57075 0.0 0" xyz="0.020 0 0"/>
     <axis xyz="0 0 1"/>
     <limit effort="5.0" lower="0.0" upper="6.0" velocity="1.0"/>
   </joint>
