@@ -2,6 +2,7 @@ module TrajGen
 
 include("StructDefs.jl")
 using JLD
+using Random
 
 # ----------------------------------------------------------
 #                         Definitions
@@ -58,7 +59,7 @@ function gen_rand_feasible_point_at_rest()
 end
 
 # ----------------------------------------------------------
-#                    Waypoint Generation
+#             Waypoint Generation (Joint Space)
 # ----------------------------------------------------------
 """
 Generates a random Waypoint struct. Not advisable to start a trajectory.  
@@ -109,6 +110,16 @@ function load_waypoints(name::String)
     return new_wp 
 end
 
+# ----------------------------------------------------------
+#             Waypoint Generation (World Space)
+# ----------------------------------------------------------
+function generate_random_pose()
+    rand_scalings = [rand(.1: .01: 2) for i in 1:3]
+    rand_trans = Random.rand(Transform3D, base_frame, CartesianFrame3D("rand_frame"))
+    new_translation = rand_trans.mat[1:3, 4] .* rand_scalings
+    mod_trans = Transform3D(base_frame, CartesianFrame3D("rand_frame"), rotation(rand_trans), SVector{3}(new_translation))
+    return mod_trans
+end
 
 # ----------------------------------------------------------
 #                  Trajectory Generation
