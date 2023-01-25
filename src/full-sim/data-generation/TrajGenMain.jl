@@ -19,7 +19,7 @@ joint_lims = [[-175*pi/180, 175*pi/180], [0, 200*pi/180], [0, 200*pi/180], [-165
 θb = deg2rad(30)
 θc = deg2rad(50)
 vel_lims = [[-θb, θb], [-θb, θb], [-θb, θb], [-θc, θc], [-.003, .003]]
-max_linear_vel = .1 # 10 cm/s
+max_linear_vel = .15 # 15 cm/s
 
 equil_pose = zeros(num_actuated_dofs)
 equil_pt = jointState(equil_pose, zeros(num_actuated_dofs))
@@ -191,6 +191,14 @@ function find_trajectory(pts::worldSpaceWaypoints; T_init=1.0)
         return nothing
     end
 
+end
+
+function get_des_state_at_t(t, pts, a)
+    s = TrajGen.s(t, a)
+    ds = TrajGen.ds(t, a)
+    des_pose = TrajGen.get_T_at_s(pts, s)
+    des_vel = TrajGen.get_Tdot_at_sdot(pts, s, ds)
+    return des_pose, des_vel
 end
 
 # ----------------------------------------------------------
