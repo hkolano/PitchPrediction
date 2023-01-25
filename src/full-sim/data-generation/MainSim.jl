@@ -133,10 +133,7 @@ println("Goal Pose")
 println(wp.end_pose)
 traj_params = TrajGen.find_trajectory(wp)
 
-println("Velocity Sequence")
-for traj in traj_params[3]
-    display(traj)
-end
+des_pose, des_vel = TrajGen.get_des_state_at_t(0.1, wp, traj_params[1])
 #%%
 
 
