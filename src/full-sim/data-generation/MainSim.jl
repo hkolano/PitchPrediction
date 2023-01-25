@@ -121,10 +121,20 @@ duration_after_traj = 1.0   # How long to simulate after trajectory has ended
 
 #%%
 # (temporary adds while making changes to ctlr and traj generator)
-include("PIDCtlr.jl")
+# include("PIDCtlr.jl")
 include("TrajGenMain.jl")
-include("HydroCalc.jl")
-include("SimWExt.jl")
+# include("HydroCalc.jl")
+# include("SimWExt.jl")
+
+wp = TrajGen.generate_path_from_current_pose(state)
+println("Starting Pose")
+println(wp.start_pose)
+println("Goal Pose")
+println(wp.end_pose)
+traj_params = TrajGen.find_trajectory(wp)
+
+des_pose, des_vel = TrajGen.get_des_state_at_t(0.1, wp, traj_params[1])
+#%%
 
 
 # ----------------------------------------------------------
