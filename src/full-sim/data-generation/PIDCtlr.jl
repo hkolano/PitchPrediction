@@ -1,11 +1,3 @@
-module PIDCtlr
-export CtlrCache, pid_control!
-
-using RigidBodyDynamics
-
-include("TrajGenMain.jl")
-include("StructDefs.jl")
-
 # ------------------------------------------------------------------------
 #                              SETUP 
 # ------------------------------------------------------------------------
@@ -19,6 +11,7 @@ default_Kp = [v_Kp, v_Kp, v_Kp, v_Kp, arm_Kp, arm_Kp, arm_Kp, 20., 20.]
 default_Kd = [v_Kd, v_Kd, v_Kd, v_Kd, arm_Kd, arm_Kd, arm_Kd, 0.002, .002]
 default_Ki = [v_Ki, v_Ki, v_Ki, v_Ki, arm_Ki, arm_Ki, arm_Ki, 0.1, .1]
 default_torque_lims = [20., 71.5, 88.2, 177., 10.0, 10.0, 10.0, 0.6, 600]
+CLIK_gains = diagm([1., 1., 1., 1., 1., 1.])
 
 mutable struct CtlrCache
     Kp::Array{Float64}
@@ -32,13 +25,14 @@ mutable struct CtlrCache
     des_vel::Array{Float64}
     tau_lims::Array{Float64}
     taus
+    CLIK_gains::Array{Float64}
     
     function CtlrCache(dt, mechanism)
         vehicle_joint, jointE, jointD, jointC, jointB, jointJaw = joints(mechanism)
         joint_vec = [vehicle_joint, jointE, jointD, jointC, jointB, jointJaw]
         new(default_Kp, default_Kd, default_Ki, #=
         =# dt, zeros(9), zeros(9), 0, joint_vec, #=
-        =# zeros(9), default_torque_lims, Array{Float64}(undef, 11, 1)) 
+        =# zeros(9), default_torque_lims, Array{Float64}(undef, 11, 1), CLIK_gains) 
     end
 end
 
@@ -72,7 +66,7 @@ Requires the parameters of the trajectory to be followed (pars=trajParams), whic
 Only happens every 4 steps because integration is done with Runge-Kutta.
 """
 # function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c)
-function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c)
+function pid_control!(torques::AbstractVector, t, state::MechanismState, traj, c)
     # If it's the first time called in the Runge-Kutta, update the control torque
     # println("Made it inside the function! Ctr = $(time_step_ctr)")
     if rem(c.step_ctr, 4) == 0
@@ -90,11 +84,12 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         torques[2] = 0.
         
         # println("Requesting des vel from trajgen")
-        # c.des_vel = TrajGen.get_desv_at_t(t, pars)
-        c.des_vel = TrajGen.get_desv_at_t(t, pars)
-        # Don't move the manipulator
-        # c.des_vel[end-3:end] = zeros(4,1)
-        # println("Got desired velocity")
+        task_err = get_ee_task_error(traj, t, state)
+        JT = get_mp_pinv(calculate_actuated_jacobian(state))
+        ζ = JT*(c.CLIK_gains*task_err)
+
+        c.des_vel = vcat(ζ[3:end], 0)
+        # c.des_vel = [0., 1., 0, 0, 0, 0, 0, 0, 0]
 
         # Get forces for vehicle (yaw, surge, sway, heave)
         for dir_idx = 3:6
@@ -167,6 +162,4 @@ function limit_d_tau(d_tau, limit)
         d_tau = limit
     end
     return d_tau
-end
-
 end

@@ -2,12 +2,13 @@
 #                     Import Libraries
 # ----------------------------------------------------------
 #%%
-using RigidBodyDynamics
+using RigidBodyDynamics, Rotations
 using LinearAlgebra, StaticArrays, DataStructures
 using MeshCat, MeshCatMechanisms, MechanismGeometries
 using CoordinateTransformations
 using GeometryBasics
 using Printf, Plots, CSV, Tables, ProgressBars, Revise
+using JLD, Random
 
 
 # include("/home/hkolano/onr-dynamics-julia/simulate_with_ext_forces.jl")
@@ -37,7 +38,7 @@ mvis = MechanismVisualizer(mech_blue_alpha, URDFVisuals(urdf_file), vis[:alpha])
 
 # Name the joints and bodies of the mechanism
 vehicle_joint, base_joint, shoulder_joint, elbow_joint, wrist_joint, jaw_joint = joints(mech_blue_alpha)
-~, vehicle_body, shoulder_body, upper_arm_body, elbow_body, wrist_body, jaw_body = bodies(mech_blue_alpha)
+world, vehicle_body, shoulder_body, upper_arm_body, elbow_body, wrist_body, jaw_body = bodies(mech_blue_alpha)
 
 body_frame = default_frame(vehicle_body)
 shoulder_frame = default_frame(shoulder_body)
@@ -121,21 +122,14 @@ duration_after_traj = 1.0   # How long to simulate after trajectory has ended
 
 #%%
 # (temporary adds while making changes to ctlr and traj generator)
-# include("PIDCtlr.jl")
+include("PIDCtlr.jl")
 include("TrajGenMain.jl")
 # include("HydroCalc.jl")
 # include("SimWExt.jl")
+include("Tasks.jl")
 
-wp = TrajGen.generate_path_from_current_pose(state)
-println("Starting Pose")
-println(wp.start_pose)
-println("Goal Pose")
-println(wp.end_pose)
-traj_params = TrajGen.find_trajectory(wp)
 
-des_pose, des_vel = TrajGen.get_des_state_at_t(0.1, wp, traj_params[1])
-#%%
-
+p_arm = get_ee_path(mech_blue_alpha, jaw_body)
 
 # ----------------------------------------------------------
 #                      Gather Sim Data
@@ -144,8 +138,8 @@ des_pose, des_vel = TrajGen.get_des_state_at_t(0.1, wp, traj_params[1])
 num_trajs = 1 
 save_to_csv = false
 show_animation = true
-plot_velocities = true
-plot_control_taus = true
+plot_velocities = false
+plot_control_taus = false
 
 # Create (num_trajs) different trajectories and save to csvs 
 # for n in ProgressBar(1:num_trajs)
@@ -153,43 +147,55 @@ plot_control_taus = true
     # Reset the sim to the equilibrium position
     reset_to_equilibrium!(state)
     # Start up the controller
-    ctlr_cache = PIDCtlr.CtlrCache(Δt, mech_blue_alpha)
+    ctlr_cache = CtlrCache(Δt, mech_blue_alpha)
     # ctlr_cache.taus[:,1] = [0.; 0.; 0.; 0.; 0.; 10.; 0.; 0.; 0.; 0.]
 
     # ----------------------------------------------------------
     #                          Simulate
     # ----------------------------------------------------------
     # Generate a random waypoint and see if there's a valid trajectory to it
-    # wp = TrajGen.gen_rand_waypoints_to_rest()
-    wp = TrajGen.gen_rand_waypoints_from_equil()
-    # wp = TrajGen.load_waypoints("pid_test")
-    # wp = TrajGen.set_waypoints_from_equil([-2.03, 1.92, 1.73, 1.18], [0.16, 0.24, -0.08, 0.19])
+    # while this_trajectory === nothing
+    wp = generate_path_from_current_pose(state)
+    goal_frame = wp.end_pose.from
+    add_frame!(world, wp.end_pose)
+    setelement!(mvis, goal_frame)
+    a, T, des_poses, des_vels = find_trajectory(wp)
 
-    traj = TrajGen.find_trajectory(wp) 
+    # pose_15 = des_poses[15]
+    # frame_15 = CartesianFrame3D("frame_15")
+    
+    # frame_15 = pose_15.from
+    # add_frame!(world, pose_15)
+    # setelement!(mvis, frame_15)
 
-    # # Keep trying until a good trajectory is found
-    while traj === nothing
-        global wp = TrajGen.gen_rand_waypoints_to_rest()
-        global traj = TrajGen.find_trajectory(wp)
-    end
+    # pose_25 = des_poses[25]
+    # frame_25 = pose_25.from
+    # add_frame!(world, pose_25)
+    # setelement!(mvis, frame_25)
+
+    # for i = 1:length(des_poses) 
+    #     pose = des_poses[i]
+    #     add_frame!(world, pose)
+    #     setelement!(mvis, pose.from)
+    # end
+    this_trajectory = trajParams(a, wp, T)
 
     # # Scale that trajectory to 1x-3x "top speed"
-    if do_scale_traj == true
-        scaled_traj = TrajGen.scale_trajectory(traj...)
-    else
-        scaled_traj = traj 
-    end
-    params = scaled_traj[1]
-    duration = params.T
-    poses = scaled_traj[2]
-    vels = scaled_traj[3]
-
-    # Make vector of waypoint values and time step to save to csv
-    waypoints = [Δt*sample_rate params.wp.start.θs[1:4]... params.wp.goal.θs[1:4]... params.wp.start.dθs[1:4]... params.wp.goal.dθs[1:4]...]
-    wp_data = Tables.table(waypoints)
+    # if do_scale_traj == true
+    #     scaled_traj = TrajGen.scale_trajectory(traj...)
+    # else
+    #     scaled_traj = traj 
+    # end
+    # params = scaled_traj[1]
+    # duration = params.T
+    # poses = scaled_traj[2]
+    # vels = scaled_traj[3]
 
     # Save waypoints (start and goal positions, velocities) to CSV file
     if save_to_csv == true
+        # Make vector of waypoint values and time step to save to csv
+        waypoints = [Δt*sample_rate params.wp.start.θs[1:4]... params.wp.goal.θs[1:4]... params.wp.start.dθs[1:4]... params.wp.goal.dθs[1:4]...]
+        wp_data = Tables.table(waypoints)
         if n == 1
             goal_headers = ["dt", "E_start", "D_start", "C_start", "B_start", "E_end", "D_end", "C_end", "B_end", "dE_start", "dD_start", "dC_start", "dB_start", "dE_end", "dD_end", "dC_end", "dB_end"]
             CSV.write("data/full-sim-data-110822/full-sim-waypoints_110822.csv", wp_data, header=goal_headers)
@@ -200,25 +206,25 @@ plot_control_taus = true
 
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
-    ts, qs, vs = simulate_with_ext_forces(state, duration+duration_after_traj, params, ctlr_cache, hydro_calc!, PIDCtlr.pid_control!; Δt=Δt)
-    # ts, qs, vs = simulate_with_ext_forces(state, .002, params, ctlr_cache, hydro_calc!, PIDCtlr.pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, T+duration_after_traj, this_trajectory, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    # ts, qs, vs = simulate_with_ext_forces(state, 2, this_trajectory, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
     # Downsample the desired velocities
     ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
-    des_vs = [TrajGen.get_desv_at_t(t, params) for t in ts_down]
-    paths = OrderedDict();
+    # des_vs = [TrajGen.get_desv_at_t(t, params) for t in ts_down]
+    # paths = OrderedDict();
 
-    # Downsample the simulation output
-    paths["qs0"] = [qs[i][1] for i in 1:sample_rate:length(qs)]
-    for idx = 1:10
-        joint_poses = [qs[i][idx+1] for i in 1:sample_rate:length(qs)]
-        paths[string("qs", idx)] = joint_poses
-    end
-    for idx = 1:10
-        joint_vels = [vs[i][idx] for i in 1:sample_rate:length(vs)]
-        paths[string("vs", idx)] = joint_vels
-    end
+    # # Downsample the simulation output
+    # paths["qs0"] = [qs[i][1] for i in 1:sample_rate:length(qs)]
+    # for idx = 1:10
+    #     joint_poses = [qs[i][idx+1] for i in 1:sample_rate:length(qs)]
+    #     paths[string("qs", idx)] = joint_poses
+    # end
+    # for idx = 1:10
+    #     joint_vels = [vs[i][idx] for i in 1:sample_rate:length(vs)]
+    #     paths[string("vs", idx)] = joint_vels
+    # end
 
     if show_animation == true
         print("Animating... ")
