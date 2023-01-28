@@ -29,7 +29,7 @@ function calculate_full_ee_jacobian(state)
 end
 
 function calculate_actuated_jacobian(state)
-    return Array(calculate_full_ee_jacobian(state))
+    return Array(calculate_full_ee_jacobian(state))[:,1:10]
 end
 
 function calc_pos_jacobian(state)
@@ -46,7 +46,9 @@ function get_mp_pinv(J_mat)
 end
 
 floop = calculate_actuated_jacobian(state)
+display(floop)
 Jt = get_mp_pinv(floop)
+display(Jt)
 
 
 

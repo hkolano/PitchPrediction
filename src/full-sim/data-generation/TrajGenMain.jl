@@ -1,15 +1,7 @@
-module TrajGen
-
-include("StructDefs.jl")
-using JLD
-using Random
-using StaticArrays, RigidBodyDynamics, Rotations
-
-
 # ----------------------------------------------------------
 #                         Definitions
 # ----------------------------------------------------------
-num_its=50
+num_its=20
 num_actuated_dofs = 5
 num_trajectory_dofs = 4
 max_duration = 20.
@@ -27,48 +19,20 @@ extended_pt = jointState([0.01, 1.5, 2.6, 0.01, 0.], zeros(num_actuated_dofs))
 
 # raise_wpts = Waypoints(equil_pt, extended_pt)
 
-mutable struct trajParams
-    a::Array        # Array of time scaling coefficients (quintic traj)
-    wp::Waypoints   # Waypoints the traj is going between
-    T::Float64      # Duration of the trajectory
-end
-
 mutable struct worldSpaceWaypoints
     start_pose
     end_pose
 end
 
+struct trajParams
+    a::Array 
+    pts:: worldSpaceWaypoints
+    T::Float64
+end
+
 # ----------------------------------------------------------
 #             Waypoint Generation (Joint Space)
 # ----------------------------------------------------------
-"""
-Generates a random Waypoint struct. Not advisable to start a trajectory.  
-"""
-function gen_rand_waypoints()
-    Waypoints(gen_rand_feasible_point(), gen_rand_feasible_point())    
-end
-
-"""
-Generates a random Waypoint struct, starting at rest at the home position. 
-"""
-function gen_rand_waypoints_from_equil()
-    Waypoints(equil_pt, gen_rand_feasible_point()) 
-end
-
-"""
-    set_waypoint_from_equil(θs, dθs)
-
-Generates a Waypoint struct. Starts at rest at the home position; ...
-ends at the provided position (θs) and velocity (dθs) of the arm.
-"""
-function set_waypoints_from_equil(θs, dθs)
-    Waypoints(equil_pt, jointState(θs, dθs))
-end
-
-function gen_rand_waypoints_to_rest()
-    Waypoints(equil_pt, gen_rand_feasible_point_at_rest())
-end
-
 """
     save_waypoints(wp::Waypoints, name::String)
 
@@ -93,20 +57,21 @@ end
 # ----------------------------------------------------------
 #             Waypoint Generation (World Space)
 # ----------------------------------------------------------
-function generate_random_pose(mech)
+function generate_random_pose(mech::Mechanism)
     base_frame = root_frame(mech)
-    cartesian_bound = 2
+    cartesian_bound = 2.
     rand_scalings = [rand(.1: .01: cartesian_bound) for i in 1:3]
-    rand_trans = Random.rand(Transform3D, base_frame, CartesianFrame3D("rand_frame"))
+    rand_frame = CartesianFrame3D("rand_frame")
+    rand_trans = Random.rand(Transform3D, base_frame, rand_frame)
     new_translation = rand_trans.mat[1:3, 4] .* rand_scalings
-    mod_trans = Transform3D(base_frame, CartesianFrame3D("rand_frame"), rotation(rand_trans), SVector{3, Float64}(new_translation))
+    mod_trans = Transform3D(rand_frame, base_frame, rotation(rand_trans), SVector{3, Float64}(new_translation))
     return mod_trans
 end
 
-function generate_path_from_current_pose(state)
+function generate_path_from_current_pose(state::MechanismState)
     base_frame = root_frame(state.mechanism)
     jaw_frame = default_frame(bodies(state.mechanism)[end])
-    worldSpaceWaypoints(relative_transform(state, base_frame, jaw_frame), generate_random_pose(state.mechanism))
+    worldSpaceWaypoints(inv(relative_transform(state, base_frame, jaw_frame)), generate_random_pose(state.mechanism))
 end
 
 function get_T_at_s(wp::worldSpaceWaypoints, s::Float64)
@@ -144,9 +109,15 @@ function get_coeffs(T)
     return [0, 0, 0, a3, a4, a5]
 end
 
-s(t, a) = a[1] + a[2]*t + a[3]*t^2 + a[4]*t^3 + a[5]*t^4 + a[6]*t^5
-ds(t, a) = a[2] + 2a[3]*t + 3a[4]*t^2 + 4a[5]*t^3 + 5a[6]*t^4
-dds(t, a) = 2a[3] + 6a[4]*t + 12a[5]*t^2 + 20a[6]*t^3
+function get_s(t, a) 
+    a[1] + a[2]*t + a[3]*t^2 + a[4]*t^3 + a[5]*t^4 + a[6]*t^5 
+end
+function get_ds(t, a) 
+    a[2] + 2a[3]*t + 3a[4]*t^2 + 4a[5]*t^3 + 5a[6]*t^4
+end
+function get_dds(t, a) 
+    2a[3] + 6a[4]*t + 12a[5]*t^2 + 20a[6]*t^3
+end
 
 function get_pose_list(pts, a, T, num_its=num_its)
     dt = T/num_its 
@@ -155,8 +126,8 @@ function get_pose_list(pts, a, T, num_its=num_its)
 
     for i = 1:num_its
         t_current = dt*i    # current time
-        s = TrajGen.s(t_current, a)
-        ds = TrajGen.ds(t_current, a)
+        s = get_s(t_current, a)
+        ds = get_ds(t_current, a)
         poses[i] = get_T_at_s(pts, s)
         display(poses[i].mat)
         vels[i] = get_Tdot_at_sdot(pts, s, ds)
@@ -185,7 +156,7 @@ function find_trajectory(pts::worldSpaceWaypoints; T_init=1.0)
     # If a valid trajectory was found, get time series of poses and velocities
     if within_vel_bounds == true 
         poses, vels = get_pose_list(pts, a, T)
-        return [a, poses, vels]
+        return [a, T, poses, vels]
     else
         println("No path between points; try again.")
         return nothing
@@ -193,11 +164,11 @@ function find_trajectory(pts::worldSpaceWaypoints; T_init=1.0)
 
 end
 
-function get_des_state_at_t(t, pts, a)
-    s = TrajGen.s(t, a)
-    ds = TrajGen.ds(t, a)
-    des_pose = TrajGen.get_T_at_s(pts, s)
-    des_vel = TrajGen.get_Tdot_at_sdot(pts, s, ds)
+function get_des_state_at_t(t, traj::trajParams)
+    s = get_s(t, traj.a)
+    ds = get_ds(t, traj.a)
+    des_pose = get_T_at_s(traj.pts, s)
+    des_vel = get_Tdot_at_sdot(traj.pts, s, ds)
     return des_pose, des_vel
 end
 
@@ -242,6 +213,4 @@ function scale_trajectory(params, poses, vels)
         (poses[:,i], vels[:,i]) = get_path!(poses[:,i], vels[:,i], params.wp.start.θs[i], params.wp.goal.θs[i], T, a[i,:])
     end
     return [trajParams(a, params.wp, T), poses, vels]
-end
-
 end
