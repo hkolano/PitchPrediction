@@ -44,3 +44,19 @@ function setup_frames!(mech, frame_names_cob, frame_names_com, cob_vecs, com_vec
     # print("THIS SHOULD SAY after_arm_to_vehicle: ")
     println(RigidBodyDynamics.frame_definitions(vehicle_body)[5].from)
 end
+
+function visualize_path(des_poses, mvis, world_body)
+    frame_idxs = [6, 8, 10, 12, 14, 20]
+    poses = Vector{Transform3D}(undef, length(frame_idxs))
+    new_poses = Vector{Transform3D}(undef, length(frame_idxs))
+    frames = Vector{CartesianFrame3D}(undef, length(frame_idxs))
+    frame_names = Vector{String}(undef, length(frame_idxs))
+    for i in eachindex(frame_idxs)
+        poses[i] = des_poses[frame_idxs[i]]
+        frame_name = "frame_"*string(frame_idxs[i])
+        frames[i] = CartesianFrame3D(frame_name)
+        new_poses[i] = Transform3D(frames[i], default_frame(world_body), poses[i].mat)
+        add_frame!(world_body, new_poses[i])
+        setelement!(mvis, frames[i], 0.4, frame_name)
+    end
+end

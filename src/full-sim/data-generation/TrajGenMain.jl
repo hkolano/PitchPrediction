@@ -61,10 +61,10 @@ function generate_random_pose(mech::Mechanism)
     base_frame = root_frame(mech)
     cartesian_bound = 2.
     rand_scalings = [rand(.1: .01: cartesian_bound) for i in 1:3]
-    rand_frame = CartesianFrame3D("rand_frame")
-    rand_trans = Random.rand(Transform3D, base_frame, rand_frame)
+    goal_frame = CartesianFrame3D("goal_frame")
+    rand_trans = Random.rand(Transform3D, base_frame, goal_frame)
     new_translation = rand_trans.mat[1:3, 4] .* rand_scalings
-    mod_trans = Transform3D(rand_frame, base_frame, rotation(rand_trans), SVector{3, Float64}(new_translation))
+    mod_trans = Transform3D(goal_frame, base_frame, rotation(rand_trans), SVector{3, Float64}(new_translation))
     return mod_trans
 end
 

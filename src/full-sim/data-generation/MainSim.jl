@@ -127,6 +127,7 @@ include("TrajGenMain.jl")
 # include("HydroCalc.jl")
 # include("SimWExt.jl")
 include("Tasks.jl")
+include("FrameSetup.jl")
 
 
 p_arm = get_ee_path(mech_blue_alpha, jaw_body)
@@ -161,23 +162,7 @@ plot_control_taus = false
     setelement!(mvis, goal_frame)
     a, T, des_poses, des_vels = find_trajectory(wp)
 
-    # pose_15 = des_poses[15]
-    # frame_15 = CartesianFrame3D("frame_15")
-    
-    # frame_15 = pose_15.from
-    # add_frame!(world, pose_15)
-    # setelement!(mvis, frame_15)
-
-    # pose_25 = des_poses[25]
-    # frame_25 = pose_25.from
-    # add_frame!(world, pose_25)
-    # setelement!(mvis, frame_25)
-
-    # for i = 1:length(des_poses) 
-    #     pose = des_poses[i]
-    #     add_frame!(world, pose)
-    #     setelement!(mvis, pose.from)
-    # end
+    visualize_path(des_poses, mvis, world)
     this_trajectory = trajParams(a, wp, T)
 
     # # Scale that trajectory to 1x-3x "top speed"
