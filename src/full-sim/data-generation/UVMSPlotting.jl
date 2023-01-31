@@ -151,13 +151,16 @@ function plot_control_taus(ctlr, ts_down)
     end
 
     tau_plot_handles = []
-    tau_plot_lims = [[-1, 1], [-1, 1], [-3, 3], [-6, 0], [-3, 3], [4, 10]]
+    tau_plot_lims = [[-1, 1], [-1, 1], [-3, 3], [-6, 0], [-3, 3], [4, 10], [-1, 1], [-1, 1], [-1, 1], [-1, 1]]
     # tl = @layout[a b; c d]
-    tl = @layout[grid(3,1) grid(3,1)]
-    plot_labels = ["roll", "pitch", "yaw", "x", "y", "z"]
-    for k = 1:6
+    tl = @layout[grid(2,1) grid(2,1)]
+    plot_labels = ["roll", "pitch", "yaw", "x", "y", "z", "Joint1", "Joint2", "Joint3", "Joint4"]
+    for k = 7:10
         lab = plot_labels[k]
         push!(tau_plot_handles, plot(ts_down, ctrl_tau_dict[k], title=lab, legend=false, ylim=tau_plot_lims[k]))
     end
-    display(plot(tau_plot_handles..., layout=tl, plot_title="Control Forces (Vehicle)"))
+    display(plot(tau_plot_handles..., 
+        layout=tl, 
+        plot_title="Control Forces (Vehicle)", 
+        size=(1000, 800)))
 end
