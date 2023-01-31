@@ -129,7 +129,7 @@ function get_pose_list(pts, a, T, num_its=num_its)
         s = get_s(t_current, a)
         ds = get_ds(t_current, a)
         poses[i] = get_T_at_s(pts, s)
-        display(poses[i].mat)
+        # display(poses[i].mat)
         vels[i] = get_Tdot_at_sdot(pts, s, ds)
     end
     return poses, vels 
