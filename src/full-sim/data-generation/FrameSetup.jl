@@ -39,7 +39,7 @@ function setup_frames!(mech, frame_names_cob, frame_names_com, cob_vecs, com_vec
         add_frame!(vehicle_body, com_transform)
         push!(cob_frames, alphabase_com_frame)
         push!(com_frames, alphabase_com_frame)
-        setelement!(mvis, alphabase_com_frame)
+        # setelement!(mvis, alphabase_com_frame)
     end
     # print("THIS SHOULD SAY after_arm_to_vehicle: ")
     println(RigidBodyDynamics.frame_definitions(vehicle_body)[5].from)
