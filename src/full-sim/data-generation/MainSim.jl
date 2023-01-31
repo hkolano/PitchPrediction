@@ -140,6 +140,8 @@ save_to_csv = false
 show_animation = true
 plot_velocities = false
 plot_control_taus = false
+plot_poses = true
+plot_zetas_bool = true
 
 # Create (num_trajs) different trajectories and save to csvs 
 # for n in ProgressBar(1:num_trajs)
@@ -154,31 +156,15 @@ plot_control_taus = false
     #                          Simulate
     # ----------------------------------------------------------
     # Generate a random waypoint and see if there's a valid trajectory to it
-    # while this_trajectory === nothing
+    # while traj_pars === nothing
     wp = generate_path_from_current_pose(state)
     goal_frame = wp.end_pose.from
     add_frame!(world, wp.end_pose)
     setelement!(mvis, goal_frame)
     a, T, des_poses, des_vels = find_trajectory(wp)
 
-    # pose_15 = des_poses[15]
-    # frame_15 = CartesianFrame3D("frame_15")
-    
-    # frame_15 = pose_15.from
-    # add_frame!(world, pose_15)
-    # setelement!(mvis, frame_15)
-
-    # pose_25 = des_poses[25]
-    # frame_25 = pose_25.from
-    # add_frame!(world, pose_25)
-    # setelement!(mvis, frame_25)
-
-    # for i = 1:length(des_poses) 
-    #     pose = des_poses[i]
-    #     add_frame!(world, pose)
-    #     setelement!(mvis, pose.from)
-    # end
-    this_trajectory = trajParams(a, wp, T)
+    visualize_path(des_poses, mvis, world)
+    traj_pars = trajParams(a, wp, T)
 
     # # Scale that trajectory to 1x-3x "top speed"
     # if do_scale_traj == true
@@ -206,13 +192,13 @@ plot_control_taus = false
 
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
-    ts, qs, vs = simulate_with_ext_forces(state, T+duration_after_traj, this_trajectory, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    # ts, qs, vs = simulate_with_ext_forces(state, 2, this_trajectory, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, T+duration_after_traj, traj_pars, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    # ts, qs, vs = simulate_with_ext_forces(state, 2, traj_pars, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
     # Downsample the desired velocities
     ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
-    # des_vs = [TrajGen.get_desv_at_t(t, params) for t in ts_down]
+    
     # paths = OrderedDict();
 
     # # Downsample the simulation output
@@ -230,6 +216,16 @@ plot_control_taus = false
         print("Animating... ")
         MeshCatMechanisms.animate(mvis, ts, qs; realtimerate = 1.0)
         println("done.")
+    end
+
+    include("UVMSPlotting.jl")
+
+    if plot_poses == true
+        plot_desired_and_actual_poses(traj_pars, qs, ts_down)
+    end
+
+    if plot_zetas_bool == true
+        plot_zetas(ctlr_cache, vs, ts_down)
     end
 
     if plot_velocities == true
