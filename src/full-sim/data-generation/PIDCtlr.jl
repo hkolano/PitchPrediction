@@ -34,7 +34,7 @@ mutable struct CtlrCache
         new(default_Kp, default_Kd, default_Ki, #=
         =# dt, zeros(9), zeros(9), 0, joint_vec, #=
         =# zeros(9), default_torque_lims, Array{Float64}(undef, 11, 1), #=
-        =# CLIK_gains, Array{Float64}(undef, 9, 1)) 
+        =# CLIK_gains, Array{Float64}(undef, 11, 1)) 
     end
 end
 
@@ -91,7 +91,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, traj, c
         ζ = JT*(c.CLIK_gains*task_err)
 
         c.des_vel = vcat(ζ[3:end], 0)
-        c.des_zetas = cat(c.des_zetas, c.des_vel, dims=2)
+        c.des_zetas = cat(c.des_zetas, vcat(ζ, 0.), dims=2)
         # c.des_vel = [0., 1., 0, 0, 0, 0, 0, 0, 0]
 
         # Get forces for vehicle (yaw, surge, sway, heave)
