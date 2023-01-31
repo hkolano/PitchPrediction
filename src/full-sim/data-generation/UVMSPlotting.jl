@@ -51,7 +51,7 @@ function plot_desired_and_actual_poses(traj_pars, qs, ts_down)
             [des_pose_vecs[k], act_pose_vecs[k]], 
             title=label, 
             legend=false, 
-            ylim = [-2, 2], 
+            ylim = [-1.5, 1.5], 
             yticks=-2:0.5:2))
     end
     for k = 4:6
@@ -69,7 +69,7 @@ function plot_desired_and_actual_poses(traj_pars, qs, ts_down)
         layout=l, 
         size=(1000, 800), 
         titlefontsize = 12,
-        plot_title="Desired Poses"))
+        plot_title="Desired End Effector Poses"))
     # plot!(legend=:outerbottom, label = ["Desired", "Actual"])
 end
 
@@ -83,16 +83,16 @@ function plot_zetas(ctlr, vs, ts_down)
 
     # Desired velocities from controller 
     des_paths = OrderedDict();
-    for idx = 1:9
+    for idx = 1:11
         des_jt_vels = [ctlr.des_zetas[idx, tstep] for tstep in 1:sample_rate:size(ctlr.des_zetas,2)]
-        des_paths[string("vs", idx+2)] = des_jt_vels
+        des_paths[string("vs", idx)] = des_jt_vels
     end
     
-    l = @layout[a; b; c]
+    l = @layout[grid(3,1) grid(3,1)]
     plot_handles = []
-    var_names = ["vs4", "vs5", "vs6"]
-    plot_labels = ["x", "y", "z"]
-    for k = 1:3
+    var_names = ["vs1", "vs2", "vs3", "vs4", "vs5", "vs6"]
+    plot_labels = ["d_pitch", "d_roll", "d_yaw", "v_x", "v_y", "v_z"]
+    for k = 1:6
         var = var_names[k]
         lab = plot_labels[k]
         push!(plot_handles, plot(ts_down, 
@@ -101,5 +101,63 @@ function plot_zetas(ctlr, vs, ts_down)
             legend=false, 
             titlefontsize=12))
     end
-    display(plot(plot_handles..., layout=l))
+    display(plot(plot_handles..., layout=l, plot_title="Vehicle Zetas"))
+
+    l_arm = @layout[a b; c d]
+    plot_handles_arm = []
+    var_names_arm = ["vs7", "vs8", "vs9", "vs10"]
+    plot_labels_arm = ["d_theta1", "d_theta2", "d_theta3", "d_theta4"]
+    for k = 1:4
+        var = var_names_arm[k]
+        lab = plot_labels_arm[k]
+        push!(plot_handles_arm, plot(ts_down, 
+            [des_paths[var], paths[var]], 
+            title=lab, 
+            legend=false,
+            titlefontsize=12))
+    end
+    display(plot(plot_handles_arm..., layout=l_arm, plot_title="Arm Zetas"))
+end
+
+function plot_joint_config(qs, ts_down)
+    paths = OrderedDict();
+    for idx = 1:12
+        joint_pos = [qs[i][idx] for i in 1:sample_rate:length(qs)]
+        paths[string("qs", idx)] = joint_pos
+    end
+
+    l_arm = @layout[a b; c d]
+    plot_handles_arm = []
+    var_names_arm = ["qs8", "qs9", "qs10", "qs11"]
+    plot_labels_arm = ["theta1", "theta2", "theta3", "theta4"]
+    for k = 1:4
+        var = var_names_arm[k]
+        lab = plot_labels_arm[k]
+        push!(plot_handles_arm, plot(ts_down, 
+            paths[var], 
+            title=lab, 
+            legend=false,
+            titlefontsize=12))
+    end
+    display(plot(plot_handles_arm..., layout=l_arm, plot_title="Joint Configurations"))
+end
+
+function plot_control_taus(ctlr, ts_down)
+
+    ctrl_tau_dict = OrderedDict();
+    for idx = 1:11
+        joint_taus = [ctlr.taus[idx, tstep] for tstep in 1:sample_rate:size(ctlr.taus,2)]
+        ctrl_tau_dict[idx] = joint_taus
+    end
+
+    tau_plot_handles = []
+    tau_plot_lims = [[-1, 1], [-1, 1], [-3, 3], [-6, 0], [-3, 3], [4, 10]]
+    # tl = @layout[a b; c d]
+    tl = @layout[grid(3,1) grid(3,1)]
+    plot_labels = ["roll", "pitch", "yaw", "x", "y", "z"]
+    for k = 1:6
+        lab = plot_labels[k]
+        push!(tau_plot_handles, plot(ts_down, ctrl_tau_dict[k], title=lab, legend=false, ylim=tau_plot_lims[k]))
+    end
+    display(plot(tau_plot_handles..., layout=tl, plot_title="Control Forces (Vehicle)"))
 end

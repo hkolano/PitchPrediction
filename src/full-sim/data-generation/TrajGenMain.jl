@@ -11,7 +11,7 @@ joint_lims = [[-175*pi/180, 175*pi/180], [0, 200*pi/180], [0, 200*pi/180], [-165
 θb = deg2rad(30)
 θc = deg2rad(50)
 vel_lims = [[-θb, θb], [-θb, θb], [-θb, θb], [-θc, θc], [-.003, .003]]
-max_linear_vel = .15 # 15 cm/s
+max_linear_vel = .05 # 10 cm/s
 
 equil_pose = zeros(num_actuated_dofs)
 equil_pt = jointState(equil_pose, zeros(num_actuated_dofs))
@@ -59,7 +59,7 @@ end
 # ----------------------------------------------------------
 function generate_random_pose(mech::Mechanism)
     base_frame = root_frame(mech)
-    cartesian_bound = 2.
+    cartesian_bound = 1.
     rand_scalings = [rand(.1: .01: cartesian_bound) for i in 1:3]
     goal_frame = CartesianFrame3D("goal_frame")
     rand_trans = Random.rand(Transform3D, base_frame, goal_frame)
