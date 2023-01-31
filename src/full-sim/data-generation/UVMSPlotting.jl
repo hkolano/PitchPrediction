@@ -72,3 +72,34 @@ function plot_desired_and_actual_poses(traj_pars, qs, ts_down)
         plot_title="Desired Poses"))
     # plot!(legend=:outerbottom, label = ["Desired", "Actual"])
 end
+
+function plot_zetas(ctlr, vs, ts_down)
+    # Actual velocities from simulation
+    paths = OrderedDict();
+    for idx = 1:11
+        joint_vels = [vs[i][idx] for i in 1:sample_rate:length(vs)]
+        paths[string("vs", idx)] = joint_vels
+    end
+
+    # Desired velocities from controller 
+    des_paths = OrderedDict();
+    for idx = 1:9
+        des_jt_vels = [ctlr.des_zetas[idx, tstep] for tstep in 1:sample_rate:size(ctlr.des_zetas,2)]
+        des_paths[string("vs", idx+2)] = des_jt_vels
+    end
+    
+    l = @layout[a; b; c]
+    plot_handles = []
+    var_names = ["vs4", "vs5", "vs6"]
+    plot_labels = ["x", "y", "z"]
+    for k = 1:3
+        var = var_names[k]
+        lab = plot_labels[k]
+        push!(plot_handles, plot(ts_down, 
+            [des_paths[var], paths[var]], 
+            title=lab, 
+            legend=false, 
+            titlefontsize=12))
+    end
+    display(plot(plot_handles..., layout=l))
+end
