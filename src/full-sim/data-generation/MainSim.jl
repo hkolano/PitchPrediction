@@ -139,10 +139,10 @@ p_arm = get_ee_path(mech_blue_alpha, jaw_body)
 num_trajs = 1 
 save_to_csv = false
 show_animation = true
-plot_velocities = false
-plot_control_taus = false
 plot_poses = true
 plot_zetas_bool = true
+plot_joint_config_bool = true
+plot_control_taus_bool = true
 
 # Create (num_trajs) different trajectories and save to csvs 
 # for n in ProgressBar(1:num_trajs)
@@ -157,13 +157,16 @@ plot_zetas_bool = true
     #                          Simulate
     # ----------------------------------------------------------
     # Generate a random waypoint and see if there's a valid trajectory to it
-    # while traj_pars === nothing
-    wp = generate_path_from_current_pose(state)
+    global traj_pars = nothing
+    while traj_pars === nothing
+        global wp = generate_path_from_current_pose(state)
+        global traj_pars = find_trajectory(wp)
+    end
+
+    a, T, des_poses, des_vels = find_trajectory(wp)
     goal_frame = wp.end_pose.from
     add_frame!(world, wp.end_pose)
     setelement!(mvis, goal_frame)
-    a, T, des_poses, des_vels = find_trajectory(wp)
-
     visualize_path(des_poses, mvis, world)
     traj_pars = trajParams(a, wp, T)
 
@@ -193,25 +196,12 @@ plot_zetas_bool = true
 
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
-    ts, qs, vs = simulate_with_ext_forces(state, T+duration_after_traj, traj_pars, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    # ts, qs, vs = simulate_with_ext_forces(state, 2, traj_pars, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    # ts, qs, vs = simulate_with_ext_forces(state, T+duration_after_traj, traj_pars, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, 6, traj_pars, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
     # Downsample the desired velocities
     ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
-    
-    # paths = OrderedDict();
-
-    # # Downsample the simulation output
-    # paths["qs0"] = [qs[i][1] for i in 1:sample_rate:length(qs)]
-    # for idx = 1:10
-    #     joint_poses = [qs[i][idx+1] for i in 1:sample_rate:length(qs)]
-    #     paths[string("qs", idx)] = joint_poses
-    # end
-    # for idx = 1:10
-    #     joint_vels = [vs[i][idx] for i in 1:sample_rate:length(vs)]
-    #     paths[string("vs", idx)] = joint_vels
-    # end
 
     if show_animation == true
         print("Animating... ")
@@ -229,34 +219,12 @@ plot_zetas_bool = true
         plot_zetas(ctlr_cache, vs, ts_down)
     end
 
-    if plot_velocities == true
-        print("Plotting...")
-        l = @layout[a b; c d; e f]
-        var_names = ["vs1", "vs2", "vs3", "vs4", "vs5", "vs6"]
-        plot_labels = ["roll", "pitch", "yaw", "x", "y", "z"]
-        plot_handles = []
-        for k = 1:6
-            var = var_names[k]
-            lab = plot_labels[k]
-            if k < 4
-                push!(plot_handles, plot(ts_down, paths[var], title=lab, legend=false, titlefontsize=12))
-            else
-                push!(plot_handles, plot(ts_down, paths[var], title=lab, ylim=(-.05,.05), legend=false, titlefontsize=12))
-            end
-        end
-        display(plot(plot_handles..., layout=l))
-        println("done.")
+    if plot_joint_config_bool == true
+        plot_joint_config(qs, ts_down)
     end
 
-    if plot_control_taus == true
-        tau_plot_handles = []
-        tau_plot_lims = [[-3, 3], [-6, 0], [-3, 3], [4, 10]]
-        tl = @layout[a b; c d]
-        for k = 3:6
-            lab = plot_labels[k]
-                push!(tau_plot_handles, plot(ctlr_cache.taus[k,2:end], title=lab, legend=false, ylim=tau_plot_lims[k-2]))
-        end
-        display(plot(tau_plot_handles..., layout=tl))
+    if plot_control_taus_bool == true
+        plot_control_taus(ctlr_cache, ts_down)
     end
 
     if save_to_csv == true
@@ -290,43 +258,3 @@ plot_zetas_bool = true
         quat_tab = Tables.table(quat_data)
         CSV.write("data/full-sim-data-110822/data-quat/quats$(n).csv", quat_tab, header=quat_labels)
     end
-# end
-# function plot_state_errors()
-#     l = @layout [a b ; c d ; e f]
-#     # label = ["q2", "q3", "v2", "v3"]
-#     # Joint E (base joint)
-#     p1 = plot(ts_down, paths["qs8"], label="Joint E", ylim=(-3.0, 3.0))
-#     p1 = plot!(LinRange(0,duration,50), poses[:,1], label="des_qE", legend=:topleft)
-#     p2 = plot(ts_down, paths["vs8"], label="Joint E vels",  ylim=(-0.5, 0.5))
-#     p2 = plot!(LinRange(0, duration, 50), vels[:,1], label="des_vE", legend=:topleft)
-#     # Joint D (shoulder joint)
-#     p3 = plot(ts_down, paths["qs9"], label="Joint D",  ylim=(-.5, 5.5))
-#     p3 = plot!(LinRange(0, duration, 50), poses[:,2], label="des_qD", legend=:topleft)
-#     p4 = plot(ts_down, paths["vs9"], label="Joint D vels",  ylim=(-0.5, 0.5))
-#     p4 = plot!(LinRange(0, duration, 50), vels[:,2], label="des_vD", legend=:topleft)
-#     # Joint C (elbow joint)
-#     p5 = plot(ts_down, paths["qs10"], label="Joint C",  ylim=(-.5, 5.5))
-#     p5 = plot!(LinRange(0, duration, 50), poses[:,3], label="des_qC", legend=:topleft)
-#     p6 = plot(ts_down, paths["vs10"], label="Joint C vels",  ylim=(-0.5, 0.5))
-#     p6 = plot!(LinRange(0, duration, 50), vels[:,3], label="des_vC", legend=:topleft)
-#     # Joint B (wrist joint)
-#     # p7 = plot(ts_down, paths["qs11"], label="Joint B",  ylim=(-1.5, 1.5))
-#     # p7 = plot!(LinRange(0, duration, 50), poses[:,4], label="des_q3", legend=:topleft)
-#     # p8 = plot(ts_down, paths["vs11"], label="Joint B vels",  ylim=(-0.5, 0.5))
-#     # p8 = plot!(LinRange(0, duration, 50), vels[:,4], label="des_v3", legend=:topleft)
-#     # plot(p1, p2, p3, p4, p5, p6, p7, p8, layout=l)
-#     display(plot(p1, p2, p3, p4, p5, p6, layout=l))
-# end
-
-# for n = 1:6
-#     veh_vels = [vs[i][n] for i in 1:sample_rate:length(vs)]
-#     paths[string("vs", n)] = veh_vels
-# end
-
-# l2 = @layout [a b ; c d]
-# # label = ["q2", "q3", "v2", "v3"]
-# p_yaw = plot(ts_down, paths["vs3"], label="twist - yaw", ylim=(-.5, .5))
-# p_surge = plot(ts_down, paths["vs4"], label="twist - x",  ylim=(-0.5, 0.5))
-# p_sway = plot(ts_down, paths["vs5"], label="twist - y",  ylim=(-.5, .5))
-# p_heave = plot(ts_down, paths["vs6"], label="twist - z",  ylim=(-0.5, 0.5))
-# plot(p_yaw, p_surge, p_sway, p_heave, layout=l2)

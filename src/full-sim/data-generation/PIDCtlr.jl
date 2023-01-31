@@ -58,6 +58,26 @@ function resettimestep(c::CtlrCache)
     c.step_ctr = 0
 end
 
+function get_zeta(traj, t, state)
+    jacobians = []
+    ζs = []
+    
+    # Task 1: Underactuation
+    J1 = hcat(diagm([1., 1., 0., 0., 0., 0.,]), zeros(6,4))
+    vehicle_joint = joints(state.mechanism)[1]
+    des_state = velocity(state, vehicle_joint)
+    ζ1 = get_mp_pinv(J1)*des_state
+
+    push!(jacobians, J1)
+    push!(ζs, ζ1)
+
+    # Task 2: End Effector Pose
+    task_err = get_ee_task_error(traj, t, state)
+    J2 = calculate_actuated_jacobian(state)
+    JT = get_mp_pinv(J2)
+    ζ = JT*(c.CLIK_gains*task_err)
+end
+
 # ------------------------------------------------------------------------
 #                              CONTROLLER
 # ------------------------------------------------------------------------
@@ -84,11 +104,13 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, traj, c
         # Roll and pitch are not controlled
         torques[1] = 0.
         torques[2] = 0.
+
+        if 4 <= t <= 4.0015 
+            println("hit 4 s")
+        end
         
         # println("Requesting des vel from trajgen")
-        task_err = get_ee_task_error(traj, t, state)
-        JT = get_mp_pinv(calculate_actuated_jacobian(state))
-        ζ = JT*(c.CLIK_gains*task_err)
+        ζ = get_zeta(traj, t, state)
 
         c.des_vel = vcat(ζ[3:end], 0)
         c.des_zetas = cat(c.des_zetas, vcat(ζ, 0.), dims=2)
@@ -138,9 +160,9 @@ function PID_ctlr(torque, t, vel_act, idx, c)
     # println("Ideal tau: $(d_tau)")
 
     # Can only change torque a small amount per time step
-    if 5 <= actuated_idx <= 9
+    if 5 <= actuated_idx
         # if it's an arm joint
-        lim = 0.01
+        lim = 0.015
     else
         # if it's a vehicle "thruster"
         lim = 0.001
