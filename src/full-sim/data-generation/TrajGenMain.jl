@@ -4,14 +4,14 @@
 num_its=20
 num_actuated_dofs = 5
 num_trajectory_dofs = 4
-max_duration = 20.
+max_duration = 25.
 θa = atan(145.3, 40)
 joint_lims = [[-175*pi/180, 175*pi/180], [0, 200*pi/180], [0, 200*pi/180], [-165*pi/180, 165*pi/180], [0.0, 0.022]]
 # Velocity limits: 30 degrees/s for Joints E, D, C, 50 degrees/s for Joint B (from Reach Alpha Integration Manual V1.15 p8)
 θb = deg2rad(30)
 θc = deg2rad(50)
 vel_lims = [[-θb, θb], [-θb, θb], [-θb, θb], [-θc, θc], [-.003, .003]]
-max_linear_vel = .05 # 10 cm/s
+max_linear_vel = .05 # 1 cm/s
 
 equil_pose = zeros(num_actuated_dofs)
 equil_pt = jointState(equil_pose, zeros(num_actuated_dofs))
@@ -59,7 +59,7 @@ end
 # ----------------------------------------------------------
 function generate_random_pose(mech::Mechanism)
     base_frame = root_frame(mech)
-    cartesian_bound = 1.
+    cartesian_bound = 0.5
     rand_scalings = [rand(.1: .01: cartesian_bound) for i in 1:3]
     goal_frame = CartesianFrame3D("goal_frame")
     rand_trans = Random.rand(Transform3D, base_frame, goal_frame)
@@ -86,6 +86,7 @@ function get_T_at_s(wp::worldSpaceWaypoints, s::Float64)
 end
 
 function get_Tdot_at_sdot(wp::worldSpaceWaypoints, s, sdot)
+    Tdot = get_T_at_s(wp, s)
     p_start = translation(wp.start_pose) 
     p_end = translation(wp.end_pose) 
     R_start = rotation(wp.start_pose)
@@ -95,7 +96,7 @@ function get_Tdot_at_sdot(wp::worldSpaceWaypoints, s, sdot)
     logRTR = log(transpose(R_start)*R_end)
     Rdot = Rotations.RotMatrix(R_start*exp(logRTR*s)*logRTR*sdot)
     # println(R_start*exp(logRTR*s)*logRTR*sdot)
-    T_at_s = Transform3D(wp.start_pose.from, wp.start_pose.to, Rdot, pdot)
+    Tdot_at_s = Transform3D(wp.start_pose.from, wp.start_pose.to, Rdot, pdot)
 end
 
 # ----------------------------------------------------------
