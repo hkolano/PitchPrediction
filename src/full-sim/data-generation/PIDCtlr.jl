@@ -4,7 +4,7 @@
 arm_Kp = 30.
 arm_Kd = 0.05
 arm_Ki = 9. 
-v_Kp = 50.
+v_Kp = 100.
 v_Kd = 1.0
 v_Ki = 1.25
 default_Kp = [v_Kp, v_Kp, v_Kp, v_Kp, arm_Kp, arm_Kp, arm_Kp, 20., 20.]
@@ -58,7 +58,7 @@ function resettimestep(c::CtlrCache)
     c.step_ctr = 0
 end
 
-function get_zeta(traj, t, state)
+function get_zeta(traj, t, state, c)
     jacobians = []
     ζs = []
     
@@ -72,10 +72,20 @@ function get_zeta(traj, t, state)
     push!(ζs, ζ1)
 
     # Task 2: End Effector Pose
-    task_err = get_ee_task_error(traj, t, state)
     J2 = calculate_actuated_jacobian(state)
-    JT = get_mp_pinv(J2)
-    ζ = JT*(c.CLIK_gains*task_err)
+    task_err, ff_vel = get_ee_task_error_and_ff_vel(traj, t, state)
+    println(t, task_err)
+    # task_err = get_ee_task_error(traj, t, state)
+    aug_J2 = cat(J1, J2, dims=1)
+    aug_N1 = I - get_mp_pinv(J1)*J1
+    
+    ζ2 = ζ1 + get_mp_pinv(J2*aug_N1)*(c.CLIK_gains*task_err - J2*ζ1)
+    # ζ2 = ζ1 + get_mp_pinv(J2*aug_N1)*(ff_vel + c.CLIK_gains*task_err - J2*ζ1)
+    # ζ2 = ζ1 + get_mp_pinv(J2*aug_N1)*(ff_vel - J2*ζ1)
+    # ζ = ζ1 + aug_N1*ζ2
+
+    # push!(jacobians, J2)
+    # push!(ζs, ζ2)
 end
 
 # ------------------------------------------------------------------------
@@ -110,7 +120,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, traj, c
         end
         
         # println("Requesting des vel from trajgen")
-        ζ = get_zeta(traj, t, state)
+        ζ = get_zeta(traj, t, state, c)
 
         c.des_vel = vcat(ζ[3:end], 0)
         c.des_zetas = cat(c.des_zetas, vcat(ζ, 0.), dims=2)
@@ -162,7 +172,7 @@ function PID_ctlr(torque, t, vel_act, idx, c)
     # Can only change torque a small amount per time step
     if 5 <= actuated_idx
         # if it's an arm joint
-        lim = 0.015
+        lim = 0.02
     else
         # if it's a vehicle "thruster"
         lim = 0.001

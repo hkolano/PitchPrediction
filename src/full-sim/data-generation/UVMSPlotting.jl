@@ -101,7 +101,10 @@ function plot_zetas(ctlr, vs, ts_down)
             legend=false, 
             titlefontsize=12))
     end
-    display(plot(plot_handles..., layout=l, plot_title="Vehicle Zetas"))
+    display(plot(plot_handles..., 
+        layout=l, 
+        plot_title="Vehicle Zetas", 
+        ylim=[-1, 1]))
 
     l_arm = @layout[a b; c d]
     plot_handles_arm = []
@@ -116,7 +119,10 @@ function plot_zetas(ctlr, vs, ts_down)
             legend=false,
             titlefontsize=12))
     end
-    display(plot(plot_handles_arm..., layout=l_arm, plot_title="Arm Zetas"))
+    display(plot(plot_handles_arm..., 
+        layout=l_arm, 
+        plot_title="Arm Zetas", 
+        ylim=[-1, 1]))
 end
 
 function plot_joint_config(qs, ts_down)
@@ -161,6 +167,6 @@ function plot_control_taus(ctlr, ts_down)
     end
     display(plot(tau_plot_handles..., 
         layout=tl, 
-        plot_title="Control Forces (Vehicle)", 
+        plot_title="Control Forces", 
         size=(1000, 800)))
 end
