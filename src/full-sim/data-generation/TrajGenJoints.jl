@@ -179,6 +179,17 @@ function get_desv_at_t(t, p)
     return des_vel
 end
 
+function get_desq_at_t(t, p)
+    des_qs = zeros(8)
+    if t < p.T 
+        for i = 1:num_trajectory_dofs
+            s = pos_scale_at_t(p.a[i,:], t)
+            des_qs[i+4] = p.wp.start.θs[i] + s*(p.wp.goal.θs[i]-p.wp.start.θs[i])
+        end
+    end
+    return des_qs
+end
+
 function check_lim(vals::Array, lims, idx)
     if minimum(vals) < lims[idx][1] || maximum(vals) > lims[idx][2]
         is_in_range = false
@@ -190,7 +201,7 @@ end
 
 function scale_trajectory(params, poses, vels)
     a = Array{Float64}(undef, num_trajectory_dofs, 6)
-    scale_factor = rand(1:.01:3)
+    scale_factor = rand(1:.01:2)
     T = params.T*scale_factor
     # println("Scaling factor: $(scale_factor)")
     for i in 1:num_trajectory_dofs
@@ -233,6 +244,7 @@ function find_trajectory(pts::Waypoints; num_its=num_its, T_init=1.0)
     if feasible_ct == num_actuated_dofs
         # println("Trajectory Parameters set")
         # println("Poses: $(poses)")
+        # println("Trajectory duration is $(T) seconds")
         return [trajParams(a, pts, T), poses, vels]
         # println("Trajectory parameters set")
     else

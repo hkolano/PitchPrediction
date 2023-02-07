@@ -18,6 +18,7 @@ include("HydroCalc.jl")
 include("SimWExt.jl")
 include("PIDCtlr.jl")
 include("TrajGenJoints.jl")
+include("UVMSPlotting.jl")
 
 urdf_file = joinpath("urdf", "blue_rov.urdf")
 
@@ -145,7 +146,7 @@ num_trajs = 1
 save_to_csv = false
 show_animation = true
 plot_velocities = true
-plot_control_taus = true
+plot_control_taus_bool = true
 
 # Create (num_trajs) different trajectories and save to csvs 
 # for n in ProgressBar(1:num_trajs)
@@ -181,6 +182,7 @@ plot_control_taus = true
     end
     params = scaled_traj[1]
     duration = params.T
+    println("Scaled trajectory duration: $(duration) seconds")
     poses = scaled_traj[2]
     vels = scaled_traj[3]
 
@@ -207,6 +209,7 @@ plot_control_taus = true
     # Downsample the desired velocities
     ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
     des_vs = [get_desv_at_t(t, params) for t in ts_down]
+    des_qs = [get_desq_at_t(t, params) for t in ts_down]
     paths = OrderedDict();
 
     # Downsample the simulation output
@@ -226,26 +229,17 @@ plot_control_taus = true
         println("done.")
     end
 
+    include("UVMSPlotting.jl")
+
     if plot_velocities == true
-        print("Plotting...")
-        l = @layout[a b; c d; e f]
-        var_names = ["vs1", "vs2", "vs3", "vs4", "vs5", "vs6"]
-        plot_labels = ["roll", "pitch", "yaw", "x", "y", "z"]
-        plot_handles = []
-        for k = 1:6
-            var = var_names[k]
-            lab = plot_labels[k]
-            if k < 4
-                push!(plot_handles, plot(ts_down, paths[var], title=lab, legend=false, titlefontsize=12))
-            else
-                push!(plot_handles, plot(ts_down, paths[var], title=lab, ylim=(-.05,.05), legend=false, titlefontsize=12))
-            end
-        end
-        display(plot(plot_handles..., layout=l))
-        println("done.")
+        plot_des_vs_act_velocities(ctlr_cache, ts_down, des_vs, vs)
     end
 
-    if plot_control_taus == true
+    plot_des_vs_act_positions(ctlr_cache, ts_down, des_qs, qs)
+
+    plot_control_taus(ctlr_cache, ts_down)
+
+    if plot_control_taus_bool == true
         tau_plot_handles = []
         tau_plot_lims = [[-3, 3], [-6, 0], [-3, 3], [4, 10]]
         tl = @layout[a b; c d]

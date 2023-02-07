@@ -119,7 +119,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         c.taus = cat(c.taus, c_taus, dims=2)
     end
     if rem(c.step_ctr, 4000) == 0
-        println("At step $(floor(c.step_ctr/4000))")
+        println("At time $(c.step_ctr/4000)...")
     end
     c.step_ctr = c.step_ctr + 1
 end;
