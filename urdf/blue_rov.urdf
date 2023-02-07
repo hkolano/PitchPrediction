@@ -239,7 +239,7 @@
     </inertial>
   </link>
 
-  <joint name="r5m_joint_jaw" type="prismatic">
+  <joint name="r5m_joint_jaw" type="revolute">
     <parent link="r5m_wrist_link"/>
     <child link="r5m_jaw"/>
     <axis xyz="0 0 1"/>
@@ -293,17 +293,17 @@
   </link>
 
   <joint name="r5m_joint1_1" type="fixed">
-    <parent link="r5m_wrist_link"/>
+    <parent link="r5m_jaw"/>
     <child link="r5m_jaw2"/>
-    <origin rpy="1.57075 0 0" xyz="-0.015 0 -0.140"/>
+    <origin rpy="1.57075 0 0" xyz="-0.015 0 .05"/>
     <axis xyz="0 0 -1"/>
     <limit effort="5.0" lower="0.0" upper="0.5" velocity="0.5"/>
   </joint>
 
   <joint name="r5m_joint1_2" type="fixed">
-    <parent link="r5m_wrist_link"/>
+    <parent link="r5m_jaw"/>
     <child link="r5m_jaw1"/>
-    <origin rpy="1.57075 0 0" xyz="0.015 0 -0.140"/>
+    <origin rpy="1.57075 0 0" xyz="0.015 0 .05"/>
     <axis xyz="0 0 1"/>
     <limit effort="5.0" lower="0.0" upper="0.5" velocity="0.5"/>
   </joint>  
