@@ -1,6 +1,3 @@
-module TrajGen
-
-include("StructDefs.jl")
 using JLD
 using Random
 using StaticArrays, RigidBodyDynamics, Rotations
@@ -38,57 +35,7 @@ mutable struct worldSpaceWaypoints
     end_pose
 end
 
-# ----------------------------------------------------------
-#             Waypoint Generation (Joint Space)
-# ----------------------------------------------------------
-"""
-Generates a random Waypoint struct. Not advisable to start a trajectory.  
-"""
-function gen_rand_waypoints()
-    Waypoints(gen_rand_feasible_point(), gen_rand_feasible_point())    
-end
 
-"""
-Generates a random Waypoint struct, starting at rest at the home position. 
-"""
-function gen_rand_waypoints_from_equil()
-    Waypoints(equil_pt, gen_rand_feasible_point()) 
-end
-
-"""
-    set_waypoint_from_equil(θs, dθs)
-
-Generates a Waypoint struct. Starts at rest at the home position; ...
-ends at the provided position (θs) and velocity (dθs) of the arm.
-"""
-function set_waypoints_from_equil(θs, dθs)
-    Waypoints(equil_pt, jointState(θs, dθs))
-end
-
-function gen_rand_waypoints_to_rest()
-    Waypoints(equil_pt, gen_rand_feasible_point_at_rest())
-end
-
-"""
-    save_waypoints(wp::Waypoints, name::String)
-
-Save an already generated waypoint to a file. The file will be located in "src/tmp/", ...
-and will be called [name].jld
-"""
-function save_waypoints(wp::Waypoints, name::String)
-    save(string("src/tmp/", name, ".jld"), "start_θs", wp.start.θs, "start_dθs", wp.start.dθs, "end_θs", wp.goal.θs, "end_dθs", wp.goal.dθs)
-end
-
-""" 
-    load_waypoints(name::String)
-
-Load a waypoint from a file. The file must be located in "src/tmp/" and be in JLD file format.
-"""
-function load_waypoints(name::String)
-    wp_raw = load(string("src/tmp/", name, ".jld"))
-    new_wp = Waypoints(jointState(wp_raw["start_θs"], wp_raw["start_dθs"]), jointState(wp_raw["end_θs"], wp_raw["end_dθs"]))
-    return new_wp 
-end
 
 # ----------------------------------------------------------
 #             Waypoint Generation (World Space)
@@ -199,49 +146,4 @@ function get_des_state_at_t(t, pts, a)
     des_pose = TrajGen.get_T_at_s(pts, s)
     des_vel = TrajGen.get_Tdot_at_sdot(pts, s, ds)
     return des_pose, des_vel
-end
-
-# ----------------------------------------------------------
-#               Trajectory Generation (Joint Space)
-# ----------------------------------------------------------
-"""
-    get_desv_at_t(t, p)
-    
-Given a set of trajectory parameters p and a time t, determine what the desired 
-velocity is. 
-"""
-function get_desv_at_t(t, p)
-    # println("Got request for desv. Params $(p))")
-    des_vel = zeros(9)
-    if t <= p.T # If the current time is less than the trajectory duration
-        for i = 1:num_trajectory_dofs # des vel for last joint is always 0
-            ds = vel_scale_at_t(p.a[i,:], t)
-            des_vel[i+4] = ds*(p.wp.goal.θs[i]-p.wp.start.θs[i])
-        end
-    end
-    fill!(des_vel, 0)
-    return des_vel
-end
-
-function check_lim(vals::Array, lims, idx)
-    if minimum(vals) < lims[idx][1] || maximum(vals) > lims[idx][2]
-        is_in_range = false
-    else
-        is_in_range = true
-    end
-    return is_in_range
-end
-
-function scale_trajectory(params, poses, vels)
-    a = Array{Float64}(undef, num_trajectory_dofs, 6)
-    scale_factor = rand(1:.01:3)
-    T = params.T*scale_factor
-    # println("Scaling factor: $(scale_factor)")
-    for i in 1:num_trajectory_dofs
-        a[i,:] = get_coeffs(params.wp, T, i)
-        (poses[:,i], vels[:,i]) = get_path!(poses[:,i], vels[:,i], params.wp.start.θs[i], params.wp.goal.θs[i], T, a[i,:])
-    end
-    return [trajParams(a, params.wp, T), poses, vels]
-end
-
 end
