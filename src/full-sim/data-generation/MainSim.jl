@@ -17,6 +17,7 @@ include("HydroCalc.jl")
 include("SimWExt.jl")
 include("PIDCtlr.jl")
 include("TrajGenJoints.jl")
+include("UVMSPlotting.jl")
 
 urdf_file = joinpath("urdf", "blue_rov.urdf")
 
@@ -137,9 +138,7 @@ p_arm = get_ee_path(mech_blue_alpha, jaw_body)
 num_trajs = 1 
 save_to_csv = false
 show_animation = true
-plot_poses = true
-plot_zetas_bool = true
-plot_joint_config_bool = true
+plot_velocities = true
 plot_control_taus_bool = true
 
 # Create (num_trajs) different trajectories and save to csvs 
@@ -196,6 +195,7 @@ plot_control_taus_bool = true
     end
     params = scaled_traj[1]
     duration = params.T
+    println("Scaled trajectory duration: $(duration) seconds")
     poses = scaled_traj[2]
     vels = scaled_traj[3]
 
@@ -221,6 +221,7 @@ plot_control_taus_bool = true
     # Downsample the desired velocities
     ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
     des_vs = [get_desv_at_t(t, params) for t in ts_down]
+    des_qs = [get_desq_at_t(t, params) for t in ts_down]
     paths = OrderedDict();
 
     # Downsample the simulation output
@@ -242,20 +243,19 @@ plot_control_taus_bool = true
 
     include("UVMSPlotting.jl")
 
-    if plot_poses == true
-        plot_desired_and_actual_poses(traj_pars, qs, ts_down)
+    if plot_velocities == true
+        plot_des_vs_act_velocities(ctlr_cache, ts_down, des_vs, vs)
     end
 
-    if plot_zetas_bool == true
-        plot_zetas(ctlr_cache, vs, ts_down)
-    end
-
-    if plot_joint_config_bool == true
-        plot_joint_config(qs, ts_down)
-    end
-
-    if plot_control_taus_bool == true
-        plot_control_taus(ctlr_cache, ts_down)
+    if plot_control_taus == true
+        tau_plot_handles = []
+        tau_plot_lims = [[-3, 3], [-6, 0], [-3, 3], [4, 10]]
+        tl = @layout[a b; c d]
+        for k = 3:6
+            lab = plot_labels[k]
+                push!(tau_plot_handles, plot(ctlr_cache.taus[k,2:end], title=lab, legend=false, ylim=tau_plot_lims[k-2]))
+        end
+        display(plot(tau_plot_handles..., layout=tl))
     end
 
     if save_to_csv == true
