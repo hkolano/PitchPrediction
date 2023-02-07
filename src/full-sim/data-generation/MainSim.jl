@@ -169,6 +169,19 @@ plot_control_taus_bool = true
     visualize_path(des_poses, mvis, world)
     traj_pars = trajParams(a, wp, T)
 
+    # include("kinematicsandbox.jl")
+
+    # qs = typeof(configuration(state))[]
+    # reset_to_equilibrium!(state)
+
+    # for t in range(0, stop=1, length=1000)
+    #     jacobian_transpose_ik!(state, traj_pars, ctlr_cache, t)
+    #     push!(qs, copy(configuration(state)))
+    # end
+    # ts = collect(range(0, stop=1, length=length(qs)))
+    # setanimation!(vis, Animation(vis, ts, qs))
+
+
     # # Scale that trajectory to 1x-3x "top speed"
     # if do_scale_traj == true
     #     scaled_traj = TrajGen.scale_trajectory(traj...)
