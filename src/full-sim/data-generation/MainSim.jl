@@ -10,7 +10,6 @@ using GeometryBasics
 using Printf, Plots, CSV, Tables, ProgressBars, Revise
 using JLD, Random
 
-
 # include("/home/hkolano/onr-dynamics-julia/simulate_with_ext_forces.jl")
 #%%
 include("StructDefs.jl")
@@ -157,10 +156,17 @@ plot_control_taus_bool = true
     #                          Simulate
     # ----------------------------------------------------------
     # Generate a random waypoint and see if there's a valid trajectory to it
-    global traj_pars = nothing
-    while traj_pars === nothing
-        global wp = generate_path_from_current_pose(state)
-        global traj_pars = find_trajectory(wp)
+    # wp = TrajGen.gen_rand_waypoints_to_rest()
+    wp = gen_rand_waypoints_from_equil()
+    # wp = TrajGen.load_waypoints("pid_test")
+    # wp = TrajGen.set_waypoints_from_equil([-2.03, 1.92, 1.73, 1.18], [0.16, 0.24, -0.08, 0.19])
+
+    traj = find_trajectory(wp) 
+
+    # # Keep trying until a good trajectory is found
+    while traj === nothing
+        global wp = gen_rand_waypoints_to_rest()
+        global traj = find_trajectory(wp)
     end
 
     a, T, des_poses, des_vels = find_trajectory(wp)
@@ -184,15 +190,15 @@ plot_control_taus_bool = true
 
 
     # # Scale that trajectory to 1x-3x "top speed"
-    # if do_scale_traj == true
-    #     scaled_traj = TrajGen.scale_trajectory(traj...)
-    # else
-    #     scaled_traj = traj 
-    # end
-    # params = scaled_traj[1]
-    # duration = params.T
-    # poses = scaled_traj[2]
-    # vels = scaled_traj[3]
+    if do_scale_traj == true
+        scaled_traj = scale_trajectory(traj...)
+    else
+        scaled_traj = traj 
+    end
+    params = scaled_traj[1]
+    duration = params.T
+    poses = scaled_traj[2]
+    vels = scaled_traj[3]
 
     # Save waypoints (start and goal positions, velocities) to CSV file
     if save_to_csv == true
