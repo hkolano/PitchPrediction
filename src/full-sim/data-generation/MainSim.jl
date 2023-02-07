@@ -12,12 +12,11 @@ using JLD, Random
 
 # include("/home/hkolano/onr-dynamics-julia/simulate_with_ext_forces.jl")
 #%%
-include("StructDefs.jl")
 include("FrameSetup.jl")
 include("HydroCalc.jl")
 include("SimWExt.jl")
 include("PIDCtlr.jl")
-include("TrajGenMain.jl")
+include("TrajGenJoints.jl")
 
 urdf_file = joinpath("urdf", "blue_rov.urdf")
 
@@ -44,7 +43,6 @@ shoulder_frame = default_frame(shoulder_body)
 upper_arm_frame = default_frame(upper_arm_body)
 elbow_frame = default_frame(elbow_body)
 wrist_frame = default_frame(wrist_body)
-jaw_frame = default_frame(jaw_body)
 base_frame = root_frame(mech_blue_alpha)
 # setelement!(mvis_alpha, shoulder_frame)
 
@@ -70,8 +68,9 @@ setup_frames!(mech_blue_alpha, frame_names_cob, frame_names_com, cob_vecs, com_v
 # f = rho * g * V
 # f = 997 (kg/m^3) * 9.81 (m/s^2) * V_in_L *.001 (m^3) = kg m / s^2
 # One time setup of buoyancy forces
+# KEEP ARM BASE VALUES AT END OF LIST for HydroCalc
 rho = 997
-volumes = [10.23/(.001*rho), .018, .203, .025, .155, 0.01, .202] # vehicle, shoulder, ua, elbow, wrist, jaw, armbase
+volumes = [10.23/(.001*rho), .018, .203, .025, .155, .202] # vehicle, shoulder, ua, elbow, wrist, jaw, armbase
 buoy_force_mags = volumes * rho * 9.81 * .001
 buoy_lin_forces = []
 for mag in buoy_force_mags
@@ -80,7 +79,7 @@ for mag in buoy_force_mags
 end
 # println(buoy_lin_forces)
 
-masses = [10.0, .194, .429, .115, .333, 0.01, .341]
+masses = [10.0, .194, .429, .115, .333, .341]
 grav_forces = masses*9.81
 grav_lin_forces = []
 for f_g in grav_forces
@@ -215,12 +214,25 @@ plot_control_taus_bool = true
 
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
-    # ts, qs, vs = simulate_with_ext_forces(state, T+duration_after_traj, traj_pars, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    ts, qs, vs = simulate_with_ext_forces(state, 6, traj_pars, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, duration+duration_after_traj, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    # ts, qs, vs = simulate_with_ext_forces(state, .002, params, ctlr_cache, hydro_calc!, PIDCtlr.pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
     # Downsample the desired velocities
     ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
+    des_vs = [get_desv_at_t(t, params) for t in ts_down]
+    paths = OrderedDict();
+
+    # Downsample the simulation output
+    paths["qs0"] = [qs[i][1] for i in 1:sample_rate:length(qs)]
+    for idx = 1:10
+        joint_poses = [qs[i][idx+1] for i in 1:sample_rate:length(qs)]
+        paths[string("qs", idx)] = joint_poses
+    end
+    for idx = 1:10
+        joint_vels = [vs[i][idx] for i in 1:sample_rate:length(vs)]
+        paths[string("vs", idx)] = joint_vels
+    end
 
     if show_animation == true
         print("Animating... ")

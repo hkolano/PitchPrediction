@@ -1,3 +1,5 @@
+using RigidBodyDynamics
+
 # ------------------------------------------------------------------------
 #                              SETUP 
 # ------------------------------------------------------------------------
@@ -29,12 +31,20 @@ mutable struct CtlrCache
     des_zetas
     
     function CtlrCache(dt, mechanism)
-        vehicle_joint, jointE, jointD, jointC, jointB, jointJaw = joints(mechanism)
-        joint_vec = [vehicle_joint, jointE, jointD, jointC, jointB, jointJaw]
+        if length(joints(mechanism)) == 5
+            vehicle_joint, jointE, jointD, jointC, jointB = joints(mechanism)
+            joint_vec = [vehicle_joint, jointE, jointD, jointC, jointB]
+            num_actuated_dofs = 8
+            num_dofs = 10
+        elseif length(joints(mechanism)) == 6
+            vehicle_joint, jointE, jointD, jointC, jointB, jawjoint = joints(mechanism)
+            joint_vec = [vehicle_joint, jointE, jointD, jointC, jointB, jawjoint]
+            num_actuated_dofs = 9
+            num_dofs = 11
+        end
         new(default_Kp, default_Kd, default_Ki, #=
-        =# dt, zeros(9), zeros(9), 0, joint_vec, #=
-        =# zeros(9), default_torque_lims, Array{Float64}(undef, 11, 1), #=
-        =# CLIK_gains, Array{Float64}(undef, 11, 1)) 
+        =# dt, zeros(num_actuated_dofs), zeros(num_actuated_dofs), 0, joint_vec, #=
+        =# zeros(num_actuated_dofs), default_torque_lims, Array{Float64}(undef, num_dofs, 1)) 
     end
 end
 
@@ -103,7 +113,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, traj, c
     # println("Made it inside the function! Ctr = $(time_step_ctr)")
     if rem(c.step_ctr, 4) == 0
         # Set up empty vector for control torques
-        c_taus = zeros(11,1)
+        c_taus = zeros(size(c.taus, 1),1)
         if c.step_ctr == 0
             torques[6] = 5.2 # 7
             torques[3] = 0.
@@ -120,11 +130,11 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, traj, c
         end
         
         # println("Requesting des vel from trajgen")
-        ζ = get_zeta(traj, t, state, c)
-
-        c.des_vel = vcat(ζ[3:end], 0)
-        c.des_zetas = cat(c.des_zetas, vcat(ζ, 0.), dims=2)
-        # c.des_vel = [0., 1., 0, 0, 0, 0, 0, 0, 0]
+        # c.des_vel = TrajGen.get_desv_at_t(t, pars)
+        c.des_vel = get_desv_at_t(t, pars)
+        # Don't move the manipulator
+        # c.des_vel[end-3:end] = zeros(4,1)
+        # println("Got desired velocity")
 
         # Get forces for vehicle (yaw, surge, sway, heave)
         for dir_idx = 3:6
@@ -135,7 +145,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, traj, c
         end
         
         # Get torques for the arm joints
-        for jt_idx in 2:6 # Joint index (1:vehicle, 2:baseJoint, etc)
+        for jt_idx in 2:length(c.joint_vec) # Joint index (1:vehicle, 2:baseJoint, etc)
             # println("PID ctlr on arm")
             idx = jt_idx+5 # velocity index 
             ctlr_tau = PID_ctlr(torques[idx][1], t, velocity(state, c.joint_vec[jt_idx]), idx, c) 
@@ -144,6 +154,9 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, traj, c
             torques[velocity_range(state, c.joint_vec[jt_idx])] .= [ctlr_tau] + damp_tau
         end
         c.taus = cat(c.taus, c_taus, dims=2)
+    end
+    if rem(c.step_ctr, 4000) == 0
+        println("At step $(floor(c.step_ctr/4000))")
     end
     c.step_ctr = c.step_ctr + 1
 end;
