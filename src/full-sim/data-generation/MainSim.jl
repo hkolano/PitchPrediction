@@ -105,7 +105,8 @@ println("CoM and CoB frames initialized. \n")
 
 function reset_to_equilibrium!(state)
     zero!(state)
-    set_configuration!(state, vehicle_joint, [.9777, -.0019, 0.2098, .0079, 0., 0., 0.])
+    # set_configuration!(state, vehicle_joint, [.9777, -.0019, 0.2098, .0079, 0., 0., 0.])
+    set_configuration!(state, vehicle_joint, [.6533, .2706, -.2706, .6533, 0, 0, 0])
     # set_velocity!(state, vehicle_joint, [0., 0., 0., 0., 0.0, 0.])
 end
 
