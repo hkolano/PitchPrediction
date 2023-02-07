@@ -8,8 +8,9 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
     buoy_wrenches = []
     grav_wrenches = []
     names = ["cob1", "cob2", "cob3", "cob4", "cob5", "cob6"]
+    num_bodies = length(bodies(state.mechanism))-1
     # Iterate through each body 
-    for i in 1:6
+    for i in 1:num_bodies
         # Get the body
         bod = bodies(state.mechanism)[i+1]
         # Get default frame of the body
@@ -45,10 +46,10 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
         # ----- Special calculaitons for the vehicle -----
         if i == 1
             # ----- Grav/buoy for arm base link ----- 
-            def_to_armbase_cob = fixed_transform(bod, body_default_frame, cob_frames[7])
-            def_to_armbase_com = fixed_transform(bod, body_default_frame, com_frames[7])
-            buoy_force_trans_armbase = transform(state, buoy_lin_forces[7], body_default_frame)
-            grav_force_trans_armbase = transform(state, grav_lin_forces[7], body_default_frame)
+            def_to_armbase_cob = fixed_transform(bod, body_default_frame, cob_frames[end])
+            def_to_armbase_com = fixed_transform(bod, body_default_frame, com_frames[end])
+            buoy_force_trans_armbase = transform(state, buoy_lin_forces[end], body_default_frame)
+            grav_force_trans_armbase = transform(state, grav_lin_forces[end], body_default_frame)
             buoy_wrench_arm = Wrench(Point3D(body_default_frame, translation(inv(def_to_armbase_cob))), buoy_force_trans_armbase)
             grav_wrench_arm = Wrench(Point3D(body_default_frame, translation(inv(def_to_armbase_com))), grav_force_trans_armbase)
             wrench = wrench + buoy_wrench_arm + grav_wrench_arm
@@ -73,7 +74,7 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
             # println("Wrench drag:")
             # println(drag_wrench)
         # ----- Drag on the links (quadratic only) ----
-        elseif i != 6
+        elseif i < num_bodies
             twist_world = twist_wrt_world(state, bod)
             root_transform = transform_to_root(state, bod)
             # COB_point = Point3D(body_default_frame, translation(inv(def_to_cob)))

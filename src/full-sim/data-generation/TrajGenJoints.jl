@@ -28,7 +28,6 @@ joint_lims = [[-175*pi/180, 175*pi/180], [0, 200*pi/180], [0, 200*pi/180], [-165
 θb = deg2rad(30)
 θc = deg2rad(50)
 vel_lims = [[-θb, θb], [-θb, θb], [-θb, θb], [-θc, θc], [-.003, .003]]
-max_linear_vel = .15 # 15 cm/s
 
 equil_pose = zeros(num_actuated_dofs)
 equil_pt = jointState(equil_pose, zeros(num_actuated_dofs))
@@ -116,6 +115,51 @@ end
 # ----------------------------------------------------------
 #               Trajectory Generation (Joint Space)
 # ----------------------------------------------------------
+""" 
+    get_coeffs(pts::Waypoints, T, idx)
+Given a set of waypoints and a time scaling, determine the time scaling coefficients
+for a quintic trajectory. 
+"""
+function get_coeffs(pts::Waypoints, T, idx)
+    # λ1 = dθ1/(θ2-θ1)
+    λ1 = pts.start.dθs[idx]/(pts.goal.θs[idx]-pts.start.θs[idx])
+    # λ2 = dθ2/(θ2-θ1)
+    λ2 = pts.goal.dθs[idx]/(pts.goal.θs[idx]-pts.start.θs[idx])
+
+    a0 = 0
+    a1 = λ1
+    a2 = 0
+    a3 = -2(3T*λ1+2T*λ2-5)/(T^3)
+    a4 = (8T*λ1 + 7T*λ2-15)/(T^4)
+    a5 = -3(T*λ1+T*λ2-2)/(T^5)
+    return [a0, a1, a2, a3, a4, a5]
+end
+
+function pos_scale_at_t(a, t)
+    s = a[1] + a[2]*t + a[3]*t^2 + a[4]*t^3 + a[5]*t^4 + a[6]*t^5
+end
+
+function vel_scale_at_t(a, t)
+    ds = a[2] + 2a[3]*t + 3a[4]*t^2 + 4a[5]*t^3 + 5a[6]*t^4
+end
+
+function acc_scale_at_t(a, t)
+    dds = 2a[3] + 6a[4]*t + 12a[5]*t^2 + 20a[6]*t^3
+end
+
+function get_path!(poses, vels, θ1, θ2, T, a, num_its=num_its)
+    dt = T/num_its
+
+    for i = 1:num_its
+        t = dt*i
+        s = pos_scale_at_t(a, t)
+        ds = vel_scale_at_t(a, t)
+        poses[i] = θ1 + s*(θ2-θ1)
+        vels[i] = ds*(θ2-θ1)
+    end
+    return poses, vels 
+end
+
 """
     get_desv_at_t(t, p)
     
@@ -124,14 +168,14 @@ velocity is.
 """
 function get_desv_at_t(t, p)
     # println("Got request for desv. Params $(p))")
-    des_vel = zeros(9)
+    des_vel = zeros(8)
     if t <= p.T # If the current time is less than the trajectory duration
         for i = 1:num_trajectory_dofs # des vel for last joint is always 0
             ds = vel_scale_at_t(p.a[i,:], t)
             des_vel[i+4] = ds*(p.wp.goal.θs[i]-p.wp.start.θs[i])
         end
     end
-    fill!(des_vel, 0)
+    # fill!(des_vel, 0)
     return des_vel
 end
 
@@ -154,5 +198,47 @@ function scale_trajectory(params, poses, vels)
         (poses[:,i], vels[:,i]) = get_path!(poses[:,i], vels[:,i], params.wp.start.θs[i], params.wp.goal.θs[i], T, a[i,:])
     end
     return [trajParams(a, params.wp, T), poses, vels]
+end
+
+function find_trajectory(pts::Waypoints; num_its=num_its, T_init=1.0)
+    T = T_init
+    poses = Array{Float64}(undef, num_its, num_actuated_dofs)
+    vels = Array{Float64}(undef, num_its, num_actuated_dofs)
+    feasible_ct = 0
+    a = Array{Float64}(undef, num_actuated_dofs, 6)
+
+    while feasible_ct < num_actuated_dofs && T < max_duration
+        feasible_ct = 0
+        for i in 1:num_actuated_dofs
+            # println("Joint $(i)")
+            # Get trajectory 
+            a[i,:] = get_coeffs(pts, T, i)
+            (poses[:,i], vels[:,i]) = get_path!(poses[:,i], vels[:,i], pts.start.θs[i], pts.goal.θs[i], T, a[i,:])
+
+            # Evaluate if possible
+            is_in_range_poses = check_lim(poses[:,i], joint_lims, i)
+            is_in_range_vels = check_lim(vels[:,i], vel_lims, i)
+            # println("OK poses = $(is_in_range_poses), OK vels = $(is_in_range_vels)")
+            if is_in_range_poses == true && is_in_range_vels == true
+                feasible_ct = feasible_ct + 1
+            # else
+                # println("Max joint: $(maximum(poses[:,i])), min joint: $(minimum(poses[:,i]))")
+            end
+        end
+        if feasible_ct < num_actuated_dofs
+            T = T + 0.2
+        end
+    end
+
+    if feasible_ct == num_actuated_dofs
+        # println("Trajectory Parameters set")
+        # println("Poses: $(poses)")
+        return [trajParams(a, pts, T), poses, vels]
+        # println("Trajectory parameters set")
+    else
+        # println("No path between points; try again.")
+        return nothing
+    end
+
 end
 
