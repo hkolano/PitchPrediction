@@ -1,3 +1,8 @@
+using JLD
+using Random
+using StaticArrays, RigidBodyDynamics, Rotations
+
+
 # ----------------------------------------------------------
 #                         Definitions
 # ----------------------------------------------------------
@@ -30,29 +35,7 @@ struct trajParams
     T::Float64
 end
 
-# ----------------------------------------------------------
-#             Waypoint Generation (Joint Space)
-# ----------------------------------------------------------
-"""
-    save_waypoints(wp::Waypoints, name::String)
 
-Save an already generated waypoint to a file. The file will be located in "src/tmp/", ...
-and will be called [name].jld
-"""
-function save_waypoints(wp::Waypoints, name::String)
-    save(string("src/tmp/", name, ".jld"), "start_θs", wp.start.θs, "start_dθs", wp.start.dθs, "end_θs", wp.goal.θs, "end_dθs", wp.goal.dθs)
-end
-
-""" 
-    load_waypoints(name::String)
-
-Load a waypoint from a file. The file must be located in "src/tmp/" and be in JLD file format.
-"""
-function load_waypoints(name::String)
-    wp_raw = load(string("src/tmp/", name, ".jld"))
-    new_wp = Waypoints(jointState(wp_raw["start_θs"], wp_raw["start_dθs"]), jointState(wp_raw["end_θs"], wp_raw["end_dθs"]))
-    return new_wp 
-end
 
 # ----------------------------------------------------------
 #             Waypoint Generation (World Space)
@@ -171,47 +154,4 @@ function get_des_state_at_t(t, traj::trajParams)
     des_pose = get_T_at_s(traj.pts, s)
     des_vel = get_Tdot_at_sdot(traj.pts, s, ds)
     return des_pose, des_vel
-end
-
-# ----------------------------------------------------------
-#               Trajectory Generation (Joint Space)
-# ----------------------------------------------------------
-"""
-    get_desv_at_t(t, p)
-    
-Given a set of trajectory parameters p and a time t, determine what the desired 
-velocity is. 
-"""
-function get_desv_at_t(t, p)
-    # println("Got request for desv. Params $(p))")
-    des_vel = zeros(9)
-    if t <= p.T # If the current time is less than the trajectory duration
-        for i = 1:num_trajectory_dofs # des vel for last joint is always 0
-            ds = vel_scale_at_t(p.a[i,:], t)
-            des_vel[i+4] = ds*(p.wp.goal.θs[i]-p.wp.start.θs[i])
-        end
-    end
-    fill!(des_vel, 0)
-    return des_vel
-end
-
-function check_lim(vals::Array, lims, idx)
-    if minimum(vals) < lims[idx][1] || maximum(vals) > lims[idx][2]
-        is_in_range = false
-    else
-        is_in_range = true
-    end
-    return is_in_range
-end
-
-function scale_trajectory(params, poses, vels)
-    a = Array{Float64}(undef, num_trajectory_dofs, 6)
-    scale_factor = rand(1:.01:3)
-    T = params.T*scale_factor
-    # println("Scaling factor: $(scale_factor)")
-    for i in 1:num_trajectory_dofs
-        a[i,:] = get_coeffs(params.wp, T, i)
-        (poses[:,i], vels[:,i]) = get_path!(poses[:,i], vels[:,i], params.wp.start.θs[i], params.wp.goal.θs[i], T, a[i,:])
-    end
-    return [trajParams(a, params.wp, T), poses, vels]
 end
