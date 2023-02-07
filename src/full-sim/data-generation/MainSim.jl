@@ -2,12 +2,13 @@
 #                     Import Libraries
 # ----------------------------------------------------------
 #%%
-using RigidBodyDynamics
+using RigidBodyDynamics, Rotations
 using LinearAlgebra, StaticArrays, DataStructures
 using MeshCat, MeshCatMechanisms, MechanismGeometries
 using CoordinateTransformations
 using GeometryBasics
 using Printf, Plots, CSV, Tables, ProgressBars, Revise
+using Random
 
 
 # include("/home/hkolano/onr-dynamics-julia/simulate_with_ext_forces.jl")
@@ -126,14 +127,14 @@ include("TrajGenMain.jl")
 # include("HydroCalc.jl")
 # include("SimWExt.jl")
 
-wp = TrajGen.generate_path_from_current_pose(state)
-println("Starting Pose")
-println(wp.start_pose)
-println("Goal Pose")
-println(wp.end_pose)
-traj_params = TrajGen.find_trajectory(wp)
+# wp = TrajGen.generate_path_from_current_pose(state)
+# println("Starting Pose")
+# println(wp.start_pose)
+# println("Goal Pose")
+# println(wp.end_pose)
+# traj_params = TrajGen.find_trajectory(wp)
 
-des_pose, des_vel = TrajGen.get_des_state_at_t(0.1, wp, traj_params[1])
+# des_pose, des_vel = TrajGen.get_des_state_at_t(0.1, wp, traj_params[1])
 #%%
 
 
@@ -161,21 +162,21 @@ plot_control_taus = true
     # ----------------------------------------------------------
     # Generate a random waypoint and see if there's a valid trajectory to it
     # wp = TrajGen.gen_rand_waypoints_to_rest()
-    wp = TrajGen.gen_rand_waypoints_from_equil()
+    wp = gen_rand_waypoints_from_equil()
     # wp = TrajGen.load_waypoints("pid_test")
     # wp = TrajGen.set_waypoints_from_equil([-2.03, 1.92, 1.73, 1.18], [0.16, 0.24, -0.08, 0.19])
 
-    traj = TrajGen.find_trajectory(wp) 
+    traj = find_trajectory(wp) 
 
     # # Keep trying until a good trajectory is found
     while traj === nothing
-        global wp = TrajGen.gen_rand_waypoints_to_rest()
-        global traj = TrajGen.find_trajectory(wp)
+        global wp = gen_rand_waypoints_to_rest()
+        global traj = find_trajectory(wp)
     end
 
     # # Scale that trajectory to 1x-3x "top speed"
     if do_scale_traj == true
-        scaled_traj = TrajGen.scale_trajectory(traj...)
+        scaled_traj = scale_trajectory(traj...)
     else
         scaled_traj = traj 
     end

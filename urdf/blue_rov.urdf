@@ -239,7 +239,7 @@
     </inertial>
   </link>
 
-  <joint name="r5m_joint_jaw" type="prismatic">
+  <joint name="r5m_joint_jaw" type="revolute">
     <parent link="r5m_wrist_link"/>
     <child link="r5m_jaw"/>
     <axis xyz="0 0 1"/>
