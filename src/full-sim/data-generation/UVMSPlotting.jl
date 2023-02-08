@@ -165,7 +165,10 @@ function plot_control_taus(ctlr, ts_down, plot_veh=false, plot_arm=true)
         tl = @layout[grid(2,1) grid(2,1)]
         for k = 7:10
             lab = plot_labels[k]
-            push!(tau_plot_handles, plot(ts_down, ctrl_tau_dict[k], title=lab, legend=false, ylim=tau_plot_lims[k]))
+            push!(tau_plot_handles, plot(ts_down, ctrl_tau_dict[k], 
+                                        title=lab, 
+                                        legend=false)) #, 
+                                        # ylim=tau_plot_lims[k]))
         end
         display(plot(tau_plot_handles..., 
             layout=tl, 

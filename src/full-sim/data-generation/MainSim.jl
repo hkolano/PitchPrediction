@@ -126,7 +126,16 @@ include("PIDCtlr.jl")
 include("TrajGenMain.jl")
 # include("HydroCalc.jl")
 # include("SimWExt.jl")
-include("Tasks.jl")
+
+# wp = TrajGen.generate_path_from_current_pose(state)
+# println("Starting Pose")
+# println(wp.start_pose)
+# println("Goal Pose")
+# println(wp.end_pose)
+# traj_params = TrajGen.find_trajectory(wp)
+
+# des_pose, des_vel = TrajGen.get_des_state_at_t(0.1, wp, traj_params[1])
+
 
 
 p_arm = get_ee_path(mech_blue_alpha, jaw_body)
@@ -137,7 +146,7 @@ p_arm = get_ee_path(mech_blue_alpha, jaw_body)
 
 num_trajs = 1 
 save_to_csv = false
-show_animation = true
+show_animation = false
 plot_velocities = true
 plot_control_taus_bool = true
 
@@ -154,8 +163,8 @@ plot_control_taus_bool = true
     #                          Simulate
     # ----------------------------------------------------------
     # Generate a random waypoint and see if there's a valid trajectory to it
-    # wp = TrajGen.gen_rand_waypoints_to_rest()
-    wp = gen_rand_waypoints_from_equil()
+    wp = gen_rand_waypoints_to_rest()
+    # wp = gen_rand_waypoints_from_equil()
     # wp = TrajGen.load_waypoints("pid_test")
     # wp = TrajGen.set_waypoints_from_equil([-2.03, 1.92, 1.73, 1.18], [0.16, 0.24, -0.08, 0.19])
 
@@ -214,8 +223,8 @@ plot_control_taus_bool = true
 
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
-    ts, qs, vs = simulate_with_ext_forces(state, duration+duration_after_traj, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    # ts, qs, vs = simulate_with_ext_forces(state, .002, params, ctlr_cache, hydro_calc!, PIDCtlr.pid_control!; Δt=Δt)
+    # ts, qs, vs = simulate_with_ext_forces(state, duration+duration_after_traj, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, 10, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
     # Downsample the desired velocities
