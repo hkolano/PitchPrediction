@@ -9,9 +9,9 @@ arm_Ki = 9.
 v_Kp = 50.
 v_Kd = 1.0
 v_Ki = 1.25
-default_Kp = [v_Kp, v_Kp, v_Kp, v_Kp, arm_Kp, arm_Kp, arm_Kp, .05, 20.]
-default_Kd = [v_Kd, v_Kd, v_Kd, v_Kd, arm_Kd, arm_Kd, arm_Kd, 0.00, .002]
-default_Ki = [v_Ki, v_Ki, v_Ki, v_Ki, arm_Ki, arm_Ki, arm_Ki, 0.0, .1]
+default_Kp = [v_Kp, v_Kp, v_Kp, v_Kp, arm_Kp, arm_Kp, arm_Kp, .03, 20.]
+default_Kd = [v_Kd, v_Kd, v_Kd, v_Kd, arm_Kd, arm_Kd, arm_Kd, 0.0001, .002]
+default_Ki = [v_Ki, v_Ki, v_Ki, v_Ki, arm_Ki, arm_Ki, arm_Ki, 0.0001, .1]
 default_torque_lims = [20., 71.5, 88.2, 177., 10.0, 10.0, 10.0, 0.6, 600]
 
 mutable struct CtlrCache
@@ -86,9 +86,9 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             torques[3] = 0.
             torques[5] = 0.
             torques[4] = -2.3 # ff x value
-            torques[8] = -.60 # ff Joint D value 
-            torques[9] = 0.16 # ff Joint C value
-            torques[10] = .004
+            torques[8] = -.30 # ff Joint D value 
+            torques[9] = -.035 # ff Joint C value
+            torques[10] = .003
         end
         
         # Roll and pitch are not controlled
@@ -124,6 +124,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         end
         #TODO switch to push!
         c.taus = cat(c.taus, c_taus, dims=2)
+        # push!(c.taus, copy(c_taus))
     end
     if rem(c.step_ctr, 4000) == 0
         println("At time $(c.step_ctr/4000)...")
