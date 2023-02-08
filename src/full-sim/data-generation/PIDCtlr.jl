@@ -1,17 +1,18 @@
+using RigidBodyDynamics
+
 # ------------------------------------------------------------------------
 #                              SETUP 
 # ------------------------------------------------------------------------
 arm_Kp = 30.
 arm_Kd = 0.05
 arm_Ki = 9. 
-v_Kp = 100.
+v_Kp = 50.
 v_Kd = 1.0
 v_Ki = 1.25
-default_Kp = [v_Kp, v_Kp, v_Kp, v_Kp, arm_Kp, arm_Kp, arm_Kp, 20., 20.]
-default_Kd = [v_Kd, v_Kd, v_Kd, v_Kd, arm_Kd, arm_Kd, arm_Kd, 0.002, .002]
-default_Ki = [v_Ki, v_Ki, v_Ki, v_Ki, arm_Ki, arm_Ki, arm_Ki, 0.1, .1]
+default_Kp = [v_Kp, v_Kp, v_Kp, v_Kp, arm_Kp, arm_Kp, arm_Kp, .03, 20.]
+default_Kd = [v_Kd, v_Kd, v_Kd, v_Kd, arm_Kd, arm_Kd, arm_Kd, 0.0001, .002]
+default_Ki = [v_Ki, v_Ki, v_Ki, v_Ki, arm_Ki, arm_Ki, arm_Ki, 0.0001, .1]
 default_torque_lims = [20., 71.5, 88.2, 177., 10.0, 10.0, 10.0, 0.6, 600]
-CLIK_gains = diagm([1., 1., 1., 1., 1., 1.])
 
 mutable struct CtlrCache
     Kp::Array{Float64}
@@ -25,16 +26,22 @@ mutable struct CtlrCache
     des_vel::Array{Float64}
     tau_lims::Array{Float64}
     taus
-    CLIK_gains::Array{Float64}
-    des_zetas
     
     function CtlrCache(dt, mechanism)
-        vehicle_joint, jointE, jointD, jointC, jointB, jointJaw = joints(mechanism)
-        joint_vec = [vehicle_joint, jointE, jointD, jointC, jointB, jointJaw]
+        if length(joints(mechanism)) == 5
+            vehicle_joint, jointE, jointD, jointC, jointB = joints(mechanism)
+            joint_vec = [vehicle_joint, jointE, jointD, jointC, jointB]
+            num_actuated_dofs = 8
+            num_dofs = 10
+        elseif length(joints(mechanism)) == 6
+            vehicle_joint, jointE, jointD, jointC, jointB, jawjoint = joints(mechanism)
+            joint_vec = [vehicle_joint, jointE, jointD, jointC, jointB, jawjoint]
+            num_actuated_dofs = 9
+            num_dofs = 11
+        end
         new(default_Kp, default_Kd, default_Ki, #=
-        =# dt, zeros(9), zeros(9), 0, joint_vec, #=
-        =# zeros(9), default_torque_lims, Array{Float64}(undef, 11, 1), #=
-        =# CLIK_gains, Array{Float64}(undef, 11, 1)) 
+        =# dt, zeros(num_actuated_dofs), zeros(num_actuated_dofs), 0, joint_vec, #=
+        =# zeros(num_actuated_dofs), default_torque_lims, Array{Float64}(undef, num_dofs, 1)) 
     end
 end
 
@@ -58,36 +65,6 @@ function resettimestep(c::CtlrCache)
     c.step_ctr = 0
 end
 
-function get_zeta(traj, t, state, c)
-    jacobians = []
-    ζs = []
-    
-    # Task 1: Underactuation
-    J1 = hcat(diagm([1., 1., 0., 0., 0., 0.,]), zeros(6,4))
-    vehicle_joint = joints(state.mechanism)[1]
-    des_state = velocity(state, vehicle_joint)
-    ζ1 = get_mp_pinv(J1)*des_state
-
-    push!(jacobians, J1)
-    push!(ζs, ζ1)
-
-    # Task 2: End Effector Pose
-    J2 = calculate_actuated_jacobian(state)
-    task_err, ff_vel = get_ee_task_error_and_ff_vel(traj, t, state)
-    println(t, task_err)
-    # task_err = get_ee_task_error(traj, t, state)
-    aug_J2 = cat(J1, J2, dims=1)
-    aug_N1 = I - get_mp_pinv(J1)*J1
-    
-    ζ2 = ζ1 + get_mp_pinv(J2*aug_N1)*(c.CLIK_gains*task_err - J2*ζ1)
-    # ζ2 = ζ1 + get_mp_pinv(J2*aug_N1)*(ff_vel + c.CLIK_gains*task_err - J2*ζ1)
-    # ζ2 = ζ1 + get_mp_pinv(J2*aug_N1)*(ff_vel - J2*ζ1)
-    # ζ = ζ1 + aug_N1*ζ2
-
-    # push!(jacobians, J2)
-    # push!(ζs, ζ2)
-end
-
 # ------------------------------------------------------------------------
 #                              CONTROLLER
 # ------------------------------------------------------------------------
@@ -98,33 +75,35 @@ Requires the parameters of the trajectory to be followed (pars=trajParams), whic
 Only happens every 4 steps because integration is done with Runge-Kutta.
 """
 # function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c)
-function pid_control!(torques::AbstractVector, t, state::MechanismState, traj, c)
+function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c)
     # If it's the first time called in the Runge-Kutta, update the control torque
     # println("Made it inside the function! Ctr = $(time_step_ctr)")
     if rem(c.step_ctr, 4) == 0
         # Set up empty vector for control torques
-        c_taus = zeros(11,1)
+        c_taus = zeros(size(c.taus, 1),1)
         if c.step_ctr == 0
-            torques[6] = 5.2 # 7
+            torques[6] = 5.2 # ff z value
             torques[3] = 0.
             torques[5] = 0.
-            torques[4] = -2.3 # -1
+            torques[4] = -2.3 # ff x value
+            torques[8] = -.30 # ff Joint D value 
+            torques[9] = -.035 # ff Joint C value
+            torques[10] = .003
         end
         
         # Roll and pitch are not controlled
         torques[1] = 0.
         torques[2] = 0.
-
-        if 4 <= t <= 4.0015 
-            println("hit 4 s")
-        end
         
         # println("Requesting des vel from trajgen")
-        ζ = get_zeta(traj, t, state, c)
-
-        c.des_vel = vcat(ζ[3:end], 0)
-        c.des_zetas = cat(c.des_zetas, vcat(ζ, 0.), dims=2)
-        # c.des_vel = [0., 1., 0, 0, 0, 0, 0, 0, 0]
+        # c.des_vel = TrajGen.get_desv_at_t(t, pars)
+        c.des_vel = get_desv_at_t(t, pars)
+        if rem(c.step_ctr, 1000) == 0
+            println("Desired velocity vector: $(c.des_vel)")
+        end
+        # Don't move the manipulator
+        # c.des_vel[end-3:end] = zeros(4,1)
+        # println("Got desired velocity")
 
         # Get forces for vehicle (yaw, surge, sway, heave)
         for dir_idx = 3:6
@@ -135,15 +114,20 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, traj, c
         end
         
         # Get torques for the arm joints
-        for jt_idx in 2:6 # Joint index (1:vehicle, 2:baseJoint, etc)
-            # println("PID ctlr on arm")
-            idx = jt_idx+5 # velocity index 
+        for jt_idx in 2:length(c.joint_vec) # Joint index (1:vehicle, 2:baseJoint, etc)
+            idx = jt_idx+5 # velocity index (7 to 10)
             ctlr_tau = PID_ctlr(torques[idx][1], t, velocity(state, c.joint_vec[jt_idx]), idx, c) 
-            c_taus[jt_idx+5] = ctlr_tau
-            damp_tau = -0.1*velocity(state, c.joint_vec[jt_idx])
+            # damp_tau = -0.001*velocity(state, c.joint_vec[jt_idx])
+            damp_tau = [0.]
             torques[velocity_range(state, c.joint_vec[jt_idx])] .= [ctlr_tau] + damp_tau
+            c_taus[idx] = ctlr_tau + damp_tau[1]
         end
+        #TODO switch to push!
         c.taus = cat(c.taus, c_taus, dims=2)
+        # push!(c.taus, copy(c_taus))
+    end
+    if rem(c.step_ctr, 4000) == 0
+        println("At time $(c.step_ctr/4000)...")
     end
     c.step_ctr = c.step_ctr + 1
 end;
@@ -170,11 +154,9 @@ function PID_ctlr(torque, t, vel_act, idx, c)
     # println("Ideal tau: $(d_tau)")
 
     # Can only change torque a small amount per time step
-    if 5 <= actuated_idx
-        # if it's an arm joint
-        lim = 0.02
-    else
-        # if it's a vehicle "thruster"
+    if 5 <= actuated_idx <= 9        # if it's an arm joint
+        lim = 0.01
+    else        # if it's a vehicle "thruster"
         lim = 0.001
     end
     d_tau = limit_d_tau(d_tau, lim)

@@ -148,25 +148,109 @@ function plot_joint_config(qs, ts_down)
     display(plot(plot_handles_arm..., layout=l_arm, plot_title="Joint Configurations"))
 end
 
-function plot_control_taus(ctlr, ts_down)
+function plot_control_taus(ctlr, ts_down, plot_veh=false, plot_arm=true)
 
     ctrl_tau_dict = OrderedDict();
-    for idx = 1:11
+    for idx = 1:10
         joint_taus = [ctlr.taus[idx, tstep] for tstep in 1:sample_rate:size(ctlr.taus,2)]
         ctrl_tau_dict[idx] = joint_taus
     end
 
-    tau_plot_handles = []
-    tau_plot_lims = [[-1, 1], [-1, 1], [-3, 3], [-6, 0], [-3, 3], [4, 10], [-1, 1], [-1, 1], [-1, 1], [-1, 1]]
+    tau_plot_lims = [[-1, 1], [-1, 1], [-3, 3], [-6, 0], [-3, 3], [4, 10], [-.1, .1], [-.1, .1], [-.1, .1], [-.1, .1]]
     # tl = @layout[a b; c d]
-    tl = @layout[grid(2,1) grid(2,1)]
-    plot_labels = ["roll", "pitch", "yaw", "x", "y", "z", "Joint1", "Joint2", "Joint3", "Joint4"]
-    for k = 7:10
-        lab = plot_labels[k]
-        push!(tau_plot_handles, plot(ts_down, ctrl_tau_dict[k], title=lab, legend=false, ylim=tau_plot_lims[k]))
+    plot_labels = ["roll", "pitch", "yaw", "x", "y", "z", "JointE", "JointD", "JointC", "JointB"]
+    
+    if plot_arm == true
+        tau_plot_handles = []
+        tl = @layout[a b; c d]
+        for k = 7:10
+            lab = plot_labels[k]
+            push!(tau_plot_handles, plot(ts_down, ctrl_tau_dict[k], 
+                                        title=lab, 
+                                        legend=false)) #, 
+                                        # ylim=tau_plot_lims[k]))
+        end
+        display(plot(tau_plot_handles..., 
+            layout=tl, 
+            plot_title="Control Forces", 
+            size=(1000, 800)))
     end
-    display(plot(tau_plot_handles..., 
-        layout=tl, 
-        plot_title="Control Forces", 
-        size=(1000, 800)))
+end
+
+function plot_des_vs_act_velocities(ctlr, ts_down, des_vs, vs; plot_veh=true, plot_arm=true)
+    paths = OrderedDict();
+    des_paths = OrderedDict();
+    for idx = 1:10
+        joint_vels = [vs[i][idx] for i in 1:sample_rate:length(vs)]
+        paths[string("vs", idx)] = joint_vels
+        if idx > 2
+            des_joint_vels = [des_vs[i][idx-2] for i in 1:length(ts_down)]
+            des_paths[string("vs", idx)] = des_joint_vels
+        else
+            des_paths[string("vs", idx)] = zeros(length(ts_down))
+        end
+    end
+
+    if plot_veh == true
+        l = @layout[a b; c d; e f]
+        var_names = ["vs1", "vs2", "vs3", "vs4", "vs5", "vs6"]
+        plot_labels = ["roll", "pitch", "yaw", "x", "y", "z"]
+        plot_handles = []
+        for k = 1:6
+            var = var_names[k]
+            lab = plot_labels[k]
+            if k < 4
+                push!(plot_handles, plot(ts_down, [des_paths[var], paths[var]], title=lab, legend=false, titlefontsize=12))
+            else
+                push!(plot_handles, plot(ts_down, [des_paths[var], paths[var]], title=lab, ylim=(-.05,.05), legend=false, titlefontsize=12))
+            end
+        end
+        display(plot(plot_handles..., 
+                    layout=l, 
+                    plot_title="Vehicle Velocities"))
+    end
+
+    if plot_arm == true
+        l = @layout[a b; c d]
+        var_names = ["vs7", "vs8", "vs9", "vs10"]
+        plot_labels = ["Joint E", "Joint D", "Joint C", "Joint B"]
+        plot_handles = []
+        for k = 1:4
+            var = var_names[k]
+            lab = plot_labels[k]
+            push!(plot_handles, plot(ts_down, [des_paths[var], paths[var]], title=lab, label=["Desired" "Actual"], titlefontsize=12))
+        end
+        display(plot(plot_handles..., 
+                    layout=l, 
+                    plot_title="Arm Velocities"))
+    end
+    println("done.")
+
+end
+
+function plot_des_vs_act_positions(ctlr, ts_down, des_qs, qs)
+    paths = OrderedDict();
+    des_paths = OrderedDict();
+    for idx = 8:11
+        joint_qs = [qs[i][idx] for i in 1:sample_rate:length(qs)]
+        paths[string("qs", idx)] = joint_qs
+
+        des_joint_qs = [des_qs[i][idx-3] for i in 1:length(ts_down)]
+        des_paths[string("qs", idx)] = des_joint_qs
+    end
+
+    l = @layout[a b; c d]
+    var_names = ["qs8", "qs9", "qs10", "qs11"]
+    plot_labels = ["Joint E", "Joint D", "Joint C", "Joint B"]
+    plot_handles = []
+    for k = 1:4
+        var = var_names[k]
+        lab = plot_labels[k]
+        this_plot = plot(ts_down, [des_paths[var], paths[var]], title=lab, label=["Desired" "Actual" "Limits"], titlefontsize=12)
+        hline!(this_plot, [joint_lims[k][1], joint_lims[k][2]])
+        push!(plot_handles, this_plot)
+    end
+    display(plot(plot_handles..., 
+                layout=l, 
+                plot_title="Joint Positions"))
 end
