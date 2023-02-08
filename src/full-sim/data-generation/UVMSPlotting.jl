@@ -162,7 +162,7 @@ function plot_control_taus(ctlr, ts_down, plot_veh=false, plot_arm=true)
     
     if plot_arm == true
         tau_plot_handles = []
-        tl = @layout[grid(2,1) grid(2,1)]
+        tl = @layout[a b; c d]
         for k = 7:10
             lab = plot_labels[k]
             push!(tau_plot_handles, plot(ts_down, ctrl_tau_dict[k], 
@@ -177,7 +177,7 @@ function plot_control_taus(ctlr, ts_down, plot_veh=false, plot_arm=true)
     end
 end
 
-function plot_des_vs_act_velocities(ctlr, ts_down, des_vs, vs, plot_veh=true, plot_arm=true)
+function plot_des_vs_act_velocities(ctlr, ts_down, des_vs, vs; plot_veh=true, plot_arm=true)
     paths = OrderedDict();
     des_paths = OrderedDict();
     for idx = 1:10

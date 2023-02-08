@@ -147,8 +147,9 @@ p_arm = get_ee_path(mech_blue_alpha, jaw_body)
 num_trajs = 1 
 save_to_csv = false
 show_animation = false
-plot_velocities = true
-plot_control_taus_bool = true
+bool_plot_velocities = true
+bool_plot_taus = false
+bool_plot_positions = false
 
 # Create (num_trajs) different trajectories and save to csvs 
 # for n in ProgressBar(1:num_trajs)
@@ -223,8 +224,8 @@ plot_control_taus_bool = true
 
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
-    # ts, qs, vs = simulate_with_ext_forces(state, duration+duration_after_traj, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    ts, qs, vs = simulate_with_ext_forces(state, 10, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, duration+duration_after_traj, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    # ts, qs, vs = simulate_with_ext_forces(state, 5, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
     # Downsample the desired velocities
@@ -252,19 +253,16 @@ plot_control_taus_bool = true
 
     include("UVMSPlotting.jl")
 
-    if plot_velocities == true
+    if bool_plot_velocities == true
         plot_des_vs_act_velocities(ctlr_cache, ts_down, des_vs, vs)
     end
 
-    if plot_control_taus == true
-        tau_plot_handles = []
-        tau_plot_lims = [[-3, 3], [-6, 0], [-3, 3], [4, 10]]
-        tl = @layout[a b; c d]
-        for k = 3:6
-            lab = plot_labels[k]
-                push!(tau_plot_handles, plot(ctlr_cache.taus[k,2:end], title=lab, legend=false, ylim=tau_plot_lims[k-2]))
-        end
-        display(plot(tau_plot_handles..., layout=tl))
+    if bool_plot_positions == true
+        plot_des_vs_act_positions(ctlr_cache, ts_down, des_qs, qs)
+    end
+
+    if bool_plot_taus == true
+        plot_control_taus(ctlr_cache, ts_down)
     end
 
     if save_to_csv == true
