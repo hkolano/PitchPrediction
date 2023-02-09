@@ -202,7 +202,7 @@ function plot_des_vs_act_velocities(ctlr, ts_down, des_vs, vs; plot_veh=true, pl
             if k < 4
                 push!(plot_handles, plot(ts_down, [des_paths[var], paths[var]], title=lab, legend=false, titlefontsize=12))
             else
-                push!(plot_handles, plot(ts_down, [des_paths[var], paths[var]], title=lab, ylim=(-.05,.05), legend=false, titlefontsize=12))
+                push!(plot_handles, plot(ts_down, [des_paths[var], paths[var]], title=lab, ylim=(-.025,.025), legend=false, titlefontsize=12))
             end
         end
         display(plot(plot_handles..., 

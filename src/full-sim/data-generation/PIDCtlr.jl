@@ -1,4 +1,4 @@
-using RigidBodyDynamics
+using RigidBodyDynamics, Distributions, Random
 
 # ------------------------------------------------------------------------
 #                              SETUP 
@@ -6,26 +6,30 @@ using RigidBodyDynamics
 arm_Kp = 30.
 arm_Kd = 0.05
 arm_Ki = 9. 
-v_Kp = 100.
-v_Kd = 1.0
-v_Ki = 1.25
-default_Kp = [v_Kp, v_Kp, v_Kp, v_Kp, arm_Kp, arm_Kp, arm_Kp, .03, 20.]
-default_Kd = [v_Kd, v_Kd, v_Kd, v_Kd, arm_Kd, arm_Kd, arm_Kd, 0.0001, .002]
-default_Ki = [v_Ki, v_Ki, v_Ki, v_Ki, arm_Ki, arm_Ki, arm_Ki, 0.0001, .1]
-default_torque_lims = [20., 71.5, 88.2, 177., 10.0, 10.0, 10.0, 0.6, 600]
-CLIK_gains = diagm([1., 1., 1., 1., 1., 1.])
+v_Kp = .18 
+v_Kd = 0.0001 
+v_Ki = 0.012
+Kp = [50, v_Kp, v_Kp, v_Kp, arm_Kp, arm_Kp, arm_Kp, .03, 20.]
+Kd = [.5, v_Kd, v_Kd, v_Kd, arm_Kd, arm_Kd, arm_Kd, 0.0001, .002]
+Ki = [1.5, v_Ki, v_Ki, v_Ki, arm_Ki, arm_Ki, arm_Ki, 0.0001, .1]
+torque_lims = [20., 71.5, 88.2, 177., 10.0, 10.0, 10.0, 0.6, 600]
+
+# Sensor noise distributions 
+v_ang_vel_noise_dist = Distributions.Normal(0, .01)
+v_lin_vel_noise_dist = Distributions.Normal(0, .01)
+arm_vel_noise_dist = Distributions.Normal(0, .001)
+
+v_ori_noise_dist = Distributions.Normal(0, .001)
+v_pos_noise_dist = Distributions.Normal(0, .001)
+arm_pos_noise_dist = Distributions.Normal(0, .001)
 
 mutable struct CtlrCache
-    Kp::Array{Float64}
-    Kd::Array{Float64}
-    Ki::Array{Float64}
     time_step::Float64
     vel_error_cache::Array{Float64}
     vel_int_error_cache::Array{Float64}
     step_ctr::Int
     joint_vec
     des_vel::Array{Float64}
-    tau_lims::Array{Float64}
     taus
     CLIK_gains::Array{Float64}
     des_zetas
@@ -42,9 +46,8 @@ mutable struct CtlrCache
             num_actuated_dofs = 9
             num_dofs = 11
         end
-        new(default_Kp, default_Kd, default_Ki, #=
-        =# dt, zeros(num_actuated_dofs), zeros(num_actuated_dofs), 0, joint_vec, #=
-        =# zeros(num_actuated_dofs), default_torque_lims, Array{Float64}(undef, num_dofs, 1)) 
+        new(dt, zeros(num_actuated_dofs), zeros(num_actuated_dofs), 0, joint_vec, #=
+        =# zeros(num_actuated_dofs), Array{Float64}(undef, num_dofs, 1)) 
     end
 end
 
@@ -119,6 +122,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             torques[3] = 0.
             torques[5] = 0.
             torques[4] = -2.3 # ff x value
+            torques[7] = .02 # ff joint E value
             torques[8] = -.30 # ff Joint D value 
             torques[9] = -.035 # ff Joint C value
             torques[10] = .003
@@ -140,12 +144,14 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         end
         # Don't move the manipulator
         # c.des_vel[end-3:end] = zeros(4,1)
-        # println("Got desired velocity")
+
+        noisy_velocity = add_velocity_noise(velocity(state))
 
         # Get forces for vehicle (yaw, surge, sway, heave)
         for dir_idx = 3:6
             # println("PID ctlr on vehicle")
-            ctlr_tau = PID_ctlr(torques[dir_idx][1], t, velocity(state, c.joint_vec[1])[dir_idx], dir_idx, c)
+            actual_vel = velocity(state, c.joint_vec[1])
+            ctlr_tau = PID_ctlr(torques[dir_idx][1], t, noisy_velocity[dir_idx], dir_idx, c)
             c_taus[dir_idx] = ctlr_tau 
             torques[dir_idx] = ctlr_tau
         end
@@ -153,13 +159,11 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         # Get torques for the arm joints
         for jt_idx in 2:length(c.joint_vec) # Joint index (1:vehicle, 2:baseJoint, etc)
             idx = jt_idx+5 # velocity index (7 to 10)
-            ctlr_tau = PID_ctlr(torques[idx][1], t, velocity(state, c.joint_vec[jt_idx]), idx, c) 
-            # damp_tau = -0.001*velocity(state, c.joint_vec[jt_idx])
-            damp_tau = [0.]
-            torques[velocity_range(state, c.joint_vec[jt_idx])] .= [ctlr_tau] + damp_tau
-            c_taus[idx] = ctlr_tau + damp_tau[1]
+            ctlr_tau = PID_ctlr(torques[idx][1], t, noisy_velocity[idx], idx, c) 
+            torques[velocity_range(state, c.joint_vec[jt_idx])] .= [ctlr_tau] 
+            c_taus[idx] = ctlr_tau 
         end
-        #TODO switch to push!
+        #TODO switch to push! ?
         c.taus = cat(c.taus, c_taus, dims=2)
         # push!(c.taus, copy(c_taus))
     end
@@ -187,20 +191,17 @@ function PID_ctlr(torque, t, vel_act, idx, c)
     d_vel_error = (vel_error - c.vel_error_cache[actuated_idx])/c.time_step
     # println("D_Velocity error on idx$(j_idx): $(d_vel_error)")
     c.vel_int_error_cache[actuated_idx] = c.vel_int_error_cache[actuated_idx] + vel_error*c.time_step
-    d_tau = -c.Kp[actuated_idx]*vel_error - c.Kd[actuated_idx]*d_vel_error - c.Ki[actuated_idx]*c.vel_int_error_cache[actuated_idx]
+    d_tau = -Kp[actuated_idx]*vel_error - Kd[actuated_idx]*d_vel_error - Ki[actuated_idx]*c.vel_int_error_cache[actuated_idx]
     # println("Ideal tau: $(d_tau)")
 
-    # Can only change torque a small amount per time step
-    if 5 <= actuated_idx <= 9        # if it's an arm joint
-        lim = 0.01
-    else        # if it's a vehicle "thruster"
-        lim = 0.001
-    end
+    # Can only change torque a small amount per time step 
+    # arm joints can change faster than thrusters
+    5 <= actuated_idx ? lim = 0.001 : lim = 0.01
     d_tau = limit_d_tau(d_tau, lim)
     
     # Torque limits
     new_tau = torque .+ d_tau
-    impose_torque_limit!(new_tau, c.tau_lims[actuated_idx])
+    impose_torque_limit!(new_tau, torque_lims[actuated_idx])
 
     # # store velocity error term
     c.vel_error_cache[actuated_idx]=vel_error
@@ -216,4 +217,12 @@ function limit_d_tau(d_tau, limit)
         d_tau = limit
     end
     return d_tau
+end
+
+function add_velocity_noise(velocity)
+    noisy_velocity = similar(velocity)
+    noisy_velocity[1:3] = velocity[1:3] + rand(v_ang_vel_noise_dist, 3)
+    noisy_velocity[4:6] = velocity[4:6] + rand(v_lin_vel_noise_dist, 3)
+    noisy_velocity[7:end] = velocity[7:end] + rand(arm_vel_noise_dist, length(velocity[7:end]))
+    return noisy_velocity
 end
