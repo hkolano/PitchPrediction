@@ -180,6 +180,8 @@ end
 function plot_des_vs_act_velocities(ctlr, ts_down, des_vs, vs; plot_veh=true, plot_arm=true)
     paths = OrderedDict();
     des_paths = OrderedDict();
+    meas_paths = OrderedDict();
+    filt_paths = OrderedDict();
     for idx = 1:10
         joint_vels = [vs[i][idx] for i in 1:sample_rate:length(vs)]
         paths[string("vs", idx)] = joint_vels
@@ -189,6 +191,8 @@ function plot_des_vs_act_velocities(ctlr, ts_down, des_vs, vs; plot_veh=true, pl
         else
             des_paths[string("vs", idx)] = zeros(length(ts_down))
         end
+        meas_paths[string("vs", idx)] = [ctlr.noisy_vs[idx,i] for i in 1:sample_rate:length(vs)]
+        filt_paths[string("vs", idx)] = [ctlr.filtered_vs[idx,i] for i in 1:sample_rate:length(vs)]
     end
 
     if plot_veh == true
@@ -200,9 +204,9 @@ function plot_des_vs_act_velocities(ctlr, ts_down, des_vs, vs; plot_veh=true, pl
             var = var_names[k]
             lab = plot_labels[k]
             if k < 4
-                push!(plot_handles, plot(ts_down, [des_paths[var], paths[var]], title=lab, legend=false, titlefontsize=12))
+                push!(plot_handles, plot(ts_down, [des_paths[var], paths[var], meas_paths[var], filt_paths[var]], title=lab, legend=false, titlefontsize=12))
             else
-                push!(plot_handles, plot(ts_down, [des_paths[var], paths[var]], title=lab, ylim=(-.025,.025), legend=false, titlefontsize=12))
+                push!(plot_handles, plot(ts_down, [des_paths[var], paths[var], meas_paths[var], filt_paths[var]], title=lab, ylim=(-.025,.025), legend=false, titlefontsize=12))
             end
         end
         display(plot(plot_handles..., 
@@ -218,7 +222,7 @@ function plot_des_vs_act_velocities(ctlr, ts_down, des_vs, vs; plot_veh=true, pl
         for k = 1:4
             var = var_names[k]
             lab = plot_labels[k]
-            push!(plot_handles, plot(ts_down, [des_paths[var], paths[var]], title=lab, label=["Desired" "Actual"], titlefontsize=12))
+            push!(plot_handles, plot(ts_down, [des_paths[var], paths[var], meas_paths[var], filt_paths[var]], title=lab, label=["Desired" "Actual" "Noisy" "Filtered"], ylim=(-.5,.5), titlefontsize=12))
         end
         display(plot(plot_handles..., 
                     layout=l, 

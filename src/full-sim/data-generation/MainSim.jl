@@ -12,7 +12,7 @@ using Random
 
 
 # include("/home/hkolano/onr-dynamics-julia/simulate_with_ext_forces.jl")
-#%%
+
 include("FrameSetup.jl")
 include("HydroCalc.jl")
 include("SimWExt.jl")
@@ -22,10 +22,10 @@ include("UVMSPlotting.jl")
 
 urdf_file = joinpath("urdf", "blue_rov.urdf")
 
+#%%
 # ----------------------------------------------------------
 #                 One-Time Mechanism Setup
 # ----------------------------------------------------------
-#%%
 vis = Visualizer()
 mech_blue_alpha = parse_urdf(urdf_file; floating=true, gravity = [0.0, 0.0, 0.0])
 # mech_blue_alpha = parse_urdf(urdf_file; gravity = [0.0, 0.0, 0.0])
@@ -101,7 +101,6 @@ println("CoM and CoB frames initialized. \n")
 # ----------------------------------------------------------
 #                 State Initialization
 # ----------------------------------------------------------
-#%%
 
 function reset_to_equilibrium!(state)
     zero!(state)
@@ -113,7 +112,7 @@ end
 state = MechanismState(mech_blue_alpha)
 Δt = 1e-3
 final_time = 5.0
-goal_freq = 50
+goal_freq = 100
 sample_rate = Int(floor((1/Δt)/goal_freq))
 
 # Control variables
@@ -125,7 +124,7 @@ duration_after_traj = 1.0   # How long to simulate after trajectory has ended
 include("PIDCtlr.jl")
 include("TrajGenJoints.jl")
 # include("HydroCalc.jl")
-# include("SimWExt.jl")
+include("SimWExt.jl")
 
 # wp = TrajGen.generate_path_from_current_pose(state)
 # println("Starting Pose")
@@ -146,7 +145,7 @@ num_trajs = 1
 save_to_csv = false
 show_animation = false
 bool_plot_velocities = true
-bool_plot_taus = true
+bool_plot_taus = false
 bool_plot_positions = false
 
 # Create (num_trajs) different trajectories and save to csvs 
@@ -203,8 +202,8 @@ bool_plot_positions = false
 
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
-    ts, qs, vs = simulate_with_ext_forces(state, duration+duration_after_traj, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    # ts, qs, vs = simulate_with_ext_forces(state, 10, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    # ts, qs, vs = simulate_with_ext_forces(state, duration+duration_after_traj, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, 2, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
     # Downsample the desired velocities

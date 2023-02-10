@@ -26,6 +26,8 @@ function simulate_with_ext_forces(state0::MechanismState{X}, final_time, pars, c
             # println("prev result")
             # println(result)
  
+            # println(result.accelerations)
+
             # println("State")
             # println(configuration(state))
             # println(velocity(state))
