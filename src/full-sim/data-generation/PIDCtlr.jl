@@ -3,9 +3,9 @@ using RigidBodyDynamics, Distributions, Random
 # ------------------------------------------------------------------------
 #                              SETUP 
 # ------------------------------------------------------------------------
-arm_Kp = 30.
-arm_Kd = 0.05
-arm_Ki = 9. 
+arm_Kp = .048
+arm_Kd = 0.0002
+arm_Ki = 0.0001
 v_Kp = .18 
 v_Kd = 0.0001 
 v_Ki = 0.012
@@ -15,13 +15,15 @@ Ki = [1.5, v_Ki, v_Ki, v_Ki, arm_Ki, arm_Ki, arm_Ki, 0.0001, .1]
 torque_lims = [20., 71.5, 88.2, 177., 10.0, 10.0, 10.0, 0.6, 600]
 
 # Sensor noise distributions 
-v_ang_vel_noise_dist = Distributions.Normal(0, .01)
-v_lin_vel_noise_dist = Distributions.Normal(0, .01)
-arm_vel_noise_dist = Distributions.Normal(0, .001)
+# Implemented:
+# Encoder --> joint position noise -integration-> joint velocity noise
+# Gyroscope --> vehicle body vel noise 
+v_ang_vel_noise_dist = Distributions.Normal(0, .0013) # 75 mdps (LSM6DSOX)
+arm_pos_noise_dist = Distributions.Normal(0, .0017/3) # .1 degrees, from Reach website
 
-v_ori_noise_dist = Distributions.Normal(0, .001)
-v_pos_noise_dist = Distributions.Normal(0, .001)
-arm_pos_noise_dist = Distributions.Normal(0, .001)
+v_lin_vel_noise_dist = Distributions.Normal(0, .01)
+v_ori_noise_dist = Distributions.Normal(0, 0.01)
+v_pos_noise_dist = Distributions.Normal(0, 0.01)
 
 mutable struct CtlrCache
     time_step::Float64
@@ -31,8 +33,9 @@ mutable struct CtlrCache
     joint_vec
     des_vel::Array{Float64}
     taus
-    CLIK_gains::Array{Float64}
-    des_zetas
+    noisy_qs
+    noisy_vs
+    filtered_vs
     
     function CtlrCache(dt, mechanism)
         if length(joints(mechanism)) == 5
@@ -47,7 +50,9 @@ mutable struct CtlrCache
             num_dofs = 11
         end
         new(dt, zeros(num_actuated_dofs), zeros(num_actuated_dofs), 0, joint_vec, #=
-        =# zeros(num_actuated_dofs), Array{Float64}(undef, num_dofs, 1)) 
+        =# zeros(num_actuated_dofs), Array{Float64}(undef, num_dofs, 1), #=
+        =# Array{Float64}(undef, num_dofs+1, 1), Array{Float64}(undef, num_dofs, 1), #=
+        =# Array{Float64}(undef, num_dofs, 1)) 
     end
 end
 
@@ -145,13 +150,29 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         # Don't move the manipulator
         # c.des_vel[end-3:end] = zeros(4,1)
 
-        noisy_velocity = add_velocity_noise(velocity(state))
+        noisy_poses = similar(configuration(state))
+        noisy_vels = similar(velocity(state))
+
+        add_arm_noise!(noisy_poses, noisy_vels, configuration(state)[8:end], c.noisy_qs[8:end,end], c.time_step)
+        add_rotational_noise!(noisy_poses, noisy_vels, velocity(state)[1:3], c.noisy_qs[1:4,end], c.time_step)
+
+        noisy_velocity_veh = add_velocity_noise(velocity(state))
+        noisy_poses_veh = add_position_noise(configuration(state))
+
+        noisy_poses[1:7] = noisy_poses_veh[1:7]
+        noisy_vels[4:6] = noisy_velocity_veh[4:6]
+
+        c.noisy_vs = cat(c.noisy_vs, noisy_vels, dims=2)
+        c.noisy_qs = cat(c.noisy_qs, noisy_poses, dims=2)
+
+        filtered_velocity = moving_average_filter_velocity(10, c.noisy_vs)
+        c.filtered_vs = cat(c.filtered_vs, filtered_velocity, dims=2)
 
         # Get forces for vehicle (yaw, surge, sway, heave)
         for dir_idx = 3:6
             # println("PID ctlr on vehicle")
             actual_vel = velocity(state, c.joint_vec[1])
-            ctlr_tau = PID_ctlr(torques[dir_idx][1], t, noisy_velocity[dir_idx], dir_idx, c)
+            ctlr_tau = PID_ctlr(torques[dir_idx][1], t, filtered_velocity[dir_idx], dir_idx, c)
             c_taus[dir_idx] = ctlr_tau 
             torques[dir_idx] = ctlr_tau
         end
@@ -159,7 +180,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         # Get torques for the arm joints
         for jt_idx in 2:length(c.joint_vec) # Joint index (1:vehicle, 2:baseJoint, etc)
             idx = jt_idx+5 # velocity index (7 to 10)
-            ctlr_tau = PID_ctlr(torques[idx][1], t, noisy_velocity[idx], idx, c) 
+            ctlr_tau = PID_ctlr(torques[idx][1], t, filtered_velocity[idx], idx, c) 
             torques[velocity_range(state, c.joint_vec[jt_idx])] .= [ctlr_tau] 
             c_taus[idx] = ctlr_tau 
         end
@@ -223,6 +244,33 @@ function add_velocity_noise(velocity)
     noisy_velocity = similar(velocity)
     noisy_velocity[1:3] = velocity[1:3] + rand(v_ang_vel_noise_dist, 3)
     noisy_velocity[4:6] = velocity[4:6] + rand(v_lin_vel_noise_dist, 3)
-    noisy_velocity[7:end] = velocity[7:end] + rand(arm_vel_noise_dist, length(velocity[7:end]))
     return noisy_velocity
+end
+
+function add_position_noise(configuration)
+    noisy_poses = similar(configuration)
+    noisy_poses[1:4] = configuration[1:4] + rand(v_ori_noise_dist, 4)
+    noisy_poses[5:7] = configuration[5:7] + rand(v_pos_noise_dist, 3)
+    return noisy_poses
+end
+
+function add_arm_noise!(noisy_poses, noisy_vels, joint_poses, last_noisy_joint_pose, dt)
+    noisy_joint_poses = joint_poses + rand(arm_pos_noise_dist, length(joint_poses))
+    noisy_velocity = (noisy_joint_poses - last_noisy_joint_pose)./dt
+    noisy_poses[8:end] = noisy_joint_poses
+    noisy_vels[7:end] = noisy_velocity
+end
+
+function add_rotational_noise!(noisy_poses, noisy_vels, body_vels, last_ori, dt)
+    noisy_vels[1:3] = body_vels[1:3] + rand(v_ang_vel_noise_dist, 3)
+end
+
+function moving_average_filter_velocity(filt_size, noisy_vs)
+    num_its = size(noisy_vs, 2)
+    if num_its < filt_size
+        filtered_vels = sum(noisy_vs[:,end-num_its+1:end], dims=2) ./ num_its
+    else
+        filtered_vels = sum(noisy_vs[:,end-filt_size+1:end], dims=2) ./ filt_size  
+    end
+    return filtered_vels
 end
