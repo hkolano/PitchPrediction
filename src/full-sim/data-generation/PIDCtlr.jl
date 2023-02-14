@@ -3,15 +3,15 @@ using RigidBodyDynamics, Distributions, Random
 # ------------------------------------------------------------------------
 #                              SETUP 
 # ------------------------------------------------------------------------
-arm_Kp = .024
-arm_Kd = 0.0032
-arm_Ki = 0.00001
+arm_Kp = .015
+arm_Kd = 0.00016
+arm_Ki = 0.0003
 v_Kp = .18 
 v_Kd = 0.0001 
 v_Ki = 0.012
-Kp = [50, v_Kp, v_Kp, v_Kp, arm_Kp, arm_Kp, arm_Kp, .0004, 20.]
-Kd = [.5, v_Kd, v_Kd, v_Kd, arm_Kd, arm_Kd, arm_Kd, 0.00004, .002]
-Ki = [1.5, v_Ki, v_Ki, v_Ki, arm_Ki, arm_Ki, arm_Ki, 0.0008, .1]
+Kp = [50, v_Kp, v_Kp, v_Kp, arm_Kp, .035, .004, .0004, 20.]
+Kd = [.5, v_Kd, v_Kd, v_Kd, arm_Kd, 0.00001, 0.0004, 0.00004, .002]
+Ki = [1.5, v_Ki, v_Ki, v_Ki, arm_Ki, 0.00002, 0.01, 0.0008, .1]
 torque_lims = [20., 71.5, 88.2, 177., 10.0, 10.0, 10.0, 0.6, 600]
 
 # Sensor noise distributions 
@@ -110,7 +110,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             torques[3] = 0.
             torques[5] = 0.
             torques[4] = -2.3 # ff x value
-            torques[7] = .00 # ff joint E value
+            torques[7] = -.004 # ff joint E value
             torques[8] = -.325 # ff Joint D value 
             torques[9] = -.034 # ff Joint C value
             torques[10] = .004
@@ -168,6 +168,9 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             #TODO switch to push! ?
             c.taus = cat(c.taus, c_taus, dims=2)
             # push!(c.taus, copy(c_taus))
+        elseif c.step_ctr == 0
+            c.noisy_vs = cat(c.noisy_vs, velocity(state), dims=2)
+            c.filtered_vs = cat(c.filtered_vs, velocity(state), dims=2)
         end
     end
     if rem(c.step_ctr, 4000) == 0
