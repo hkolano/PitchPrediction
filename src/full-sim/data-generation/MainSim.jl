@@ -203,8 +203,8 @@ bool_plot_positions = false
 
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
-    # ts, qs, vs = simulate_with_ext_forces(state, duration+duration_after_traj, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    ts, qs, vs = simulate_with_ext_forces(state, 10, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, duration+duration_after_traj, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    # ts, qs, vs = simulate_with_ext_forces(state, 5, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
     # Downsample the desired velocities
@@ -242,7 +242,7 @@ bool_plot_positions = false
 
     if bool_plot_taus == true
         plot_control_taus(ctlr_cache, ts_down)
-    end
+    end 
 
     if save_to_csv == true
         num_rows = 25

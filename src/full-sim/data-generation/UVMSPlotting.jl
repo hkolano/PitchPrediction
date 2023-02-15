@@ -148,7 +148,7 @@ function plot_joint_config(qs, ts_down)
     display(plot(plot_handles_arm..., layout=l_arm, plot_title="Joint Configurations"))
 end
 
-function plot_control_taus(ctlr, ts_down, plot_veh=false, plot_arm=true)
+function plot_control_taus(ctlr, ts_down, plot_veh=true, plot_arm=true)
 
     ctrl_tau_dict = OrderedDict();
     for idx = 1:10
@@ -156,7 +156,7 @@ function plot_control_taus(ctlr, ts_down, plot_veh=false, plot_arm=true)
         ctrl_tau_dict[idx] = joint_taus
     end
 
-    tau_plot_lims = [[-1, 1], [-1, 1], [-3, 3], [-6, 0], [-3, 3], [4, 10], [-.1, .1], [-.1, .1], [-.1, .1], [-.1, .1]]
+    tau_plot_lims = [[-.06, .06], [-.06, .06], [-.06, .06], [-6, 0], [-3, 3], [4, 10], [-.1, .1], [-.1, .1], [-.1, .1], [-.1, .1]]
     # tl = @layout[a b; c d]
     plot_labels = ["roll", "pitch", "yaw", "x", "y", "z", "JointE", "JointD", "JointC", "JointB"]
     
@@ -172,7 +172,23 @@ function plot_control_taus(ctlr, ts_down, plot_veh=false, plot_arm=true)
         end
         display(plot(tau_plot_handles..., 
             layout=tl, 
-            plot_title="Control Forces", 
+            plot_title="Arm Control Forces", 
+            size=(1000, 800)))
+    end
+
+    if plot_veh == true
+        tau_plot_handles = []
+        tl2 = @layout[grid(3,1) grid(3,1)]
+        for k = 1:6
+            lab = plot_labels[k]
+            push!(tau_plot_handles, plot(ts_down[1:length(ctrl_tau_dict[k])], ctrl_tau_dict[k], 
+                                        title=lab, 
+                                        legend=false)) #, 
+                                        # ylim=tau_plot_lims[k]))
+        end
+        display(plot(tau_plot_handles..., 
+            layout=tl2, 
+            plot_title="Vehicle Control Forces", 
             size=(1000, 800)))
     end
 end
@@ -191,8 +207,8 @@ function plot_des_vs_act_velocities(ctlr, ts_down, des_vs, vs; plot_veh=true, pl
         else
             des_paths[string("vs", idx)] = zeros(length(ts_down))
         end
-        meas_paths[string("vs", idx)] = [ctlr.noisy_vs[idx,i] for i in 1:length(ts_down)]
-        filt_paths[string("vs", idx)] = [ctlr.filtered_vs[idx,i] for i in 1:length(ts_down)]
+        meas_paths[string("vs", idx)] = [ctlr.noisy_vs[idx,i] for i in 1:length(ts_down)-1]
+        filt_paths[string("vs", idx)] = [ctlr.filtered_vs[idx,i] for i in 1:length(ts_down)-1]
     end
 
     if plot_veh == true
@@ -204,9 +220,9 @@ function plot_des_vs_act_velocities(ctlr, ts_down, des_vs, vs; plot_veh=true, pl
             var = var_names[k]
             lab = plot_labels[k]
             if k < 4
-                push!(plot_handles, plot(ts_down, [des_paths[var], paths[var], meas_paths[var], filt_paths[var]], title=lab, legend=false, titlefontsize=12))
+                push!(plot_handles, plot(ts_down[1:end-1], [des_paths[var][1:end-1], paths[var][1:end-1], meas_paths[var], filt_paths[var]], title=lab, ylim=(-.004, .004), legend=false, titlefontsize=12))
             else
-                push!(plot_handles, plot(ts_down, [des_paths[var], paths[var], meas_paths[var], filt_paths[var]], title=lab, ylim=(-.025,.025), legend=false, titlefontsize=12))
+                push!(plot_handles, plot(ts_down[1:end-1], [des_paths[var][1:end-1], paths[var][1:end-1], meas_paths[var], filt_paths[var]], title=lab, ylim=(-.025,.025), legend=false, titlefontsize=12))
             end
         end
         display(plot(plot_handles..., 
@@ -223,11 +239,11 @@ function plot_des_vs_act_velocities(ctlr, ts_down, des_vs, vs; plot_veh=true, pl
         for k = 1:4
             var = var_names[k]
             lab = plot_labels[k]
-            push!(plot_handles, plot(ts_down, 
-                [des_paths[var], paths[var], meas_paths[var], filt_paths[var]], 
+            push!(plot_handles, plot(ts_down[1:end-1], 
+                [des_paths[var][1:end-1], paths[var][1:end-1], meas_paths[var], filt_paths[var]], 
                 title=lab, 
                 label=["Desired" "Actual" "Noisy" "Filtered"], 
-                ylim=(-.4,.4), 
+                ylim=(-.5,.5), 
                 titlefontsize=12, 
                 size=(1000, 800)))
             # push!(plot_handles, plot(ts_down, 
