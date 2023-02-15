@@ -3,15 +3,15 @@ using RigidBodyDynamics, Distributions, Random
 # ------------------------------------------------------------------------
 #                              SETUP 
 # ------------------------------------------------------------------------
-arm_Kp = .015
-arm_Kd = 0.00016
-arm_Ki = 0.0003
-v_Kp = .18 
-v_Kd = 0.0001 
-v_Ki = 0.012
-Kp = [50, v_Kp, v_Kp, v_Kp, arm_Kp, .035, .004, .0004, 20.]
-Kd = [.5, v_Kd, v_Kd, v_Kd, arm_Kd, 0.00001, 0.0004, 0.00004, .002]
-Ki = [1.5, v_Ki, v_Ki, v_Ki, arm_Ki, 0.00002, 0.01, 0.0008, .1]
+arm_Kp = .025
+arm_Kd = 0.0006
+arm_Ki = 0.005
+v_Kp = 2.0
+v_Kd = 0.012
+v_Ki = 0.015
+Kp = [1.5, v_Kp, v_Kp, v_Kp, arm_Kp, .015, .006, .0003, 20.]
+Kd = [0.0002, v_Kd, v_Kd, v_Kd, arm_Kd, 0.0004, 0.0004, 0.00004, .002]
+Ki = [0.0001, v_Ki, v_Ki, v_Ki, arm_Ki, 0.005, 0.01, 0.0008, .1]
 torque_lims = [20., 71.5, 88.2, 177., 10.0, 10.0, 10.0, 0.6, 600]
 
 # Sensor noise distributions 
@@ -63,8 +63,8 @@ mutable struct CtlrCache
         new(dt, control_frequency, ctrl_loop_num_steps, #=
         =# zeros(num_actuated_dofs), zeros(num_actuated_dofs), 0, joint_vec, #=
         =# zeros(num_actuated_dofs), Array{Float64}(undef, num_dofs, 1), #=
-        =# Array{Float64}(undef, num_dofs+1, 1), Array{Float64}(undef, num_dofs, 1), #=
-        =# Array{Float64}(undef, num_dofs, 1)) 
+        =# zeros(num_dofs+1), zeros(num_dofs), #=
+        =# zeros(num_dofs)) 
     end
 end
 
@@ -86,6 +86,12 @@ end
 
 function resettimestep(c::CtlrCache)
     c.step_ctr = 0
+end
+
+function skew(x1, x2, x3)
+    output = [0 -x3 x2;
+            x3 0 -x1;
+            -x2 x1 0]
 end
 
 function get_zeta(traj, t, state, c)
@@ -169,18 +175,18 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             noisy_vels = similar(velocity(state))
 
             add_arm_noise!(noisy_poses, noisy_vels, configuration(state)[8:end], c.noisy_qs[8:end,end], 1/c.ctrl_freq)
-            add_rotational_noise!(noisy_poses, noisy_vels, velocity(state)[1:3], c.noisy_qs[1:4,end], c.time_step)
+            add_rotational_noise!(noisy_poses, noisy_vels, velocity(state)[1:3], c.noisy_qs[1:4,end], 1/c.ctrl_freq)
 
             noisy_velocity_veh = add_velocity_noise(velocity(state))
             noisy_poses_veh = add_position_noise(configuration(state))
 
-            noisy_poses[1:7] = noisy_poses_veh[1:7]
+            noisy_poses[5:7] = noisy_poses_veh[5:7]
             noisy_vels[4:6] = noisy_velocity_veh[4:6]
 
             c.noisy_vs = cat(c.noisy_vs, noisy_vels, dims=2)
             c.noisy_qs = cat(c.noisy_qs, noisy_poses, dims=2)
 
-            filtered_velocity = moving_average_filter_velocity(5, c.noisy_vs)
+            filtered_velocity = moving_average_filter_velocity(5, c.noisy_vs, velocity(state))
             c.filtered_vs = cat(c.filtered_vs, filtered_velocity, dims=2)
 
             # Get forces for vehicle (yaw, surge, sway, heave)
@@ -202,9 +208,6 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             #TODO switch to push! ?
             c.taus = cat(c.taus, c_taus, dims=2)
             # push!(c.taus, copy(c_taus))
-        elseif c.step_ctr == 0
-            c.noisy_vs = cat(c.noisy_vs, velocity(state), dims=2)
-            c.filtered_vs = cat(c.filtered_vs, velocity(state), dims=2)
         end
     end
     if rem(c.step_ctr, 4000) == 0
@@ -283,14 +286,22 @@ end
 
 function add_rotational_noise!(noisy_poses, noisy_vels, body_vels, last_ori, dt)
     noisy_vels[1:3] = body_vels[1:3] + rand(v_ang_vel_noise_dist, 3)
+    prev_R = Rotations.QuatRotation(last_ori)
+    new_R = prev_R*exp(skew(noisy_vels[1:3]...)*dt)
+    new_noisy_R = Rotations.RotMatrix(SMatrix{3,3}(new_R))
+    quat_new_noisy_R = Rotations.QuatRotation(new_noisy_R)
+    noisy_poses[1:4] .= [quat_new_noisy_R.w, quat_new_noisy_R.x, quat_new_noisy_R.y, quat_new_noisy_R.z]
 end
 
-function moving_average_filter_velocity(filt_size, noisy_vs)
+function moving_average_filter_velocity(filt_size, noisy_vs, act_vs)
     num_its = size(noisy_vs, 2)
     if num_its < filt_size
-        filtered_vels = sum(noisy_vs[:,end-num_its+1:end], dims=2) ./ num_its
+        filtered_vels = act_vs
     else
+        # println("filtering")
+        # @show sum(noisy_vs[:,end-filt_size+1:end], dims=2)./filt_size
         filtered_vels = sum(noisy_vs[:,end-filt_size+1:end], dims=2) ./ filt_size  
     end
+    # @show filtered_vels
     return filtered_vels
 end
