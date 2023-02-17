@@ -20,6 +20,7 @@ torque_lims = [20., 71.5, 88.2, 177., 10.0, 10.0, 10.0, 0.6, 600]
 # Gyroscope --> vehicle body vel noise 
 v_ang_vel_noise_dist = Distributions.Normal(0, .0013) # 75 mdps (LSM6DSOX)
 arm_pos_noise_dist = Distributions.Normal(0, .0017/6) # .1 degrees, from Reach website
+accel_noise_dist = Distributions.Normal(0, .017658) # 1.8 mg = .0176 m/s2 (LSM6DSOX)
 
 v_lin_vel_noise_dist = Distributions.Normal(0, .01)
 v_ori_noise_dist = Distributions.Normal(0, 0.01)
@@ -104,7 +105,7 @@ Requires the parameters of the trajectory to be followed (pars=trajParams), whic
 Only happens every 4 steps because integration is done with Runge-Kutta.
 """
 # function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c)
-function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c)
+function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c, result)
     # If it's the first time called in the Runge-Kutta, update the control torque
     # println("Made it inside the function! Ctr = $(time_step_ctr)")
     if rem(c.step_ctr, 4) == 0
@@ -129,8 +130,9 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         # println("Requesting des vel from trajgen")
         # c.des_vel = TrajGen.get_desv_at_t(t, pars)
         c.des_vel = get_desv_at_t(t, pars)
-        if rem(c.step_ctr, 1000) == 0
-            println("Desired velocity vector: $(c.des_vel)")
+        if rem(c.step_ctr, 400) == 0
+            # println("Desired velocity vector: $(c.des_vel)")
+            @show result.v̇
         end
         # Don't move the manipulator
         # c.des_vel[end-3:end] = zeros(4,1)
@@ -140,14 +142,10 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             noisy_poses = similar(configuration(state))
             noisy_vels = similar(velocity(state))
 
+            last_noisy_R = Rotations.QuatRotation(c.noisy_qs[1:4,end])
             add_arm_noise!(noisy_poses, noisy_vels, configuration(state)[8:end], c.noisy_qs[8:end,end], 1/c.ctrl_freq)
-            add_rotational_noise!(noisy_poses, noisy_vels, velocity(state)[1:3], c.noisy_qs[1:4,end], 1/c.ctrl_freq)
-
-            noisy_velocity_veh = add_velocity_noise(velocity(state))
-            noisy_poses_veh = add_position_noise(configuration(state))
-
-            noisy_poses[5:7] = noisy_poses_veh[5:7]
-            noisy_vels[4:6] = noisy_velocity_veh[4:6]
+            new_noisy_R = add_rotational_noise!(noisy_poses, noisy_vels, velocity(state)[1:3], last_noisy_R, 1/c.ctrl_freq)
+            add_linear_noise!(noisy_poses, noisy_vels, result.accelerations[BodyID(vehicle_body)], c.noisy_vs[1:6,end], c.noisy_qs[5:7,end], new_noisy_R, 1/c.ctrl_freq)
 
             c.noisy_vs = cat(c.noisy_vs, noisy_vels, dims=2)
             c.noisy_qs = cat(c.noisy_qs, noisy_poses, dims=2)
@@ -160,6 +158,8 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
                 # println("PID ctlr on vehicle")
                 actual_vel = velocity(state, c.joint_vec[1])
                 ctlr_tau = PID_ctlr(torques[dir_idx][1], t, filtered_velocity[dir_idx], dir_idx, c)
+                #TODO TAKE THIS OUT!!!
+                # ctlr_tau = 0
                 c_taus[dir_idx] = ctlr_tau 
                 torques[dir_idx] = ctlr_tau
             end
@@ -168,6 +168,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             for jt_idx in 2:length(c.joint_vec) # Joint index (1:vehicle, 2:baseJoint, etc)
                 idx = jt_idx+5 # velocity index (7 to 10)
                 ctlr_tau = PID_ctlr(torques[idx][1], t, filtered_velocity[idx], idx, c) 
+                
                 torques[velocity_range(state, c.joint_vec[jt_idx])] .= [ctlr_tau] 
                 c_taus[idx] = ctlr_tau 
             end
@@ -229,20 +230,6 @@ function limit_d_tau(d_tau, limit)
     return d_tau
 end
 
-function add_velocity_noise(velocity)
-    noisy_velocity = similar(velocity)
-    noisy_velocity[1:3] = velocity[1:3] + rand(v_ang_vel_noise_dist, 3)
-    noisy_velocity[4:6] = velocity[4:6] + rand(v_lin_vel_noise_dist, 3)
-    return noisy_velocity
-end
-
-function add_position_noise(configuration)
-    noisy_poses = similar(configuration)
-    noisy_poses[1:4] = configuration[1:4] + rand(v_ori_noise_dist, 4)
-    noisy_poses[5:7] = configuration[5:7] + rand(v_pos_noise_dist, 3)
-    return noisy_poses
-end
-
 function add_arm_noise!(noisy_poses, noisy_vels, joint_poses, last_noisy_joint_pose, dt)
     noisy_joint_poses = joint_poses + rand(arm_pos_noise_dist, length(joint_poses))
     noisy_velocity = (noisy_joint_poses - last_noisy_joint_pose)./dt
@@ -250,13 +237,27 @@ function add_arm_noise!(noisy_poses, noisy_vels, joint_poses, last_noisy_joint_p
     noisy_vels[7:end] = noisy_velocity
 end
 
-function add_rotational_noise!(noisy_poses, noisy_vels, body_vels, last_ori, dt)
+function add_rotational_noise!(noisy_poses, noisy_vels, body_vels, last_R, dt)
     noisy_vels[1:3] = body_vels[1:3] + rand(v_ang_vel_noise_dist, 3)
-    prev_R = Rotations.QuatRotation(last_ori)
-    new_R = prev_R*exp(skew(noisy_vels[1:3]...)*dt)
+    new_R = last_R*exp(skew(noisy_vels[1:3]...)*dt)
     new_noisy_R = Rotations.RotMatrix(SMatrix{3,3}(new_R))
     quat_new_noisy_R = Rotations.QuatRotation(new_noisy_R)
     noisy_poses[1:4] .= [quat_new_noisy_R.w, quat_new_noisy_R.x, quat_new_noisy_R.y, quat_new_noisy_R.z]
+    return quat_new_noisy_R
+end
+
+function add_linear_noise!(noisy_poses, noisy_vels, space_accels, last_body_vels, last_pos, new_R, dt)
+    last_body_twist = Twist(body_frame, base_frame, body_frame, last_body_vels[1:3], last_body_vels[4:6])
+    # last_spatial_twist = transform(Twist(last_body_twist), transform_to_root(state, default_frame(vehicle_body)))
+    body_accels = transform(space_accels, relative_transform(state, base_frame, body_frame), relative_twist(state, base_frame, body_frame), relative_twist(state, body_frame, base_frame))
+    # println("------- Comparison -------- ")
+    # @show space_accels
+    # @show body_accels
+    noisy_linear_accels = linear(body_accels) #+ rand(accel_noise_dist, 3)
+    new_noisy_linear_vels_body_frame = last_body_vels[4:6] + noisy_linear_accels.*dt
+    noisy_vels[4:6] = new_noisy_linear_vels_body_frame
+    noisy_vels_in_space = new_R*SVector{3}(new_noisy_linear_vels_body_frame)
+    noisy_poses[5:7] = last_pos + noisy_vels_in_space.*dt   
 end
 
 function moving_average_filter_velocity(filt_size, noisy_vs, act_vs)
@@ -264,8 +265,6 @@ function moving_average_filter_velocity(filt_size, noisy_vs, act_vs)
     if num_its < filt_size
         filtered_vels = act_vs
     else
-        # println("filtering")
-        # @show sum(noisy_vs[:,end-filt_size+1:end], dims=2)./filt_size
         filtered_vels = sum(noisy_vs[:,end-filt_size+1:end], dims=2) ./ filt_size  
     end
     # @show filtered_vels
