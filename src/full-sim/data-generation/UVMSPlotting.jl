@@ -193,23 +193,7 @@ function plot_control_taus(ctlr, ts_down, plot_veh=true, plot_arm=true)
     end
 end
 
-function plot_des_vs_act_velocities(ctlr, ts_down, des_vs, vs; plot_veh=true, plot_arm=true)
-    paths = OrderedDict();
-    des_paths = OrderedDict();
-    meas_paths = OrderedDict();
-    filt_paths = OrderedDict();
-    for idx = 1:10
-        joint_vels = [vs[i][idx] for i in 1:sample_rate:length(vs)]
-        paths[string("vs", idx)] = joint_vels
-        if idx > 2
-            des_joint_vels = [des_vs[i][idx-2] for i in 1:length(ts_down)]
-            des_paths[string("vs", idx)] = des_joint_vels
-        else
-            des_paths[string("vs", idx)] = zeros(length(ts_down))
-        end
-        meas_paths[string("vs", idx)] = [ctlr.noisy_vs[idx,i] for i in 1:length(ts_down)-1]
-        filt_paths[string("vs", idx)] = [ctlr.filtered_vs[idx,i] for i in 1:length(ts_down)-1]
-    end
+function plot_des_vs_act_velocities(ts_down, paths, des_paths, meas_paths, filt_paths; plot_veh=true, plot_arm=true)
 
     if plot_veh == true
         l = @layout[a b; c d; e f]
@@ -220,9 +204,9 @@ function plot_des_vs_act_velocities(ctlr, ts_down, des_vs, vs; plot_veh=true, pl
             var = var_names[k]
             lab = plot_labels[k]
             if k < 4
-                push!(plot_handles, plot(ts_down[1:end-1], [des_paths[var][1:end-1], paths[var][1:end-1], meas_paths[var], filt_paths[var]], title=lab, ylim=(-.004, .004), legend=false, titlefontsize=12))
+                push!(plot_handles, plot(ts_down, [des_paths[var], paths[var], meas_paths[var], filt_paths[var]], title=lab, ylim=(-.004, .004), legend=false, titlefontsize=12))
             else
-                push!(plot_handles, plot(ts_down[1:end-1], [des_paths[var][1:end-1], paths[var][1:end-1], meas_paths[var], filt_paths[var]], title=lab, ylim=(-.025,.025), legend=false, titlefontsize=12))
+                push!(plot_handles, plot(ts_down, [des_paths[var], paths[var], meas_paths[var], filt_paths[var]], title=lab, ylim=(-.025,.025), legend=false, titlefontsize=12))
             end
         end
         display(plot(plot_handles..., 
@@ -239,8 +223,8 @@ function plot_des_vs_act_velocities(ctlr, ts_down, des_vs, vs; plot_veh=true, pl
         for k = 1:4
             var = var_names[k]
             lab = plot_labels[k]
-            push!(plot_handles, plot(ts_down[1:end-1], 
-                [des_paths[var][1:end-1], paths[var][1:end-1], meas_paths[var], filt_paths[var]], 
+            push!(plot_handles, plot(ts_down, 
+                [des_paths[var], paths[var], meas_paths[var], filt_paths[var]], 
                 title=lab, 
                 label=["Desired" "Actual" "Noisy" "Filtered"], 
                 ylim=(-.5,.5), 
@@ -260,29 +244,56 @@ function plot_des_vs_act_velocities(ctlr, ts_down, des_vs, vs; plot_veh=true, pl
 
 end
 
-function plot_des_vs_act_positions(ctlr, ts_down, des_qs, qs)
-    paths = OrderedDict();
-    des_paths = OrderedDict();
-    for idx = 8:11
-        joint_qs = [qs[i][idx] for i in 1:sample_rate:length(qs)]
-        paths[string("qs", idx)] = joint_qs
-
-        des_joint_qs = [des_qs[i][idx-3] for i in 1:length(ts_down)]
-        des_paths[string("qs", idx)] = des_joint_qs
+function plot_des_vs_act_positions(ts_down, paths, des_paths, meas_paths; plot_veh=true, plot_arm=true)
+    if plot_veh == true
+        l = @layout[a b; c d; e f]
+        var_names = ["qs1", "qs2", "qs3", "qs4", "qs5", "qs6"]
+        plot_labels = ["roll", "pitch", "yaw", "x", "y", "z"]
+        plot_handles = []
+        for k = 1:6
+            var = var_names[k]
+            lab = plot_labels[k]
+            if k < 4
+                push!(plot_handles, plot(ts_down, [des_paths[var], paths[var], meas_paths[var]], 
+                    title=lab, 
+                    ylim=(-.1, .1), 
+                    label=["Desired" "Actual" "Measured"], 
+                    titlefontsize=12))
+            else
+                push!(plot_handles, plot(ts_down, [des_paths[var], paths[var], meas_paths[var]], 
+                    title=lab, 
+                    ylim=(-.1, .1), 
+                    label=["Desired" "Actual" "Measured"], 
+                    titlefontsize=12))
+            end
+        end
+        display(plot(plot_handles..., 
+                    layout=l, 
+                    plot_title="Vehicle Positions", 
+                    size=(1000, 800)))
     end
-
-    l = @layout[a b; c d]
-    var_names = ["qs8", "qs9", "qs10", "qs11"]
-    plot_labels = ["Joint E", "Joint D", "Joint C", "Joint B"]
-    plot_handles = []
-    for k = 1:4
-        var = var_names[k]
-        lab = plot_labels[k]
-        this_plot = plot(ts_down, [des_paths[var], paths[var]], title=lab, label=["Desired" "Actual" "Limits"], titlefontsize=12)
-        hline!(this_plot, [joint_lims[k][1], joint_lims[k][2]])
-        push!(plot_handles, this_plot)
+    
+    if plot_arm == true
+        l = @layout[a b; c d]
+        var_names = ["qs7", "qs8", "qs9", "qs10"]
+        plot_labels = ["Joint E", "Joint D", "Joint C", "Joint B"]
+        legend_labels = ["Desired", "Actual", "Measured", "Limits"]
+        plot_handles = []
+        for k = 1:4
+            var = var_names[k]
+            lab = plot_labels[k]
+            this_plot = plot(ts_down, [des_paths[var], paths[var], meas_paths[var]], 
+                title=lab, 
+                titlefontsize=12)
+            hline!(this_plot, [joint_lims[k][1], joint_lims[k][2]])
+            for j = 1:4
+                this_plot[1][j][:label] = legend_labels[j]
+            end
+            push!(plot_handles, this_plot)
+        end
+        display(plot(plot_handles..., 
+                    layout=l, 
+                    plot_title="Joint Positions",
+                    size=(1000, 800)))
     end
-    display(plot(plot_handles..., 
-                layout=l, 
-                plot_title="Joint Positions"))
 end
