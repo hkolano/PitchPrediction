@@ -9,9 +9,9 @@ arm_Ki = 0.005
 v_Kp = 2.0
 v_Kd = 0.024
 v_Ki = 0.015
-Kp = [1.5, v_Kp, v_Kp, v_Kp, arm_Kp, 0.051, 4.05e-2, 5.4e-4] #, 20.]
-Ki = [0.001, v_Ki, v_Ki, v_Ki, arm_Ki, 0.309, 2.89e-1, 3.6e-3] #3.037e-6] #, .1]
-Kd = [0.0004, v_Kd, v_Kd, v_Kd, arm_Kd, 2.1e-3, 1.42e-3, 2.03e-5] #, .002]
+Kp = [1.5, v_Kp, v_Kp, v_Kp, arm_Kp, 8.34e-2, 4.05e-2, 5.4e-4] #, 20.]
+Ki = [0.001, v_Ki, v_Ki, v_Ki, arm_Ki, 6.67e-1, 2.89e-1, 3.6e-3] #3.037e-6] #, .1]
+Kd = [0.0004, v_Kd, v_Kd, v_Kd, arm_Kd, 2.61e-3, 1.42e-3, 2.03e-5] #, .002]
 
 # Wrist joint: Ku = 1e-6, Tu = 9, Pessen Integral Rule 
 # Elbow joint: 
@@ -254,7 +254,7 @@ end
 function add_arm_noise!(noisy_poses, noisy_vels, joint_poses, last_noisy_joint_pose, dt)
     # noisy_joint_poses = joint_poses + rand(arm_pos_noise_dist, length(joint_poses))
     noisy_joint_poses = joint_poses
-    noisy_joint_poses[3:4] = joint_poses[3:4] + rand(arm_pos_noise_dist, 2)
+    noisy_joint_poses[2:4] = joint_poses[2:4] + rand(arm_pos_noise_dist, 3)
     noisy_velocity = (noisy_joint_poses - last_noisy_joint_pose)./dt
     noisy_poses[8:end] = noisy_joint_poses
     noisy_vels[7:end] = noisy_velocity
