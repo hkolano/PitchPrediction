@@ -7,32 +7,24 @@ arm_Kp = .025
 arm_Kd = 0.0006
 arm_Ki = 0.005
 v_Kp = 2.0
-v_Kd = 0.012
+v_Kd = 0.024
 v_Ki = 0.015
-Kp = [1.5, v_Kp, v_Kp, v_Kp, arm_Kp, .015, .006, .0003, 20.]
-Kd = [0.0002, v_Kd, v_Kd, v_Kd, arm_Kd, 0.0004, 0.0004, 0.00004, .002]
-Ki = [0.0001, v_Ki, v_Ki, v_Ki, arm_Ki, 0.005, 0.01, 0.0008, .1]
-torque_lims = [20., 71.5, 88.2, 177., 10.0, 10.0, 10.0, 0.6, 600]
+Kp = [1.5, v_Kp, v_Kp, v_Kp, arm_Kp, .003, 1.e-3, 7e-7] #, 20.]
+Ki = [0.001, v_Ki, v_Ki, v_Ki, arm_Ki, 0.005, 1.31e-3, 1.94e-7] #3.037e-6] #, .1]
+Kd = [0.0004, v_Kd, v_Kd, v_Kd, arm_Kd, 0.0032, 0.0016, 9.45e-7] #, .002]
+
+# Wrist joint: Ku = 1e-6, Tu = 9, Pessen Integral Rule 
+# Elbow joint: 
+
+torque_lims = [20., 71.5, 88.2, 177., 10.0, 10.0, 10.0, 0.6] #, 600]
 
 # Sensor noise distributions 
 # Implemented:
 # Encoder --> joint position noise -integration-> joint velocity noise
 # Gyroscope --> vehicle body vel noise 
-v_ang_vel_noise_dist = Distributions.Normal(0, .0013) # 75 mdps (LSM6DSOX)
+v_ang_vel_noise_dist = Distributions.Normal(0, 0.0) #.0013) # 75 mdps (LSM6DSOX)
 arm_pos_noise_dist = Distributions.Normal(0, .0017/6) # .1 degrees, from Reach website
-accel_noise_dist = Distributions.Normal(0, .017658) # 1.8 mg = .0176 m/s2 (LSM6DSOX)
-
-v_lin_vel_noise_dist = Distributions.Normal(0, .01)
-v_ori_noise_dist = Distributions.Normal(0, 0.01)
-v_pos_noise_dist = Distributions.Normal(0, 0.01)
-
-# v_ang_vel_noise_dist = Distributions.Normal(0, .00) # 75 mdps (LSM6DSOX)
-# arm_pos_noise_dist = Distributions.Normal(0, .00) # .1 degrees, from Reach website
-
-# v_lin_vel_noise_dist = Distributions.Normal(0, 0.)
-# v_ori_noise_dist = Distributions.Normal(0, 0.0)
-# v_pos_noise_dist = Distributions.Normal(0, 0.0)
-
+accel_noise_dist = Distributions.Normal(0, 0.0) #.017658) # 1.8 mg = .0176 m/s2 (LSM6DSOX)
 
 mutable struct CtlrCache
     time_step::Float64
@@ -47,8 +39,10 @@ mutable struct CtlrCache
     noisy_qs
     noisy_vs
     filtered_vs
+    last_v̇
     
-    function CtlrCache(dt, control_frequency, mechanism)
+    function CtlrCache(dt, control_frequency, state)
+        mechanism = state.mechanism
         if length(joints(mechanism)) == 5
             vehicle_joint, jointE, jointD, jointC, jointB = joints(mechanism)
             joint_vec = [vehicle_joint, jointE, jointD, jointC, jointB]
@@ -64,8 +58,8 @@ mutable struct CtlrCache
         new(dt, control_frequency, ctrl_loop_num_steps, #=
         =# zeros(num_actuated_dofs), zeros(num_actuated_dofs), 0, joint_vec, #=
         =# zeros(num_actuated_dofs), Array{Float64}(undef, num_dofs, 1), #=
-        =# zeros(num_dofs+1), zeros(num_dofs), #=
-        =# zeros(num_dofs)) 
+        =# configuration(state), velocity(state), #=
+        =# zeros(num_dofs), zeros(num_dofs)) 
     end
 end
 
@@ -117,10 +111,10 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             torques[3] = 0.
             torques[5] = 0.
             torques[4] = -2.3 # ff x value
-            torques[7] = -.004 # ff joint E value
-            torques[8] = -.325 # ff Joint D value 
-            torques[9] = -.034 # ff Joint C value
-            torques[10] = .004
+            torques[7] = -.002 # ff joint E value
+            torques[8] = -.3227 # ff Joint D value 
+            torques[9] = -.0335 # ff Joint C value
+            torques[10] = 0 #.5e-5
         end
         
         # Roll and pitch are not controlled
@@ -130,12 +124,12 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         # println("Requesting des vel from trajgen")
         # c.des_vel = TrajGen.get_desv_at_t(t, pars)
         c.des_vel = get_desv_at_t(t, pars)
-        if rem(c.step_ctr, 400) == 0
-            # println("Desired velocity vector: $(c.des_vel)")
-            @show result.v̇
-        end
-        # Don't move the manipulator
-        # c.des_vel[end-3:end] = zeros(4,1)
+        # if rem(c.step_ctr, 1000) == 0
+        #     # println("Desired velocity vector: $(c.des_vel)")
+        #     wrist_wrenches = result.totalwrenches[BodyID(wrist_body)]
+        #     wrist_wrench_wrist_frame = transform(wrist_wrenches, relative_transform(state, base_frame, wrist_frame))
+        #     @show wrist_wrench_wrist_frame
+        # end
 
         if rem(c.step_ctr, c.ctrl_steps) == 0 && c.step_ctr != 0
 
@@ -145,8 +139,9 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             last_noisy_R = Rotations.QuatRotation(c.noisy_qs[1:4,end])
             add_arm_noise!(noisy_poses, noisy_vels, configuration(state)[8:end], c.noisy_qs[8:end,end], 1/c.ctrl_freq)
             new_noisy_R = add_rotational_noise!(noisy_poses, noisy_vels, velocity(state)[1:3], last_noisy_R, 1/c.ctrl_freq)
-            add_linear_noise!(noisy_poses, noisy_vels, result.accelerations[BodyID(vehicle_body)], c.noisy_vs[1:6,end], c.noisy_qs[5:7,end], new_noisy_R, 1/c.ctrl_freq)
+            add_linear_noise!(noisy_poses, noisy_vels, result.v̇[1:6], c.last_v̇, c.noisy_vs[1:6,end], c.noisy_qs[5:7,end], last_noisy_R, new_noisy_R, 1/c.ctrl_freq)
 
+            c.last_v̇ = result.v̇
             c.noisy_vs = cat(c.noisy_vs, noisy_vels, dims=2)
             c.noisy_qs = cat(c.noisy_qs, noisy_poses, dims=2)
 
@@ -158,8 +153,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
                 # println("PID ctlr on vehicle")
                 actual_vel = velocity(state, c.joint_vec[1])
                 ctlr_tau = PID_ctlr(torques[dir_idx][1], t, filtered_velocity[dir_idx], dir_idx, c)
-                #TODO TAKE THIS OUT!!!
-                # ctlr_tau = 0
+                # ctlr_tau = torques[dir_idx]
                 c_taus[dir_idx] = ctlr_tau 
                 torques[dir_idx] = ctlr_tau
             end
@@ -168,7 +162,6 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             for jt_idx in 2:length(c.joint_vec) # Joint index (1:vehicle, 2:baseJoint, etc)
                 idx = jt_idx+5 # velocity index (7 to 10)
                 ctlr_tau = PID_ctlr(torques[idx][1], t, filtered_velocity[idx], idx, c) 
-                
                 torques[velocity_range(state, c.joint_vec[jt_idx])] .= [ctlr_tau] 
                 c_taus[idx] = ctlr_tau 
             end
@@ -195,19 +188,29 @@ Imposes a PID controller on one joint.
 Returns a controller torque value, bounded by the torque limits and some dτ/dt value. 
 """
 function PID_ctlr(torque, t, vel_act, idx, c)
+    dt = 1/c.ctrl_freq 
     actuated_idx = idx-2
     d_vel = c.des_vel[actuated_idx]
     vel_error = vel_act[1] - d_vel
-    d_vel_error = (vel_error - c.vel_error_cache[actuated_idx])/(1/c.ctrl_freq)
+    d_vel_error = (vel_error - c.vel_error_cache[actuated_idx])/dt
     # println("D_Velocity error on idx$(j_idx): $(d_vel_error)")
-    c.vel_int_error_cache[actuated_idx] = c.vel_int_error_cache[actuated_idx] + vel_error*(1/c.ctrl_freq)
-    d_tau = -Kp[actuated_idx]*vel_error - Kd[actuated_idx]*d_vel_error - Ki[actuated_idx]*c.vel_int_error_cache[actuated_idx]
+    c.vel_int_error_cache[actuated_idx] += vel_error*dt
+
+    p_term = -Kp[actuated_idx]*vel_error
+    d_term = - Kd[actuated_idx]*d_vel_error
+    i_term = - Ki[actuated_idx]*c.vel_int_error_cache[actuated_idx]
+    d_tau = p_term + d_term + i_term
     # println("Ideal tau: $(d_tau)")
 
+    # if actuated_idx == 8
+    #     @show p_term
+    #     @show i_term 
+    #     @show d_term
+    # end
     # Can only change torque a small amount per time step 
     # arm joints can change faster than thrusters
     5 <= actuated_idx ? lim = 0.0001 : lim = 0.001
-    lim = lim*(1/c.time_step)/c.ctrl_freq
+    lim = lim*(1/c.time_step)/dt
     d_tau = limit_d_tau(d_tau, lim)
     
     # Torque limits
@@ -231,7 +234,9 @@ function limit_d_tau(d_tau, limit)
 end
 
 function add_arm_noise!(noisy_poses, noisy_vels, joint_poses, last_noisy_joint_pose, dt)
-    noisy_joint_poses = joint_poses + rand(arm_pos_noise_dist, length(joint_poses))
+    # noisy_joint_poses = joint_poses + rand(arm_pos_noise_dist, length(joint_poses))
+    noisy_joint_poses = joint_poses
+    noisy_joint_poses[4] = joint_poses[4] + rand(arm_pos_noise_dist)
     noisy_velocity = (noisy_joint_poses - last_noisy_joint_pose)./dt
     noisy_poses[8:end] = noisy_joint_poses
     noisy_vels[7:end] = noisy_velocity
@@ -246,17 +251,10 @@ function add_rotational_noise!(noisy_poses, noisy_vels, body_vels, last_R, dt)
     return quat_new_noisy_R
 end
 
-function add_linear_noise!(noisy_poses, noisy_vels, space_accels, last_body_vels, last_pos, new_R, dt)
-    last_body_twist = Twist(body_frame, base_frame, body_frame, last_body_vels[1:3], last_body_vels[4:6])
-    # last_spatial_twist = transform(Twist(last_body_twist), transform_to_root(state, default_frame(vehicle_body)))
-    body_accels = transform(space_accels, relative_transform(state, base_frame, body_frame), relative_twist(state, base_frame, body_frame), relative_twist(state, body_frame, base_frame))
-    # println("------- Comparison -------- ")
-    # @show space_accels
-    # @show body_accels
-    noisy_linear_accels = linear(body_accels) #+ rand(accel_noise_dist, 3)
-    new_noisy_linear_vels_body_frame = last_body_vels[4:6] + noisy_linear_accels.*dt
-    noisy_vels[4:6] = new_noisy_linear_vels_body_frame
-    noisy_vels_in_space = new_R*SVector{3}(new_noisy_linear_vels_body_frame)
+function add_linear_noise!(noisy_poses, noisy_vels, v̇, last_v̇, last_body_vels, last_pos, last_R, new_R, dt)
+    noisy_linear_accels = v̇[4:6] + rand(accel_noise_dist, 3)
+    noisy_vels[4:6] = last_body_vels[4:6] + noisy_linear_accels.*dt #+last_v̇[4:6])./2 .*dt
+    noisy_vels_in_space = last_R*SVector{3}(last_body_vels[4:6]) #+ new_R*SVector{3}(noisy_vels[4:6]))./2
     noisy_poses[5:7] = last_pos + noisy_vels_in_space.*dt   
 end
 

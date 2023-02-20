@@ -198,7 +198,7 @@ function plot_des_vs_act_velocities(ts_down, paths, des_paths, meas_paths, filt_
     if plot_veh == true
         l = @layout[a b; c d; e f]
         var_names = ["vs1", "vs2", "vs3", "vs4", "vs5", "vs6"]
-        plot_labels = ["roll", "pitch", "yaw", "x", "y", "z"]
+        plot_labels = ["body-roll", "body-pitch", "body-yaw", "surge (body x)", "sway (body y)", "heave (body z)"]
         plot_handles = []
         for k = 1:6
             var = var_names[k]
@@ -206,7 +206,7 @@ function plot_des_vs_act_velocities(ts_down, paths, des_paths, meas_paths, filt_
             if k < 4
                 push!(plot_handles, plot(ts_down, [des_paths[var], paths[var], meas_paths[var], filt_paths[var]], title=lab, ylim=(-.004, .004), legend=false, titlefontsize=12))
             else
-                push!(plot_handles, plot(ts_down, [des_paths[var], paths[var], meas_paths[var], filt_paths[var]], title=lab, ylim=(-.025,.025), legend=false, titlefontsize=12))
+                push!(plot_handles, plot(ts_down, [des_paths[var], paths[var], meas_paths[var], filt_paths[var]], title=lab, ylim=(-.01,.01), legend=false, titlefontsize=12))
             end
         end
         display(plot(plot_handles..., 
@@ -227,7 +227,7 @@ function plot_des_vs_act_velocities(ts_down, paths, des_paths, meas_paths, filt_
                 [des_paths[var], paths[var], meas_paths[var], filt_paths[var]], 
                 title=lab, 
                 label=["Desired" "Actual" "Noisy" "Filtered"], 
-                ylim=(-.5,.5), 
+                # ylim=(-4.,4.), 
                 titlefontsize=12, 
                 size=(1000, 800)))
             # push!(plot_handles, plot(ts_down, 
@@ -246,7 +246,7 @@ end
 
 function plot_des_vs_act_positions(ts_down, paths, des_paths, meas_paths; plot_veh=true, plot_arm=true)
     if plot_veh == true
-        l = @layout[a b; c d; e f]
+        l = @layout[grid(3,1) grid(3,1)]
         var_names = ["qs1", "qs2", "qs3", "qs4", "qs5", "qs6"]
         plot_labels = ["roll", "pitch", "yaw", "x", "y", "z"]
         plot_handles = []
@@ -256,13 +256,12 @@ function plot_des_vs_act_positions(ts_down, paths, des_paths, meas_paths; plot_v
             if k < 4
                 push!(plot_handles, plot(ts_down, [des_paths[var], paths[var], meas_paths[var]], 
                     title=lab, 
-                    ylim=(-.1, .1), 
                     label=["Desired" "Actual" "Measured"], 
                     titlefontsize=12))
             else
                 push!(plot_handles, plot(ts_down, [des_paths[var], paths[var], meas_paths[var]], 
                     title=lab, 
-                    ylim=(-.1, .1), 
+                    ylim=(-.01, .01), 
                     label=["Desired" "Actual" "Measured"], 
                     titlefontsize=12))
             end

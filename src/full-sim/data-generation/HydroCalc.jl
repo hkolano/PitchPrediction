@@ -26,16 +26,30 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
         # Make the wrench: the buoyancy force through a point, the center of buoyancy.
         buoy_wrench = Wrench(Point3D(body_default_frame, translation(inv(def_to_cob))), buoy_force_trans)
         push!(buoy_wrenches, buoy_wrench)
-
+        # if bod == wrist_body 
+        #     if rem(t, .25) < 0.002
+        #         @show t
+        #         @show buoy_wrench
+        #     end
+        # end
 
         # -------- Calculate Gravity Wrench -------
         def_to_com = fixed_transform(bod, body_default_frame, com_frames[i])
         grav_force_trans = transform(state, grav_lin_forces[i], body_default_frame)
         # println(grav_force_trans)
         # Make the wrench: the buoyancy force through a point, the center of buoyancy.
+        # COM = Point3D(body_default_frame, translation(inv(def_to_com)))
         grav_wrench = Wrench(Point3D(body_default_frame, translation(inv(def_to_com))), grav_force_trans)
+        # setelement!(mvis, COM)
         # Add wrench to buoy_wrenches
         push!(grav_wrenches, grav_wrench)
+
+        # if bod == wrist_body 
+        #     if rem(t, .25) < 0.002
+        #         @show t
+        #         @show grav_wrench
+        #     end
+        # end
 
         # Add the buoyancy wrench and grav wrench together
         wrench = buoy_wrench + grav_wrench
