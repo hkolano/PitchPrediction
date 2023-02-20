@@ -59,7 +59,7 @@ frame_names_cob = ["vehicle_cob", "shoulder_cob", "ua_cob", "elbow_cob", "wrist_
 frame_names_com = ["vehicle_com", "shoulder_com", "ua_com", "elbow_com", "wrist_com", "jaw_com"]
 # Assume default frame = COM
 cob_vecs = [SVector{3, Float64}([0.0, 0.0, 0.02]), SVector{3, Float64}([-0.001, -0.003, .032]), SVector{3, Float64}([0.073, 0.0, -0.002]), SVector{3, Float64}([0.003, 0.001, -0.017]), SVector{3, Float64}([0.0, 0.0, -.098]), SVector{3, Float64}([0.0, 0.0, 0.0])]
-com_vecs = [SVector{3, Float64}([0.0, 0.0, 0.0]), SVector{3, Float64}([0.005, -.001, 0.016]), SVector{3, Float64}([0.073, 0.0, 0.0]), SVector{3, Float64}([0.017, -0.026, -0.002]), SVector{3, Float64}([0.0, 0.003, -.098]), SVector{3, Float64}([0.0, 0.0, 0.0])]
+com_vecs = [SVector{3, Float64}([0.0, 0.0, 0.0]), SVector{3, Float64}([0.005, -.001, 0.016]), SVector{3, Float64}([0.073, 0.0, 0.0]), SVector{3, Float64}([0.017, -0.026, -0.002]), SVector{3, Float64}([0.0, 0.0, -.098]), SVector{3, Float64}([0.0, 0.0, 0.0])]
 cob_frames = []
 com_frames = []
 setup_frames!(mech_blue_alpha, frame_names_cob, frame_names_com, cob_vecs, com_vecs, cob_frames, com_frames)
@@ -106,7 +106,7 @@ println("CoM and CoB frames initialized. \n")
 
 function reset_to_equilibrium!(state)
     zero!(state)
-    # set_configuration!(state, vehicle_joint, [.9777, -.0019, 0.2098, .0079, 0., 0., 0.])
+    set_configuration!(state, vehicle_joint, [.9777, -0.0019, 0.2098, .0079, 0., 0., 0.])
     # set_velocity!(state, vehicle_joint, [0., 0., 0., 0., 0.0, 0.])
 end
 
@@ -125,7 +125,8 @@ duration_after_traj = 1.0   # How long to simulate after trajectory has ended
 #%%
 # (temporary adds while making changes to ctlr and traj generator)
 include("PIDCtlr.jl")
-# include("HydroCalc.jl")
+include("TrajGenJoints.jl")
+include("HydroCalc.jl")
 include("SimWExt.jl")
 
 # wp = TrajGen.generate_path_from_current_pose(state)
@@ -155,10 +156,7 @@ bool_plot_positions = false
 # Create (num_trajs) different trajectories and save to csvs 
 # for n in ProgressBar(1:num_trajs)
 
-    # Reset the sim to the equilibrium position
-    reset_to_equilibrium!(state)
-    # Start up the controller
-    ctlr_cache = CtlrCache(Δt, ctrl_freq, mech_blue_alpha)
+   
     # ctlr_cache.taus[:,1] = [0.; 0.; 0.; 0.; 0.; 10.; 0.; 0.; 0.; 0.]
  
     # ----------------------------------------------------------
@@ -210,23 +208,18 @@ bool_plot_positions = false
     poses = scaled_traj[2]
     vels = scaled_traj[3]
 
-    # Save waypoints (start and goal positions, velocities) to CSV file
-    if save_to_csv == true
-        # Make vector of waypoint values and time step to save to csv
-        waypoints = [Δt*sample_rate params.wp.start.θs[1:4]... params.wp.goal.θs[1:4]... params.wp.start.dθs[1:4]... params.wp.goal.dθs[1:4]...]
-        wp_data = Tables.table(waypoints)
-        if n == 1
-            goal_headers = ["dt", "E_start", "D_start", "C_start", "B_start", "E_end", "D_end", "C_end", "B_end", "dE_start", "dD_start", "dC_start", "dB_start", "dE_end", "dD_end", "dC_end", "dB_end"]
-            CSV.write("data/full-sim-data-110822/full-sim-waypoints_110822.csv", wp_data, header=goal_headers)
-        else 
-            CSV.write("data/full-sim-data-110822/full-sim-waypoints_110822.csv", wp_data, header=false, append=true)
-        end
-    end
-
+    #%%
+    include("PIDCtlr.jl")
+    include("HydroCalc.jl")
+    include("TrajGenJoints.jl")
+    # Reset the sim to the equilibrium position
+    reset_to_equilibrium!(state)
+    # Start up the controller
+    ctlr_cache = CtlrCache(Δt, ctrl_freq, state)
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
     # ts, qs, vs = simulate_with_ext_forces(state, duration+duration_after_traj, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    ts, qs, vs = simulate_with_ext_forces(state, 5, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, 10, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
     # Downsample the time steps to goal_freq
@@ -243,12 +236,16 @@ bool_plot_positions = false
     des_qs = [get_desq_at_t(t, params) for t in ts_down_no_zero]
 
     qs_down = Array{Float64}(undef, length(ts_down_no_zero), 10)
+    vs_down = zeros(length(ts_down_no_zero), 10)
     qs_noisy = Array{Float64}(undef, length(ts_down_no_zero), 10)
     ct = 1
-    for i = 2:sample_rate:length(ts)
+    i = 1
+    while ct <= length(ts_down_no_zero)
         qs_down[ct, 1:3] = convert_to_rpy(qs[i][1:4])
         qs_down[ct,4:end] = qs[i][5:end]
+        vs_down[ct,:] = vs[i]
         ct += 1
+        i += sample_rate
     end
     for i = 1:length(ts_down_no_zero)
         qs_noisy[i,1:3] = convert_to_rpy(ctlr_cache.noisy_qs[1:4, i])
@@ -257,7 +254,7 @@ bool_plot_positions = false
     
     for idx = 1:10
         # Velocities
-        paths[string("vs", idx)] = [vs[i][idx] for i in 2:sample_rate:length(vs)] 
+        paths[string("vs", idx)] = vs_down[:,idx]
         des_paths[string("vs", idx)] = idx > 2 ? [des_vs[i][idx-2] for i in 1:length(ts_down_no_zero)] : zeros(length(ts_down_no_zero))
         meas_paths[string("vs", idx)] = [ctlr_cache.noisy_vs[idx,i] for i in 1:length(ts_down_no_zero)]
         filt_paths[string("vs", idx)] = [ctlr_cache.filtered_vs[idx,i] for i in 1:length(ts_down_no_zero)]
@@ -266,12 +263,6 @@ bool_plot_positions = false
         paths[string("qs", idx)] = qs_down[:,idx] 
         des_paths[string("qs", idx)] = idx > 2 ? [des_qs[i][idx-2] for i in 1:length(ts_down_no_zero)] : zeros(length(ts_down_no_zero))
         meas_paths[string("qs", idx)] = qs_noisy[:,idx]
-    end
-
-    if show_animation == true
-        print("Animating... ")
-        MeshCatMechanisms.animate(mvis, ts, qs; realtimerate = 1.0)
-        println("done.")
     end
 
     include("UVMSPlotting.jl")
@@ -285,12 +276,18 @@ bool_plot_positions = false
     if bool_plot_positions == true
         plot_des_vs_act_positions(ts_down_no_zero,
             paths, des_paths, meas_paths, 
-            plot_veh = true, plot_arm=true)
+            plot_veh = false, plot_arm=true)
     end
 
     if bool_plot_taus == true
         plot_control_taus(ctlr_cache, ts_down)
     end 
+
+    if show_animation == true
+        print("Animating... ")
+        MeshCatMechanisms.animate(mvis, ts, qs; realtimerate = 1.0)
+        println("done.")
+    end
 
     if save_to_csv == true
         # Rows:
