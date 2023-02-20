@@ -9,9 +9,9 @@ arm_Ki = 0.005
 v_Kp = 2.0
 v_Kd = 0.024
 v_Ki = 0.015
-Kp = [1.5, v_Kp, v_Kp, v_Kp, arm_Kp, .003, 1.e-3, 7e-7] #, 20.]
-Ki = [0.001, v_Ki, v_Ki, v_Ki, arm_Ki, 0.005, 1.31e-3, 1.94e-7] #3.037e-6] #, .1]
-Kd = [0.0004, v_Kd, v_Kd, v_Kd, arm_Kd, 0.0032, 0.0016, 9.45e-7] #, .002]
+Kp = [1.5, v_Kp, v_Kp, v_Kp, arm_Kp, 0.051, 4.5e-4, 5.4e-4] #, 20.]
+Ki = [0.001, v_Ki, v_Ki, v_Ki, arm_Ki, 0.309, 3.86e-4, 3.6e-3] #3.037e-6] #, .1]
+Kd = [0.0004, v_Kd, v_Kd, v_Kd, arm_Kd, 2.1e-3, 0.00, 2.03e-5] #, .002]
 
 # Wrist joint: Ku = 1e-6, Tu = 9, Pessen Integral Rule 
 # Elbow joint: 
@@ -40,6 +40,7 @@ mutable struct CtlrCache
     noisy_vs
     filtered_vs
     last_v̇
+    filtered_state
     
     function CtlrCache(dt, control_frequency, state)
         mechanism = state.mechanism
@@ -59,7 +60,7 @@ mutable struct CtlrCache
         =# zeros(num_actuated_dofs), zeros(num_actuated_dofs), 0, joint_vec, #=
         =# zeros(num_actuated_dofs), Array{Float64}(undef, num_dofs, 1), #=
         =# configuration(state), velocity(state), #=
-        =# zeros(num_dofs), zeros(num_dofs)) 
+        =# zeros(num_dofs), zeros(num_dofs), MechanismState(mechanism)) 
     end
 end
 
@@ -99,7 +100,7 @@ Requires the parameters of the trajectory to be followed (pars=trajParams), whic
 Only happens every 4 steps because integration is done with Runge-Kutta.
 """
 # function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c)
-function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c, result)
+function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c, result, h_wrenches)
     # If it's the first time called in the Runge-Kutta, update the control torque
     # println("Made it inside the function! Ctr = $(time_step_ctr)")
     if rem(c.step_ctr, 4) == 0
@@ -112,7 +113,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             torques[5] = 0.
             torques[4] = -2.3 # ff x value
             torques[7] = -.002 # ff joint E value
-            torques[8] = -.3227 # ff Joint D value 
+            torques[8] = -.32255 # ff Joint D value 
             torques[9] = -.0335 # ff Joint C value
             torques[10] = 0 #.5e-5
         end
@@ -124,12 +125,16 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         # println("Requesting des vel from trajgen")
         # c.des_vel = TrajGen.get_desv_at_t(t, pars)
         c.des_vel = get_desv_at_t(t, pars)
-        # if rem(c.step_ctr, 1000) == 0
+
+        ff_torques = dynamics_bias(state, h_wrenches)
+        if rem(c.step_ctr, 1000) == 0
+            @show ff_torques[7:10]
+            # @show result.jointwrenches
         #     # println("Desired velocity vector: $(c.des_vel)")
         #     wrist_wrenches = result.totalwrenches[BodyID(wrist_body)]
         #     wrist_wrench_wrist_frame = transform(wrist_wrenches, relative_transform(state, base_frame, wrist_frame))
         #     @show wrist_wrench_wrist_frame
-        # end
+        end
 
         if rem(c.step_ctr, c.ctrl_steps) == 0 && c.step_ctr != 0
 
@@ -147,12 +152,18 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
 
             filtered_velocity = moving_average_filter_velocity(5, c.noisy_vs, velocity(state))
             c.filtered_vs = cat(c.filtered_vs, filtered_velocity, dims=2)
+            filtered_vels = similar(velocity(state))
+            filtered_vels[:] = filtered_velocity
+
+            set_configuration!(c.filtered_state, noisy_poses)
+            set_velocity!(c.filtered_state, filtered_vels)
+            ff_torques = dynamics_bias(c.filtered_state, h_wrenches)
 
             # Get forces for vehicle (yaw, surge, sway, heave)
             for dir_idx = 3:6
                 # println("PID ctlr on vehicle")
                 actual_vel = velocity(state, c.joint_vec[1])
-                ctlr_tau = PID_ctlr(torques[dir_idx][1], t, filtered_velocity[dir_idx], dir_idx, c)
+                ctlr_tau = PID_ctlr(torques[dir_idx][1], t, filtered_velocity[dir_idx], dir_idx, c, ff_torques)
                 # ctlr_tau = torques[dir_idx]
                 c_taus[dir_idx] = ctlr_tau 
                 torques[dir_idx] = ctlr_tau
@@ -161,7 +172,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             # Get torques for the arm joints
             for jt_idx in 2:length(c.joint_vec) # Joint index (1:vehicle, 2:baseJoint, etc)
                 idx = jt_idx+5 # velocity index (7 to 10)
-                ctlr_tau = PID_ctlr(torques[idx][1], t, filtered_velocity[idx], idx, c) 
+                ctlr_tau = PID_ctlr(torques[idx][1], t, filtered_velocity[idx], idx, c, ff_torques) 
                 torques[velocity_range(state, c.joint_vec[jt_idx])] .= [ctlr_tau] 
                 c_taus[idx] = ctlr_tau 
             end
@@ -187,7 +198,7 @@ Imposes a PID controller on one joint.
 
 Returns a controller torque value, bounded by the torque limits and some dτ/dt value. 
 """
-function PID_ctlr(torque, t, vel_act, idx, c)
+function PID_ctlr(torque, t, vel_act, idx, c, ff)
     dt = 1/c.ctrl_freq 
     actuated_idx = idx-2
     d_vel = c.des_vel[actuated_idx]
@@ -202,11 +213,13 @@ function PID_ctlr(torque, t, vel_act, idx, c)
     d_tau = p_term + d_term + i_term
     # println("Ideal tau: $(d_tau)")
 
-    # if actuated_idx == 8
-    #     @show p_term
-    #     @show i_term 
-    #     @show d_term
-    # end
+    if rem(c.step_ctr, 1000) == 0
+        if actuated_idx == 6
+            @show p_term
+            @show i_term 
+            @show d_term
+        end
+    end
     # Can only change torque a small amount per time step 
     # arm joints can change faster than thrusters
     5 <= actuated_idx ? lim = 0.0001 : lim = 0.001
@@ -214,7 +227,12 @@ function PID_ctlr(torque, t, vel_act, idx, c)
     d_tau = limit_d_tau(d_tau, lim)
     
     # Torque limits
-    new_tau = torque .+ d_tau
+    if actuated_idx >= 5
+        new_tau = 0.9torque + 0.1ff[idx] .+ d_tau
+        # new_tau = torque .+ d_tau
+    else
+        new_tau = torque .+ d_tau
+    end 
     impose_torque_limit!(new_tau, torque_lims[actuated_idx])
 
     # # store velocity error term
@@ -236,7 +254,7 @@ end
 function add_arm_noise!(noisy_poses, noisy_vels, joint_poses, last_noisy_joint_pose, dt)
     # noisy_joint_poses = joint_poses + rand(arm_pos_noise_dist, length(joint_poses))
     noisy_joint_poses = joint_poses
-    noisy_joint_poses[4] = joint_poses[4] + rand(arm_pos_noise_dist)
+    noisy_joint_poses[3:4] = joint_poses[3:4] + rand(arm_pos_noise_dist, 2)
     noisy_velocity = (noisy_joint_poses - last_noisy_joint_pose)./dt
     noisy_poses[8:end] = noisy_joint_poses
     noisy_vels[7:end] = noisy_velocity
