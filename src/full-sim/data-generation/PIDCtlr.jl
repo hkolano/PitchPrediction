@@ -3,9 +3,9 @@ using RigidBodyDynamics, Distributions, Random
 # ------------------------------------------------------------------------
 #                              SETUP 
 # ------------------------------------------------------------------------
-arm_Kp = .025
-arm_Kd = 0.0006
-arm_Ki = 0.005
+arm_Kp = .021
+arm_Ki = 0.168
+arm_Kd = 6.56e-4
 v_Kp = 2.0
 v_Kd = 0.024
 v_Ki = 0.015
@@ -247,22 +247,22 @@ function PID_ctlr(torque, t, vel_act, idx, c, ff)
     d_tau = p_term + d_term + i_term
     # println("Ideal tau: $(d_tau)")
 
-    if rem(c.step_ctr, 1000) == 0
-        if actuated_idx == 6
-            @show p_term
-            @show i_term 
-            @show d_term
-        end
-    end
+    # if rem(c.step_ctr, 1000) == 0
+    #     if actuated_idx == 6
+    #         @show p_term
+    #         @show i_term 
+    #         @show d_term
+    #     end
+    # end
     # Can only change torque a small amount per time step 
     # arm joints can change faster than thrusters
     5 <= actuated_idx ? lim = 0.0001 : lim = 0.001
     lim = lim*(1/c.time_step)/dt
-    d_tau = limit_d_tau(d_tau, lim)
+    d_tau_w_ff = limit_d_tau(d_tau + 0.1ff[idx], lim)
     
     # Torque limits
     if actuated_idx >= 5
-        new_tau = 0.9torque + 0.1ff[idx] .+ d_tau
+        new_tau = 0.9torque + d_tau_w_ff
         # new_tau = torque .+ d_tau
     else
         new_tau = torque .+ d_tau
@@ -286,9 +286,9 @@ function limit_d_tau(d_tau, limit)
 end
 
 function add_arm_noise!(noisy_poses, noisy_vels, joint_poses, last_noisy_joint_pose, dt)
-    # noisy_joint_poses = joint_poses + rand(arm_pos_noise_dist, length(joint_poses))
-    noisy_joint_poses = joint_poses
-    noisy_joint_poses[2:4] = joint_poses[2:4] + rand(arm_pos_noise_dist, 3)
+    noisy_joint_poses = joint_poses + rand(arm_pos_noise_dist, length(joint_poses))
+    # noisy_joint_poses = joint_poses
+    # noisy_joint_poses[2:4] = joint_poses[2:4] + rand(arm_pos_noise_dist, 3)
     noisy_velocity = (noisy_joint_poses - last_noisy_joint_pose)./dt
     noisy_poses[8:end] = noisy_joint_poses
     noisy_vels[7:end] = noisy_velocity
