@@ -21,7 +21,10 @@ torque_lims = [20., 71.5, 88.2, 177., 10.0, 10.0, 10.0, 0.6] #, 600]
 # Gyroscope --> vehicle body vel noise 
 v_ang_vel_noise_dist = Distributions.Normal(0, .0013) # 75 mdps (LSM6DSOX)
 arm_pos_noise_dist = Distributions.Normal(0, .0017/6) # .1 degrees, from Reach website
-accel_noise_dist = Distributions.Normal(0, .017658) # 1.8 mg = .0176 m/s2 (LSM6DSOX)
+accel_noise_dist = Distributions.Normal(0, 0.017658) # 1.8 mg = .0176 m/s2 (LSM6DSOX)
+
+gyro_rand_walk_dist = Distributions.Normal(0, .000001)
+accel_rand_walk_dist = Distributions.Normal(0, 0.00001)
 
 mutable struct CtlrCache
     time_step::Float64
@@ -38,6 +41,7 @@ mutable struct CtlrCache
     filtered_vs
     last_v̇
     filtered_state
+    rand_walks
     
     function CtlrCache(dt, control_frequency, state)
         mechanism = state.mechanism
@@ -57,7 +61,8 @@ mutable struct CtlrCache
         =# zeros(num_actuated_dofs), zeros(num_actuated_dofs), 0, joint_vec, #=
         =# zeros(num_actuated_dofs), Array{Float64}(undef, num_dofs, 1), #=
         =# configuration(state), velocity(state), #=
-        =# zeros(num_dofs), zeros(num_dofs), MechanismState(mechanism)) 
+        =# zeros(num_dofs), zeros(num_dofs), 
+        MechanismState(mechanism), zeros(6)) 
     end
 end
 
@@ -125,7 +130,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
 
         ff_torques = dynamics_bias(state, h_wrenches)
         if rem(c.step_ctr, 1000) == 0
-            @show ff_torques[7:10]
+            @show c.rand_walks
             # @show result.jointwrenches
         #     # println("Desired velocity vector: $(c.des_vel)")
         #     wrist_wrenches = result.totalwrenches[BodyID(wrist_body)]
@@ -138,10 +143,13 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             noisy_poses = similar(configuration(state))
             noisy_vels = similar(velocity(state))
 
+            c.rand_walks[1:3] .+= rand(gyro_rand_walk_dist, 3)
+            c.rand_walks[4:6] .+= rand(accel_rand_walk_dist, 3)
+
             last_noisy_R = Rotations.QuatRotation(c.noisy_qs[1:4,end])
             add_arm_noise!(noisy_poses, noisy_vels, configuration(state)[8:end], c.noisy_qs[8:end,end], 1/c.ctrl_freq)
-            new_noisy_R = add_rotational_noise!(noisy_poses, noisy_vels, velocity(state)[1:3], last_noisy_R, 1/c.ctrl_freq)
-            add_linear_noise!(noisy_poses, noisy_vels, result.v̇[1:6], c.last_v̇, c.noisy_vs[1:6,end], c.noisy_qs[5:7,end], last_noisy_R, new_noisy_R, 1/c.ctrl_freq)
+            new_noisy_R = add_rotational_noise!(noisy_poses, noisy_vels, velocity(state)[1:3], last_noisy_R, 1/c.ctrl_freq, c.rand_walks)
+            add_linear_noise!(noisy_poses, noisy_vels, result.v̇[1:6], c.last_v̇, c.noisy_vs[1:6,end], c.noisy_qs[5:7,end], last_noisy_R, new_noisy_R, 1/c.ctrl_freq, c.rand_walks)
 
             c.last_v̇ = result.v̇
             c.noisy_vs = cat(c.noisy_vs, noisy_vels, dims=2)
@@ -249,7 +257,7 @@ function limit_d_tau(d_tau, limit)
 end
 
 function add_arm_noise!(noisy_poses, noisy_vels, joint_poses, last_noisy_joint_pose, dt)
-    noisy_joint_poses = joint_poses + rand(arm_pos_noise_dist, length(joint_poses))
+    noisy_joint_poses = joint_poses + rand(arm_pos_noise_dist, length(joint_poses)) 
     # noisy_joint_poses = joint_poses
     # noisy_joint_poses[2:4] = joint_poses[2:4] + rand(arm_pos_noise_dist, 3)
     noisy_velocity = (noisy_joint_poses - last_noisy_joint_pose)./dt
@@ -257,8 +265,8 @@ function add_arm_noise!(noisy_poses, noisy_vels, joint_poses, last_noisy_joint_p
     noisy_vels[7:end] = noisy_velocity
 end
 
-function add_rotational_noise!(noisy_poses, noisy_vels, body_vels, last_R, dt)
-    noisy_vels[1:3] = body_vels[1:3] + rand(v_ang_vel_noise_dist, 3)
+function add_rotational_noise!(noisy_poses, noisy_vels, body_vels, last_R, dt, rand_walk)
+    noisy_vels[1:3] = body_vels[1:3] + rand(v_ang_vel_noise_dist, 3) + rand_walk[1:3]
     new_R = last_R*exp(skew(noisy_vels[1:3]...)*dt)
     new_noisy_R = Rotations.RotMatrix(SMatrix{3,3}(new_R))
     quat_new_noisy_R = Rotations.QuatRotation(new_noisy_R)
@@ -266,8 +274,8 @@ function add_rotational_noise!(noisy_poses, noisy_vels, body_vels, last_R, dt)
     return quat_new_noisy_R
 end
 
-function add_linear_noise!(noisy_poses, noisy_vels, v̇, last_v̇, last_body_vels, last_pos, last_R, new_R, dt)
-    noisy_linear_accels = v̇[4:6] + rand(accel_noise_dist, 3)
+function add_linear_noise!(noisy_poses, noisy_vels, v̇, last_v̇, last_body_vels, last_pos, last_R, new_R, dt, rand_walk)
+    noisy_linear_accels = last_v̇[4:6] + rand(accel_noise_dist, 3) + rand_walk[4:6]
     noisy_vels[4:6] = last_body_vels[4:6] + noisy_linear_accels.*dt #+last_v̇[4:6])./2 .*dt
     noisy_vels_in_space = last_R*SVector{3}(last_body_vels[4:6]) #+ new_R*SVector{3}(noisy_vels[4:6]))./2
     noisy_poses[5:7] = last_pos + noisy_vels_in_space.*dt   
