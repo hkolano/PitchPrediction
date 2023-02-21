@@ -6,15 +6,12 @@ using RigidBodyDynamics, Distributions, Random
 arm_Kp = .021
 arm_Ki = 0.168
 arm_Kd = 6.56e-4
-v_Kp = 2.0
-v_Kd = 0.024
-v_Ki = 0.015
-Kp = [1.5, v_Kp, v_Kp, v_Kp, arm_Kp, 8.34e-2, 4.05e-2, 3.38e-4] #, 20.]
-Ki = [0.001, v_Ki, v_Ki, v_Ki, arm_Ki, 6.67e-1, 2.89e-1, 3.43e-3] #3.037e-6] #, .1]
-Kd = [0.0004, v_Kd, v_Kd, v_Kd, arm_Kd, 2.61e-3, 1.42e-3, 2.15e-5] #, .002]
-
-# Wrist joint: Ku = 1e-6, Tu = 9, Pessen Integral Rule 
-# Elbow joint: 
+v_Kp = 3.
+v_Kd = 3.6
+v_Ki = 1.68
+Kp = [1.1, v_Kp, v_Kp, v_Kp, arm_Kp, 8.34e-2, 4.05e-2, 3.38e-4] #, 20.]
+Ki = [6.5, v_Ki, v_Ki, v_Ki, arm_Ki, 6.67e-1, 2.89e-1, 3.43e-3] #3.037e-6] #, .1]
+Kd = [6.26e-2, v_Kd, v_Kd, v_Kd, arm_Kd, 2.61e-3, 1.42e-3, 2.15e-5] #, .002]
 
 torque_lims = [20., 71.5, 88.2, 177., 10.0, 10.0, 10.0, 0.6] #, 600]
 

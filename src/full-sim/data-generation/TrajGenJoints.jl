@@ -170,14 +170,14 @@ function get_desv_at_t(t, p)
     # println("Got request for desv. Params $(p))")
     des_vel = zeros(8)
     # des_vel[8] = 0.05
-    if t <= p.T # If the current time is less than the trajectory duration
-        for i = 1:num_trajectory_dofs # des vel for last joint is always 0
-            ds = vel_scale_at_t(p.a[i,:], t)
-            des_vel[i+4] = ds*(p.wp.goal.θs[i]-p.wp.start.θs[i])
-        end
-    end
+    # if t <= p.T # If the current time is less than the trajectory duration
+    #     for i = 1:num_trajectory_dofs # des vel for last joint is always 0
+    #         ds = vel_scale_at_t(p.a[i,:], t)
+    #         des_vel[i+4] = ds*(p.wp.goal.θs[i]-p.wp.start.θs[i])
+    #     end
+    # end
     # fill!(des_vel, 0)
-    # des_vel[8] = 0.05
+    des_vel[3] = 0.05
     return des_vel
 end
 
