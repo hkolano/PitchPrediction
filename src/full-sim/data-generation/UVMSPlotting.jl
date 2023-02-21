@@ -204,9 +204,13 @@ function plot_des_vs_act_velocities(ts_down, paths, des_paths, meas_paths, filt_
             var = var_names[k]
             lab = plot_labels[k]
             if k < 4
-                push!(plot_handles, plot(ts_down, [des_paths[var], paths[var], meas_paths[var], filt_paths[var]], title=lab, ylim=(-.004, .004), legend=false, titlefontsize=12))
+                push!(plot_handles, plot(ts_down, [paths[var], meas_paths[var], filt_paths[var], des_paths[var]], 
+                    title=lab,
+                    legend=false, titlefontsize=12))
             else
-                push!(plot_handles, plot(ts_down, [des_paths[var], paths[var], meas_paths[var], filt_paths[var]], title=lab, ylim=(-.01,.01), legend=false, titlefontsize=12))
+                push!(plot_handles, plot(ts_down, [paths[var], meas_paths[var], filt_paths[var], des_paths[var]], 
+                    title=lab,
+                    legend=false, titlefontsize=12))
             end
         end
         display(plot(plot_handles..., 
@@ -224,9 +228,9 @@ function plot_des_vs_act_velocities(ts_down, paths, des_paths, meas_paths, filt_
             var = var_names[k]
             lab = plot_labels[k]
             push!(plot_handles, plot(ts_down, 
-                [des_paths[var], paths[var], meas_paths[var], filt_paths[var]], 
+                [paths[var], meas_paths[var], filt_paths[var], des_paths[var]], 
                 title=lab, 
-                label=["Desired" "Actual" "Noisy" "Filtered"], 
+                label=["Actual" "Noisy" "Filtered" "Desired"], 
                 # ylim=(-4.,4.), 
                 titlefontsize=12, 
                 size=(1000, 800)))
