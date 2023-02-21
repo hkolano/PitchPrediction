@@ -9,9 +9,9 @@ arm_Kd = 6.56e-4
 v_Kp = 2.0
 v_Kd = 0.024
 v_Ki = 0.015
-Kp = [1.5, v_Kp, v_Kp, v_Kp, arm_Kp, 8.34e-2, 4.05e-2, 5.4e-4] #, 20.]
-Ki = [0.001, v_Ki, v_Ki, v_Ki, arm_Ki, 6.67e-1, 2.89e-1, 3.6e-3] #3.037e-6] #, .1]
-Kd = [0.0004, v_Kd, v_Kd, v_Kd, arm_Kd, 2.61e-3, 1.42e-3, 2.03e-5] #, .002]
+Kp = [1.5, v_Kp, v_Kp, v_Kp, arm_Kp, 8.34e-2, 4.05e-2, 3.38e-4] #, 20.]
+Ki = [0.001, v_Ki, v_Ki, v_Ki, arm_Ki, 6.67e-1, 2.89e-1, 3.43e-3] #3.037e-6] #, .1]
+Kd = [0.0004, v_Kd, v_Kd, v_Kd, arm_Kd, 2.61e-3, 1.42e-3, 2.15e-5] #, .002]
 
 # Wrist joint: Ku = 1e-6, Tu = 9, Pessen Integral Rule 
 # Elbow joint: 
@@ -22,9 +22,9 @@ torque_lims = [20., 71.5, 88.2, 177., 10.0, 10.0, 10.0, 0.6] #, 600]
 # Implemented:
 # Encoder --> joint position noise -integration-> joint velocity noise
 # Gyroscope --> vehicle body vel noise 
-v_ang_vel_noise_dist = Distributions.Normal(0, 0.0) #.0013) # 75 mdps (LSM6DSOX)
+v_ang_vel_noise_dist = Distributions.Normal(0, .0013) # 75 mdps (LSM6DSOX)
 arm_pos_noise_dist = Distributions.Normal(0, .0017/6) # .1 degrees, from Reach website
-accel_noise_dist = Distributions.Normal(0, 0.0) #.017658) # 1.8 mg = .0176 m/s2 (LSM6DSOX)
+accel_noise_dist = Distributions.Normal(0, .017658) # 1.8 mg = .0176 m/s2 (LSM6DSOX)
 
 mutable struct CtlrCache
     time_step::Float64
