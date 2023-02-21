@@ -219,7 +219,7 @@ bool_plot_positions = false
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
     # ts, qs, vs = simulate_with_ext_forces(state, duration+duration_after_traj, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    ts, qs, vs = simulate_with_ext_forces(state, 5, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, 10, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
     # Downsample the time steps to goal_freq
@@ -276,7 +276,7 @@ bool_plot_positions = false
     if bool_plot_positions == true
         plot_des_vs_act_positions(ts_down_no_zero,
             paths, des_paths, meas_paths, 
-            plot_veh = false, plot_arm=true)
+            plot_veh = true, plot_arm=true)
     end
 
     if bool_plot_taus == true
