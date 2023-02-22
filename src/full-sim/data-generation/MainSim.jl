@@ -150,8 +150,8 @@ num_trajs = 1
 save_to_csv = false
 show_animation = false
 bool_plot_velocities = true
-bool_plot_taus = true
-bool_plot_positions = false
+bool_plot_taus = false
+bool_plot_positions = true
 
 # Create (num_trajs) different trajectories and save to csvs 
 # for n in ProgressBar(1:num_trajs)
@@ -176,37 +176,29 @@ bool_plot_positions = false
         global traj = find_trajectory(wp)
     end
 
-    # a, T, des_poses, des_vels = find_trajectory(wp)
-    # goal_frame = wp.end_pose.from
-    # add_frame!(world, wp.end_pose)
-    # setelement!(mvis, goal_frame)
-    # visualize_path(des_poses, mvis, world)
-    # traj_pars = trajParams(a, wp, T)
+    wp2 = gen_rand_waypoint_from_start(wp.goal)
+    traj2 = find_trajectory(wp2)
 
-    # include("kinematicsandbox.jl")
-
-    # qs = typeof(configuration(state))[]
-    # reset_to_equilibrium!(state)
-
-    # for t in range(0, stop=1, length=1000)
-    #     jacobian_transpose_ik!(state, traj_pars, ctlr_cache, t)
-    #     push!(qs, copy(configuration(state)))
-    # end
-    # ts = collect(range(0, stop=1, length=length(qs)))
-    # setanimation!(vis, Animation(vis, ts, qs))
-
-
+    while traj2 === nothing 
+        global wp2 = gen_rand_waypoint_from_start(wp.goal)
+        global traj2 = find_trajectory(wp2)
+    end
     # # Scale that trajectory to 1x-3x "top speed"
     if do_scale_traj == true
         scaled_traj = scale_trajectory(traj...)
+        scaled_traj2 = scale_trajectory(traj2...)
     else
         scaled_traj = traj 
+        scaled_traj2 = traj2
     end
-    params = scaled_traj[1]
-    duration = params.T
+    params = trajParams[]
+    push!(params, scaled_traj[1])
+    push!(params, scaled_traj2[1])
+    params[2] = scaled_traj2[1]
+    dur1 = params[1].T 
+    dur2 = params[2].T
+    duration = dur1 + dur2
     println("Scaled trajectory duration: $(duration) seconds")
-    poses = scaled_traj[2]
-    vels = scaled_traj[3]
 
     #%%
     include("PIDCtlr.jl")
@@ -219,7 +211,7 @@ bool_plot_positions = false
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
     # ts, qs, vs = simulate_with_ext_forces(state, duration+duration_after_traj, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    ts, qs, vs = simulate_with_ext_forces(state, 10, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, 2, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
     # Downsample the time steps to goal_freq
@@ -232,8 +224,12 @@ bool_plot_positions = false
     filt_paths = OrderedDict();
 
     # Calculate desired velocities
-    des_vs = [get_desv_at_t(t, params) for t in ts_down_no_zero]
-    des_qs = [get_desq_at_t(t, params) for t in ts_down_no_zero]
+    des_vs1 = [get_desv_at_t(t, params[1]) for t in 1/goal_freq:1/goal_freq:dur1]
+    des_vs2 = [get_desv_at_t(t, params[2]) for t in 1/goal_freq:1/goal_freq:duration]
+    des_vs = cat(des_vs1, des_vs2, dims=1)
+    des_qs1 = [get_desq_at_t(t, params[1]) for t in 1/goal_freq:1/goal_freq:dur1]
+    des_qs2 = [get_desq_at_t(t, params[2]) for t in 1/goal_freq:1/goal_freq:duration]
+    des_qs = cat(des_qs1, des_qs2, dims=1)
 
     qs_down = Array{Float64}(undef, length(ts_down_no_zero), 10)
     vs_down = zeros(length(ts_down_no_zero), 10)
@@ -270,13 +266,13 @@ bool_plot_positions = false
     if bool_plot_velocities == true
         plot_des_vs_act_velocities(ts_down_no_zero, 
             paths, des_paths, meas_paths, filt_paths, 
-            plot_veh=true, plot_arm=true)
+            plot_veh=true, plot_arm=false)
     end
 
     if bool_plot_positions == true
         plot_des_vs_act_positions(ts_down_no_zero,
             paths, des_paths, meas_paths, 
-            plot_veh = true, plot_arm=true)
+            plot_veh = true, plot_arm=false)
     end
 
     if bool_plot_taus == true

@@ -196,7 +196,7 @@ end
 function plot_des_vs_act_velocities(ts_down, paths, des_paths, meas_paths, filt_paths; plot_veh=true, plot_arm=true)
 
     if plot_veh == true
-        l = @layout[a b; c d; e f]
+        l = @layout[grid(3,1) grid(3,1)]
         var_names = ["vs1", "vs2", "vs3", "vs4", "vs5", "vs6"]
         plot_labels = ["body-roll", "body-pitch", "body-yaw", "surge (body x)", "sway (body y)", "heave (body z)"]
         plot_handles = []
@@ -265,7 +265,6 @@ function plot_des_vs_act_positions(ts_down, paths, des_paths, meas_paths; plot_v
             else
                 push!(plot_handles, plot(ts_down, [des_paths[var], paths[var], meas_paths[var]], 
                     title=lab, 
-                    ylim=(-.01, .01), 
                     label=["Desired" "Actual" "Measured"], 
                     titlefontsize=12))
             end

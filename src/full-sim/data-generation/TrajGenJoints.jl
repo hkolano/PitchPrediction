@@ -91,6 +91,9 @@ function gen_rand_waypoints_to_rest()
     Waypoints(equil_pt, gen_rand_feasible_point_at_rest())
 end
 
+function gen_rand_waypoint_from_start(Js::jointState)
+    Waypoints(Js, gen_rand_feasible_point_at_rest())
+end
 """
     save_waypoints(wp::Waypoints, name::String)
 
@@ -177,7 +180,7 @@ function get_desv_at_t(t, p)
         end
     end
     # fill!(des_vel, 0)
-    # des_vel[3] = 0.05
+    des_vel[2] = 0.05
     return des_vel
 end
 
