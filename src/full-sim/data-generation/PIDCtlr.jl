@@ -9,9 +9,9 @@ arm_Kd = 6.56e-4
 v_Kp = 3.
 v_Kd = 3.6
 v_Ki = 1.68
-Kp = [1.1, v_Kp, v_Kp, v_Kp, arm_Kp, 8.34e-2, 4.05e-2, 3.38e-4] #, 20.]
-Ki = [6.5, v_Ki, v_Ki, v_Ki, arm_Ki, 6.67e-1, 2.89e-1, 3.43e-3] #3.037e-6] #, .1]
-Kd = [6.26e-2, v_Kd, v_Kd, v_Kd, arm_Kd, 2.61e-3, 1.42e-3, 2.15e-5] #, .002]
+Kp = [1.1, v_Kp, v_Kp, v_Kp, arm_Kp, 4.59e-2, 2.23e-2, 3.38e-4] #, 20.]
+Ki = [6.5, v_Ki, v_Ki, v_Ki, arm_Ki, 3.73e-1, 1.62e-1, 3.43e-3] #3.037e-6] #, .1]
+Kd = [6.26e-2, v_Kd, v_Kd, v_Kd, arm_Kd, 3.82e-3, 2.08e-3, 2.15e-5] #, .002]
 
 torque_lims = [20., 71.5, 88.2, 177., 10.0, 10.0, 10.0, 0.6] #, 600]
 
@@ -126,7 +126,11 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         
         # println("Requesting des vel from trajgen")
         # c.des_vel = TrajGen.get_desv_at_t(t, pars)
-        c.des_vel = get_desv_at_t(t, pars)
+        if t < pars[1].T
+            c.des_vel = get_desv_at_t(t, pars[1])
+        else
+            c.des_vel = get_desv_at_t(t-pars[1].T, pars[2])
+        end
 
         ff_torques = dynamics_bias(state, h_wrenches)
         if rem(c.step_ctr, 1000) == 0
@@ -150,6 +154,11 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             add_arm_noise!(noisy_poses, noisy_vels, configuration(state)[8:end], c.noisy_qs[8:end,end], 1/c.ctrl_freq)
             new_noisy_R = add_rotational_noise!(noisy_poses, noisy_vels, velocity(state)[1:3], last_noisy_R, 1/c.ctrl_freq, c.rand_walks)
             add_linear_noise!(noisy_poses, noisy_vels, result.v̇[1:6], c.last_v̇, c.noisy_vs[1:6,end], c.noisy_qs[5:7,end], last_noisy_R, new_noisy_R, 1/c.ctrl_freq, c.rand_walks)
+
+            # if rem(c.step_ctr, 40) == 0
+            #     @show velocity(state)[4:6]
+            #     @show noisy_vels[4:6]
+            # end
 
             c.last_v̇ = result.v̇
             c.noisy_vs = cat(c.noisy_vs, noisy_vels, dims=2)
