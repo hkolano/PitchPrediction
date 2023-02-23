@@ -147,56 +147,21 @@ num_trajs = 1
 save_to_csv = false
 show_animation = false
 bool_plot_velocities = true
-bool_plot_taus = false
+bool_plot_taus = true
 bool_plot_positions = true
 
 # Create (num_trajs) different trajectories and save to csvs 
 # for n in ProgressBar(1:num_trajs)
 
-   
-    # ctlr_cache.taus[:,1] = [0.; 0.; 0.; 0.; 0.; 10.; 0.; 0.; 0.; 0.]
+    # ----------------------------------------------------------
+    #                    Create Trajectory
+    # ----------------------------------------------------------
  
-    # ----------------------------------------------------------
-    #                          Simulate
-    # ----------------------------------------------------------
-    # Generate a random waypoint and see if there's a valid trajectory to it
-    wp = gen_rand_waypoints_to_rest()
-    # wp = gen_rand_waypoints_from_equil()
-    # wp = TrajGen.load_waypoints("pid_test")
-    # wp = TrajGen.set_waypoints_from_equil([-2.03, 1.92, 1.73, 1.18], [0.16, 0.24, -0.08, 0.19])
-
-    traj = find_trajectory(wp) 
-
-    # # Keep trying until a good trajectory is found
-    while traj === nothing
-        global wp = gen_rand_waypoints_to_rest()
-        global traj = find_trajectory(wp)
-    end
-
-    wp2 = gen_rand_waypoint_from_start(wp.goal)
-    traj2 = find_trajectory(wp2)
-
-    while traj2 === nothing 
-        global wp2 = gen_rand_waypoint_from_start(wp.goal)
-        global traj2 = find_trajectory(wp2)
-    end
-
-    # # Scale that trajectory to 1x-3x "top speed"
-    if do_scale_traj == true
-        scaled_traj = scale_trajectory(traj...)
-        scaled_traj2 = scale_trajectory(traj2...)
-    else
-        scaled_traj = traj 
-        scaled_traj2 = traj2
-    end
     params = trajParams[]
-    push!(params, scaled_traj[1])
-    push!(params, scaled_traj2[1])
-    params[2] = scaled_traj2[1]
-    dur1 = params[1].T 
-    dur2 = params[2].T
-    duration = dur1 + dur2
-    println("Scaled trajectory duration: $(duration) seconds")
+    swap_times = Vector{Float64}()
+    define_multiple_waypoints!(params, swap_times, 5)
+    
+    println("Scaled trajectory duration: $(swap_times[end]) seconds")
 
 #%%
     include("PIDCtlr.jl")
@@ -205,12 +170,12 @@ bool_plot_positions = true
     # Reset the sim to the equilibrium position
     reset_to_equilibrium!(state)
     # Start up the controller
-    ctlr_cache = CtlrCache(Δt, ctrl_freq, state)
+    ctlr_cache = CtlrCache(Δt, ctrl_freq, state, swap_times)
 
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
-    # ts, qs, vs = simulate_with_ext_forces(state, duration+duration_after_traj, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    ts, qs, vs = simulate_with_ext_forces(state, 2, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    # ts, qs, vs = simulate_with_ext_forces(state, swap_times[end], params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, 25, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
     # Downsample the time steps to goal_freq
@@ -223,12 +188,19 @@ bool_plot_positions = true
     filt_paths = OrderedDict();
 
     # Calculate desired velocities
-    des_vs1 = [get_desv_at_t(t, params[1]) for t in 1/goal_freq:1/goal_freq:dur1]
-    des_vs2 = [get_desv_at_t(t, params[2]) for t in 1/goal_freq:1/goal_freq:duration]
-    des_vs = cat(des_vs1, des_vs2, dims=1)
-    des_qs1 = [get_desq_at_t(t, params[1]) for t in 1/goal_freq:1/goal_freq:dur1]
-    des_qs2 = [get_desq_at_t(t, params[2]) for t in 1/goal_freq:1/goal_freq:duration]
-    des_qs = cat(des_qs1, des_qs2, dims=1)
+    des_vs = []
+    des_qs = []
+    des_ts = []
+    for i in eachindex(params)
+        this_des_vs = [get_desv_at_t(t, params[i]) for t in 1/goal_freq:1/goal_freq:params[i].T]
+        des_vs =  cat(des_vs, this_des_vs, dims=1)
+        this_des_qs = [get_desq_at_t(t, params[i]) for t in 1/goal_freq:1/goal_freq:params[i].T]
+        des_qs = cat(des_qs, this_des_qs, dims=1)
+        time_stamps = [1/goal_freq:1/goal_freq:params[i].T]
+        time_vec = collect(time_stamps[1])
+        this_ts = i == 1 ? time_vec : time_vec .+ swap_times[i-1]
+        des_ts = cat(des_ts, this_ts, dims=1)
+    end
 
     qs_down = Array{Float64}(undef, length(ts_down_no_zero), 10)
     vs_down = zeros(length(ts_down_no_zero), 10)
@@ -247,31 +219,32 @@ bool_plot_positions = true
         qs_noisy[i,4:end] = ctlr_cache.noisy_qs[5:end,i]
     end
     
+    for idx=1:10 
+        # Positions
+        paths[string("qs", idx)] = qs_down[:,idx] 
+        des_paths[string("qs", idx)] = idx > 2 ? [des_qs[i][idx-2] for i in 1:length(des_ts)] : zeros(length(des_ts))
+        meas_paths[string("qs", idx)] = qs_noisy[:,idx]
+    end
     for idx = 1:10
         # Velocities
         paths[string("vs", idx)] = vs_down[:,idx]
-        des_paths[string("vs", idx)] = idx > 2 ? [des_vs[i][idx-2] for i in 1:length(ts_down_no_zero)] : zeros(length(ts_down_no_zero))
+        des_paths[string("vs", idx)] = idx > 2 ? [des_vs[i][idx-2] for i in 1:length(des_ts)] : zeros(length(des_ts))
         meas_paths[string("vs", idx)] = [ctlr_cache.noisy_vs[idx,i] for i in 1:length(ts_down_no_zero)]
         filt_paths[string("vs", idx)] = [ctlr_cache.filtered_vs[idx,i] for i in 1:length(ts_down_no_zero)]
-        
-        # Positions
-        paths[string("qs", idx)] = qs_down[:,idx] 
-        des_paths[string("qs", idx)] = idx > 2 ? [des_qs[i][idx-2] for i in 1:length(ts_down_no_zero)] : zeros(length(ts_down_no_zero))
-        meas_paths[string("qs", idx)] = qs_noisy[:,idx]
     end
 
     include("UVMSPlotting.jl")
 
     if bool_plot_velocities == true
-        plot_des_vs_act_velocities(ts_down_no_zero, 
+        plot_des_vs_act_velocities(ts_down_no_zero, des_ts, 
             paths, des_paths, meas_paths, filt_paths, 
-            plot_veh=true, plot_arm=false)
+            plot_veh=true, plot_arm=true)
     end
 
     if bool_plot_positions == true
-        plot_des_vs_act_positions(ts_down_no_zero,
+        plot_des_vs_act_positions(ts_down_no_zero, des_ts, 
             paths, des_paths, meas_paths, 
-            plot_veh = true, plot_arm=false)
+            plot_veh = true, plot_arm=true)
     end
 
     if bool_plot_taus == true
@@ -290,32 +263,25 @@ bool_plot_positions = true
         # 11-20: Actual velocity data (vs)
         # 21-30: Noisy position data (noisy_qs)
         # 31-40: Noisy velocity data (noisy_vs)
-        # 41-44: Desired velocities for arm
-        num_rows = 44
-        data = Array{Float64}(undef, length(ts_down), num_rows)
+        num_rows = 40
+        data = Array{Float64}(undef, length(ts_down_no_zero), num_rows)
         fill!(data, 0.0)
         labels = Array{String}(undef, num_rows)
 
         row_n = 1
         for (key, value) in paths
-            if row_n < 5
-                quat_labels[row_n] = key 
-                quat_data[:,row_n] = value
-            else
-                labels[row_n-4] = key
-                data[:,row_n-4] = value 
-            end
+            labels[row_n] = key
+            data[:,row_n] = value 
+            row_n = row_n + 1
+        end  
+        for (key, value) in meas_paths
+            # @show key
+            labels[row_n] = "meas_"*key 
+            data[:,row_n] = value 
             row_n = row_n + 1
         end
-        for actuated_idx = 5:8
-            # println([des_vs[m][actuated_idx] for m in 1:length(des_vs)])
-            data[:,row_n-4] = [des_vs[m][actuated_idx] for m in 1:length(des_vs)]
-            row_n = row_n + 1
-        end
-        labels[18:21] = ["des_vsE", "des_vsD", "des_vsC", "des_vsB"]
-        
         tab = Tables.table(data)
-        CSV.write("data/full-sim-data-021623/states$(n).csv", tab, header=labels)
+        CSV.write("data/full-sim-data-022223/states$(n).csv", tab, header=labels)
     end
 # end
 # function plot_state_errors()

@@ -3,15 +3,15 @@ using RigidBodyDynamics, Distributions, Random
 # ------------------------------------------------------------------------
 #                              SETUP 
 # ------------------------------------------------------------------------
-arm_Kp = .021
-arm_Ki = 0.168
-arm_Kd = 6.56e-4
-v_Kp = 3.
-v_Kd = 3.6
-v_Ki = 1.68
-Kp = [1.1, v_Kp, v_Kp, v_Kp, arm_Kp, 4.59e-2, 2.23e-2, 3.38e-4] #, 20.]
-Ki = [6.5, v_Ki, v_Ki, v_Ki, arm_Ki, 3.73e-1, 1.62e-1, 3.43e-3] #3.037e-6] #, .1]
-Kd = [6.26e-2, v_Kd, v_Kd, v_Kd, arm_Kd, 3.82e-3, 2.08e-3, 2.15e-5] #, .002]
+arm_Kp = 7.5e-3 #.304e-2
+arm_Ki = 6e-2 #9.38e-2
+arm_Kd = 6.28e-4 #9.63e-4
+v_Kp = 1.2 #3.
+v_Ki = 0.6 #3.6
+v_Kd = 1.61 #1.68
+Kp = [2.0, v_Kp, v_Kp, v_Kp, arm_Kp, 4.59e-2, 2.23e-2, 6.3e-4] #, 20.]
+Ki = [1., v_Ki, v_Ki, v_Ki, arm_Ki, 3.73e-1, 1.62e-1, 5.25e-3] #3.037e-6] #, .1]
+Kd = [0.1, v_Kd, v_Kd, v_Kd, arm_Kd, 3.82e-3, 2.08e-3, 2.84e-5] #, .002]
 
 torque_lims = [20., 71.5, 88.2, 177., 10.0, 10.0, 10.0, 0.6] #, 600]
 
@@ -42,8 +42,10 @@ mutable struct CtlrCache
     last_v̇
     filtered_state
     rand_walks
+    swap_times
+    traj_num
     
-    function CtlrCache(dt, control_frequency, state)
+    function CtlrCache(dt, control_frequency, state, swap_times)
         mechanism = state.mechanism
         if length(joints(mechanism)) == 5
             vehicle_joint, jointE, jointD, jointC, jointB = joints(mechanism)
@@ -62,7 +64,7 @@ mutable struct CtlrCache
         =# zeros(num_actuated_dofs), Array{Float64}(undef, num_dofs, 1), #=
         =# configuration(state), velocity(state), #=
         =# zeros(num_dofs), zeros(num_dofs), 
-        MechanismState(mechanism), zeros(6)) 
+        MechanismState(mechanism), zeros(6), swap_times, 1) 
     end
 end
 
@@ -74,12 +76,15 @@ Given a `torque`` value and a torque `limit``, bounds `torque`` to be within the
 
 Assumes the torque limit is the same in the positive and negative directions.
 """
-function impose_torque_limit!(torque, limit)
+function impose_torque_limit(torque, limit)
     if torque > limit
-        torque = limit
+        new_tau = limit
     elseif torque < -limit
-        torque = -limit
+        new_tau = -limit
+    else
+        new_tau = torque
     end
+    new_tau
 end
 
 function resettimestep(c::CtlrCache)
@@ -126,13 +131,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         
         # println("Requesting des vel from trajgen")
         # c.des_vel = TrajGen.get_desv_at_t(t, pars)
-        if t < pars[1].T
-            c.des_vel = get_desv_at_t(t, pars[1])
-        else
-            c.des_vel = get_desv_at_t(t-pars[1].T, pars[2])
-        end
 
-        ff_torques = dynamics_bias(state, h_wrenches)
         if rem(c.step_ctr, 1000) == 0
             @show c.rand_walks
             # @show result.jointwrenches
@@ -144,20 +143,35 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
 
         if rem(c.step_ctr, c.ctrl_steps) == 0 && c.step_ctr != 0
 
+            if t > c.swap_times[c.traj_num]
+                c.traj_num += 1
+            end
+            mod_time = c.traj_num == 1 ? t : t-c.swap_times[c.traj_num-1]
+            c.des_vel = get_desv_at_t(mod_time, pars[c.traj_num])
+    
+            ff_torques = dynamics_bias(state, h_wrenches)
+
             noisy_poses = similar(configuration(state))
             noisy_vels = similar(velocity(state))
+            fill!(noisy_poses, 0.)
+            fill!(noisy_vels, 0.)
 
             c.rand_walks[1:3] .+= rand(gyro_rand_walk_dist, 3)
             c.rand_walks[4:6] .+= rand(accel_rand_walk_dist, 3)
 
             last_noisy_R = Rotations.QuatRotation(c.noisy_qs[1:4,end])
+            # println("Starting to add noise... Starting noisy poses")
+            # @show velocity(state)
+            # @show noisy_vels
             add_arm_noise!(noisy_poses, noisy_vels, configuration(state)[8:end], c.noisy_qs[8:end,end], 1/c.ctrl_freq)
+            # @show noisy_vels
             new_noisy_R = add_rotational_noise!(noisy_poses, noisy_vels, velocity(state)[1:3], last_noisy_R, 1/c.ctrl_freq, c.rand_walks)
+            # @show noisy_vels
             add_linear_noise!(noisy_poses, noisy_vels, result.v̇[1:6], c.last_v̇, c.noisy_vs[1:6,end], c.noisy_qs[5:7,end], last_noisy_R, new_noisy_R, 1/c.ctrl_freq, c.rand_walks)
-
-            # if rem(c.step_ctr, 40) == 0
-            #     @show velocity(state)[4:6]
-            #     @show noisy_vels[4:6]
+            # @show noisy_vels
+            # if rem(c.step_ctr, 1000) == 0
+            #     @show result.v̇[6]
+            #     @show result.accelerations[BodyID(3)]
             # end
 
             c.last_v̇ = result.v̇
@@ -227,28 +241,37 @@ function PID_ctlr(torque, t, vel_act, idx, c, ff)
     d_tau = p_term + d_term + i_term
     # println("Ideal tau: $(d_tau)")
 
-    # if rem(c.step_ctr, 1000) == 0
-    #     if actuated_idx == 6
-    #         @show p_term
-    #         @show i_term 
-    #         @show d_term
-    #     end
-    # end
     # Can only change torque a small amount per time step 
     # arm joints can change faster than thrusters
-    5 <= actuated_idx ? lim = 0.0001 : lim = 0.001
-    lim = lim*(1/c.time_step)/dt
-    d_tau_w_ff = limit_d_tau(d_tau + 0.1ff[idx], lim)
-    
+    #TODO if ever change controller or actual time step, change limits
+    if actuated_idx < 5
+        lim = .001
+    elseif actuated_idx < 8
+        lim = .1
+    else
+        lim = 0.006
+    end
+    tau_diff_prev_to_inv_dyn = .1ff[idx] - .1torque
+    d_tau_w_ff = limit_d_tau(tau_diff_prev_to_inv_dyn+d_tau, lim)
+
     # Torque limits
     if actuated_idx >= 5
-        new_tau = 0.9torque + d_tau_w_ff
+        new_tau = torque .+ d_tau_w_ff
         # new_tau = torque .+ d_tau
     else
+        d_tau = limit_d_tau(d_tau, lim)
         new_tau = torque .+ d_tau
     end 
-    impose_torque_limit!(new_tau, torque_lims[actuated_idx])
+    
+    new_tau = impose_torque_limit(new_tau, torque_lims[actuated_idx])
 
+    # if rem(c.step_ctr, 100) == 0 && actuated_idx == 7
+    #     @show new_tau
+    # end
+    # if  t > 12 && rem(c.step_ctr, 100) == 0
+    #     @show actuated_idx
+    #     @show new_tau
+    # end
     # # store velocity error term
     c.vel_error_cache[actuated_idx]=vel_error
     # c.vel_int_error = c.vel_int_error + vel_error
@@ -270,12 +293,12 @@ function add_arm_noise!(noisy_poses, noisy_vels, joint_poses, last_noisy_joint_p
     # noisy_joint_poses = joint_poses
     # noisy_joint_poses[2:4] = joint_poses[2:4] + rand(arm_pos_noise_dist, 3)
     noisy_velocity = (noisy_joint_poses - last_noisy_joint_pose)./dt
-    noisy_poses[8:end] = noisy_joint_poses
-    noisy_vels[7:end] = noisy_velocity
+    noisy_poses[8:end] .= noisy_joint_poses
+    noisy_vels[7:end] .= noisy_velocity
 end
 
 function add_rotational_noise!(noisy_poses, noisy_vels, body_vels, last_R, dt, rand_walk)
-    noisy_vels[1:3] = body_vels[1:3] + rand(v_ang_vel_noise_dist, 3) + rand_walk[1:3]
+    noisy_vels[1:3] .= body_vels[1:3] + rand(v_ang_vel_noise_dist, 3) + rand_walk[1:3]
     new_R = last_R*exp(skew(noisy_vels[1:3]...)*dt)
     new_noisy_R = Rotations.RotMatrix(SMatrix{3,3}(new_R))
     quat_new_noisy_R = Rotations.QuatRotation(new_noisy_R)
@@ -285,9 +308,9 @@ end
 
 function add_linear_noise!(noisy_poses, noisy_vels, v̇, last_v̇, last_body_vels, last_pos, last_R, new_R, dt, rand_walk)
     noisy_linear_accels = last_v̇[4:6] + rand(accel_noise_dist, 3) + rand_walk[4:6]
-    noisy_vels[4:6] = last_body_vels[4:6] + noisy_linear_accels.*dt #+last_v̇[4:6])./2 .*dt
+    noisy_vels[4:6] .= last_body_vels[4:6] + noisy_linear_accels.*dt #+last_v̇[4:6])./2 .*dt
     noisy_vels_in_space = last_R*SVector{3}(last_body_vels[4:6]) #+ new_R*SVector{3}(noisy_vels[4:6]))./2
-    noisy_poses[5:7] = last_pos + noisy_vels_in_space.*dt   
+    noisy_poses[5:7] .= last_pos + noisy_vels_in_space.*dt   
 end
 
 function moving_average_filter_velocity(filt_size, noisy_vs, act_vs)

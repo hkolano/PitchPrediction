@@ -167,7 +167,8 @@ function plot_control_taus(ctlr, ts_down, plot_veh=true, plot_arm=true)
             lab = plot_labels[k]
             push!(tau_plot_handles, plot(ts_down[1:length(ctrl_tau_dict[k])], ctrl_tau_dict[k], 
                                         title=lab, 
-                                        legend=false)) #, 
+                                        legend=false)) 
+                                        # xticks = [10, 11, 12, 13, 14, 15])) #, 
                                         # ylim=tau_plot_lims[k]))
         end
         display(plot(tau_plot_handles..., 
@@ -183,7 +184,8 @@ function plot_control_taus(ctlr, ts_down, plot_veh=true, plot_arm=true)
             lab = plot_labels[k]
             push!(tau_plot_handles, plot(ts_down[1:length(ctrl_tau_dict[k])], ctrl_tau_dict[k], 
                                         title=lab, 
-                                        legend=false)) #, 
+                                        legend=false)) 
+                                        # xticks = [10, 11, 12, 13, 14, 15])) #, 
                                         # ylim=tau_plot_lims[k]))
         end
         display(plot(tau_plot_handles..., 
@@ -193,7 +195,7 @@ function plot_control_taus(ctlr, ts_down, plot_veh=true, plot_arm=true)
     end
 end
 
-function plot_des_vs_act_velocities(ts_down, paths, des_paths, meas_paths, filt_paths; plot_veh=true, plot_arm=true)
+function plot_des_vs_act_velocities(ts_down, des_ts, paths, des_paths, meas_paths, filt_paths; plot_veh=true, plot_arm=true)
 
     if plot_veh == true
         l = @layout[grid(3,1) grid(3,1)]
@@ -203,15 +205,11 @@ function plot_des_vs_act_velocities(ts_down, paths, des_paths, meas_paths, filt_
         for k = 1:6
             var = var_names[k]
             lab = plot_labels[k]
-            if k < 4
-                push!(plot_handles, plot(ts_down, [paths[var], meas_paths[var], filt_paths[var], des_paths[var]], 
-                    title=lab,
-                    legend=false, titlefontsize=12))
-            else
-                push!(plot_handles, plot(ts_down, [paths[var], meas_paths[var], filt_paths[var], des_paths[var]], 
-                    title=lab,
-                    legend=false, titlefontsize=12))
-            end
+            p = plot(ts_down, [meas_paths[var], filt_paths[var], paths[var]], 
+            title=lab,
+            legend=false, titlefontsize=12)
+            # plot!(p, des_ts, des_paths[var])
+            push!(plot_handles, p)
         end
         display(plot(plot_handles..., 
                     layout=l, 
@@ -227,18 +225,16 @@ function plot_des_vs_act_velocities(ts_down, paths, des_paths, meas_paths, filt_
         for k = 1:4
             var = var_names[k]
             lab = plot_labels[k]
-            push!(plot_handles, plot(ts_down, 
-                [paths[var], meas_paths[var], filt_paths[var], des_paths[var]], 
-                title=lab, 
-                label=["Actual" "Noisy" "Filtered" "Desired"], 
-                # ylim=(-4.,4.), 
-                titlefontsize=12, 
-                size=(1000, 800)))
-            # push!(plot_handles, plot(ts_down, 
-            #     [des_paths[var], paths[var]], 
-            #     title=lab, 
-            #     label=["Desired" "Actual"],  
-            #     titlefontsize=12))
+            p = plot(ts_down, 
+            [meas_paths[var], filt_paths[var], paths[var]], 
+            title=lab, 
+            label=["Noisy" "Filtered" "Actual"], 
+            # xticks = [1.2, 1.4, 1.6, 1.8],
+            # ylim=(-4.,4.), 
+            titlefontsize=12, 
+            size=(1000, 800))
+            plot!(p, des_ts, des_paths[var], label="Desired")
+            push!(plot_handles, p)
         end
         display(plot(plot_handles..., 
                     layout=l, 
@@ -248,7 +244,7 @@ function plot_des_vs_act_velocities(ts_down, paths, des_paths, meas_paths, filt_
 
 end
 
-function plot_des_vs_act_positions(ts_down, paths, des_paths, meas_paths; plot_veh=true, plot_arm=true)
+function plot_des_vs_act_positions(ts_down, des_ts, paths, des_paths, meas_paths; plot_veh=true, plot_arm=true)
     if plot_veh == true
         l = @layout[grid(3,1) grid(3,1)]
         var_names = ["qs1", "qs2", "qs3", "qs4", "qs5", "qs6"]
@@ -257,17 +253,12 @@ function plot_des_vs_act_positions(ts_down, paths, des_paths, meas_paths; plot_v
         for k = 1:6
             var = var_names[k]
             lab = plot_labels[k]
-            if k < 4
-                push!(plot_handles, plot(ts_down, [des_paths[var], paths[var], meas_paths[var]], 
-                    title=lab, 
-                    label=["Desired" "Actual" "Measured"], 
-                    titlefontsize=12))
-            else
-                push!(plot_handles, plot(ts_down, [des_paths[var], paths[var], meas_paths[var]], 
-                    title=lab, 
-                    label=["Desired" "Actual" "Measured"], 
-                    titlefontsize=12))
-            end
+            p = plot(ts_down, [paths[var], meas_paths[var]], 
+            title=lab,
+            label = ["Actual" "Measured"],
+            legend=false, titlefontsize=12)
+            plot!(p, des_ts, des_paths[var])
+            push!(plot_handles, p)
         end
         display(plot(plot_handles..., 
                     layout=l, 
@@ -279,15 +270,16 @@ function plot_des_vs_act_positions(ts_down, paths, des_paths, meas_paths; plot_v
         l = @layout[a b; c d]
         var_names = ["qs7", "qs8", "qs9", "qs10"]
         plot_labels = ["Joint E", "Joint D", "Joint C", "Joint B"]
-        legend_labels = ["Desired", "Actual", "Measured", "Limits"]
+        legend_labels = ["Actual", "Measured", "Limits", "Desired"]
         plot_handles = []
         for k = 1:4
             var = var_names[k]
             lab = plot_labels[k]
-            this_plot = plot(ts_down, [des_paths[var], paths[var], meas_paths[var]], 
+            this_plot = plot(ts_down, [paths[var], meas_paths[var]], 
                 title=lab, 
                 titlefontsize=12)
             hline!(this_plot, [joint_lims[k][1], joint_lims[k][2]])
+            plot!(this_plot, des_ts, des_paths[var])
             for j = 1:4
                 this_plot[1][j][:label] = legend_labels[j]
             end
