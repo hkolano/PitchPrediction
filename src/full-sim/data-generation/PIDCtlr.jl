@@ -3,9 +3,9 @@ using RigidBodyDynamics, Distributions, Random
 # ------------------------------------------------------------------------
 #                              SETUP 
 # ------------------------------------------------------------------------
-arm_Kp = 7.5e-3 #.304e-2
-arm_Ki = 6e-2 #9.38e-2
-arm_Kd = 6.28e-4 #9.63e-4
+arm_Kp = 2.25e-2 #.304e-2
+arm_Ki = .18 #9.38e-2
+arm_Kd = 2e-3 #9.63e-4
 v_Kp = 1.2 #3.
 v_Ki = 0.6 #3.6
 v_Kd = 1.61 #1.68
@@ -21,10 +21,10 @@ torque_lims = [20., 71.5, 88.2, 177., 10.0, 10.0, 10.0, 0.6] #, 600]
 # Gyroscope --> vehicle body vel noise 
 v_ang_vel_noise_dist = Distributions.Normal(0, .0013) # 75 mdps (LSM6DSOX)
 arm_pos_noise_dist = Distributions.Normal(0, .0017/6) # .1 degrees, from Reach website
-accel_noise_dist = Distributions.Normal(0, 0.017658) # 1.8 mg = .0176 m/s2 (LSM6DSOX)
+accel_noise_dist = Distributions.Normal(0, 0.017658/10) # 1.8 mg = .0176 m/s2 (LSM6DSOX)
 
 gyro_rand_walk_dist = Distributions.Normal(0, .000001)
-accel_rand_walk_dist = Distributions.Normal(0, 0.00001)
+accel_rand_walk_dist = Distributions.Normal(0, 0)#0.00001)
 
 mutable struct CtlrCache
     time_step::Float64
@@ -123,6 +123,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             torques[8] = -.32255 # ff Joint D value 
             torques[9] = -.0335 # ff Joint C value
             torques[10] = 0 #.5e-5
+            println("At time... ")
         end
         
         # Roll and pitch are not controlled
@@ -132,14 +133,14 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         # println("Requesting des vel from trajgen")
         # c.des_vel = TrajGen.get_desv_at_t(t, pars)
 
-        if rem(c.step_ctr, 1000) == 0
-            @show c.rand_walks
-            # @show result.jointwrenches
-        #     # println("Desired velocity vector: $(c.des_vel)")
-        #     wrist_wrenches = result.totalwrenches[BodyID(wrist_body)]
-        #     wrist_wrench_wrist_frame = transform(wrist_wrenches, relative_transform(state, base_frame, wrist_frame))
-        #     @show wrist_wrench_wrist_frame
-        end
+        # if rem(c.step_ctr, 1000) == 0
+        #     @show c.rand_walks
+        #     # @show result.jointwrenches
+        # #     # println("Desired velocity vector: $(c.des_vel)")
+        # #     wrist_wrenches = result.totalwrenches[BodyID(wrist_body)]
+        # #     wrist_wrench_wrist_frame = transform(wrist_wrenches, relative_transform(state, base_frame, wrist_frame))
+        # #     @show wrist_wrench_wrist_frame
+        # end
 
         if rem(c.step_ctr, c.ctrl_steps) == 0 && c.step_ctr != 0
 
@@ -149,7 +150,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             mod_time = c.traj_num == 1 ? t : t-c.swap_times[c.traj_num-1]
             c.des_vel = get_desv_at_t(mod_time, pars[c.traj_num])
     
-            ff_torques = dynamics_bias(state, h_wrenches)
+            # ff_torques = dynamics_bias(state, h_wrenches)
 
             noisy_poses = similar(configuration(state))
             noisy_vels = similar(velocity(state))
@@ -210,7 +211,8 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         end
     end
     if rem(c.step_ctr, 4000) == 0
-        println("At time $(c.step_ctr/4000)...")
+        # println("At time $(c.step_ctr/4000)...")
+        print("$(c.step_ctr/4000)... ")
     end
     c.step_ctr = c.step_ctr + 1
 end;
@@ -244,11 +246,11 @@ function PID_ctlr(torque, t, vel_act, idx, c, ff)
     # Can only change torque a small amount per time step 
     # arm joints can change faster than thrusters
     #TODO if ever change controller or actual time step, change limits
-    if actuated_idx < 5
-        lim = .001
-    elseif actuated_idx < 8
-        lim = .1
-    else
+    if actuated_idx < 5 # vehicle joints
+        lim = .001 # N per 0.01s
+    elseif actuated_idx < 8 # arm joints
+        lim = .1 
+    else # wrist joint
         lim = 0.006
     end
     tau_diff_prev_to_inv_dyn = .1ff[idx] - .1torque

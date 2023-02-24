@@ -143,15 +143,15 @@ include("SimWExt.jl")
 #                      Gather Sim Data
 # ----------------------------------------------------------
 
-num_trajs = 1 
-save_to_csv = false
+num_trajs = 5000
+save_to_csv = true
 show_animation = false
 bool_plot_velocities = true
 bool_plot_taus = true
-bool_plot_positions = true
+bool_plot_positions = false
 
 # Create (num_trajs) different trajectories and save to csvs 
-# for n in ProgressBar(1:num_trajs)
+for n in ProgressBar(1:num_trajs)
 
     # ----------------------------------------------------------
     #                    Create Trajectory
@@ -159,11 +159,11 @@ bool_plot_positions = true
  
     params = trajParams[]
     swap_times = Vector{Float64}()
-    define_multiple_waypoints!(params, swap_times, 5)
+    define_multiple_waypoints!(params, swap_times, 4)
     
     println("Scaled trajectory duration: $(swap_times[end]) seconds")
 
-#%%
+
     include("PIDCtlr.jl")
     include("HydroCalc.jl")
     include("TrajGenJoints.jl")
@@ -174,8 +174,8 @@ bool_plot_positions = true
 
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
-    # ts, qs, vs = simulate_with_ext_forces(state, swap_times[end], params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    ts, qs, vs = simulate_with_ext_forces(state, 25, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, swap_times[end], params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    # ts, qs, vs = simulate_with_ext_forces(state, 2, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
     # Downsample the time steps to goal_freq
@@ -186,6 +186,7 @@ bool_plot_positions = true
     des_paths = OrderedDict();
     meas_paths = OrderedDict();
     filt_paths = OrderedDict();
+    des_paths_same_ts = OrderedDict()
 
     # Calculate desired velocities
     des_vs = []
@@ -200,6 +201,18 @@ bool_plot_positions = true
         time_vec = collect(time_stamps[1])
         this_ts = i == 1 ? time_vec : time_vec .+ swap_times[i-1]
         des_ts = cat(des_ts, this_ts, dims=1)
+    end
+
+    des_vs_same_ts = []
+    time_subtractions = cat(0., swap_times, dims=1)
+    level = 1
+    for t in ts_down_no_zero
+        # @show t
+        if t > swap_times[level]
+            level += 1
+        end
+        this_des_vs = get_desv_at_t(t-time_subtractions[level], params[level])            
+        des_vs_same_ts = cat(des_vs_same_ts, this_des_vs[5:8]', dims=1)
     end
 
     qs_down = Array{Float64}(undef, length(ts_down_no_zero), 10)
@@ -232,6 +245,9 @@ bool_plot_positions = true
         meas_paths[string("vs", idx)] = [ctlr_cache.noisy_vs[idx,i] for i in 1:length(ts_down_no_zero)]
         filt_paths[string("vs", idx)] = [ctlr_cache.filtered_vs[idx,i] for i in 1:length(ts_down_no_zero)]
     end
+    for idx = 7:10
+        des_paths_same_ts[string("vs",idx)] = des_vs_same_ts[:,idx-6]
+    end
 
     include("UVMSPlotting.jl")
 
@@ -263,7 +279,8 @@ bool_plot_positions = true
         # 11-20: Actual velocity data (vs)
         # 21-30: Noisy position data (noisy_qs)
         # 31-40: Noisy velocity data (noisy_vs)
-        num_rows = 40
+        # 41-44: Desired velocities 
+        num_rows = 44
         data = Array{Float64}(undef, length(ts_down_no_zero), num_rows)
         fill!(data, 0.0)
         labels = Array{String}(undef, num_rows)
@@ -280,9 +297,17 @@ bool_plot_positions = true
             data[:,row_n] = value 
             row_n = row_n + 1
         end
+        for (key, value) in des_paths_same_ts
+            # @show key
+            labels[row_n] = "des_"*key 
+            data[:,row_n] = value
+            row_n = row_n + 1
+        end
         tab = Tables.table(data)
         CSV.write("data/full-sim-data-022223/states$(n).csv", tab, header=labels)
     end
+
+end
 # end
 # function plot_state_errors()
 #     l = @layout [a b ; c d ; e f]
