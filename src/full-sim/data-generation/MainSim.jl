@@ -147,7 +147,7 @@ num_trajs = 5000
 save_to_csv = true
 show_animation = false
 bool_plot_velocities = true
-bool_plot_taus = true
+bool_plot_taus = false
 bool_plot_positions = false
 
 # Create (num_trajs) different trajectories and save to csvs 
@@ -208,7 +208,7 @@ for n in ProgressBar(1:num_trajs)
     level = 1
     for t in ts_down_no_zero
         # @show t
-        if t > swap_times[level]
+        if t > swap_times[level] && t <= swap_times[end]
             level += 1
         end
         this_des_vs = get_desv_at_t(t-time_subtractions[level], params[level])            
@@ -254,7 +254,7 @@ for n in ProgressBar(1:num_trajs)
     if bool_plot_velocities == true
         plot_des_vs_act_velocities(ts_down_no_zero, des_ts, 
             paths, des_paths, meas_paths, filt_paths, 
-            plot_veh=true, plot_arm=true)
+            plot_veh=false, plot_arm=true)
     end
 
     if bool_plot_positions == true
