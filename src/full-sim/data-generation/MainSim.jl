@@ -143,7 +143,7 @@ include("SimWExt.jl")
 #                      Gather Sim Data
 # ----------------------------------------------------------
 
-num_trajs = 5000
+num_trajs = 10000
 save_to_csv = true
 show_animation = false
 bool_plot_velocities = true
@@ -159,7 +159,7 @@ for n in ProgressBar(1:num_trajs)
  
     params = trajParams[]
     swap_times = Vector{Float64}()
-    define_multiple_waypoints!(params, swap_times, 4)
+    define_multiple_waypoints!(params, swap_times, 3)
     
     println("Scaled trajectory duration: $(swap_times[end]) seconds")
 
@@ -175,7 +175,7 @@ for n in ProgressBar(1:num_trajs)
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
     ts, qs, vs = simulate_with_ext_forces(state, swap_times[end], params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    # ts, qs, vs = simulate_with_ext_forces(state, 2, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    # ts, qs, vs = simulate_with_ext_forces(state, 20, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
     # Downsample the time steps to goal_freq
@@ -273,7 +273,7 @@ for n in ProgressBar(1:num_trajs)
         println("done.")
     end
 
-    if save_to_csv == true
+    if save_to_csv == true && maximum(paths["vs7"]) < 0.9
         # Rows:
         # 1-10: Actual position data (qs)
         # 11-20: Actual velocity data (vs)
@@ -304,9 +304,12 @@ for n in ProgressBar(1:num_trajs)
             row_n = row_n + 1
         end
         tab = Tables.table(data)
-        CSV.write("data/full-sim-data-022223/states$(n).csv", tab, header=labels)
+        println("Saving trajectory...")
+        CSV.write("data/full-sim-data-022323/states$(n).csv", tab, header=labels)
+    else
+        println("Not saving trajectory")
     end
-
+    println("")
 end
 # end
 # function plot_state_errors()
