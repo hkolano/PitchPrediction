@@ -6,7 +6,7 @@ trajectory locations in the validation set.
 Last modified 12/6/22
 %}
 
-load("data/full-sim-data-110822/FullData.mat")
+load("data/full-sim-data-022223/FullData_50Hz.mat")
 [sorted_XTest_50hz, ~] = sort_data_by_length(XTest);
 val_set = 'data/full-sim-data-110822/val_set.mat';
 load(val_set)
