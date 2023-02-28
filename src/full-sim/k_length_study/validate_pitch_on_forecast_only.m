@@ -1,19 +1,28 @@
-function pitch_error = validate_pitch_on_forecast_only(net, X_test, ns, k, p, pitch_idx)
+%{
+Inputs:
+net: autoregressive network to validate
+X_test: a set of validation trajectories in val_idx order (not sorted)
+ns: a list of indices to start forecasting
+k: number of steps ahead to forecast (at 10hz)
+pitch_idx: the index of the pitch AFTER feature groups have been eliminated
+
+outputs: 
+RMSE of the pitch over the k step forecast
+%}
+
+function pitch_error = validate_pitch_on_forecast_only(net, X_test, ns, k, pitch_idx)
     error = 0;
     for i = 1:numel(X_test)
-        traj_size = (size(X_test{i}));
-%         disp(i)
-        pred = full_forecast_norecur(net, X_test{i}, ns(i), k, p);
-        pred_size = size(pred);
-        if pred_size <= traj_size
-            g_truth = X_test{i}(pitch_idx,length(pred)-k+1:length(pred));
-            pred = pred(pitch_idx,end-k+1:end);
-            
-            rmse = sqrt(immse(pred, single(g_truth)));
-        else
-            rmse = 0;
-            disp("prediction exceeds trajectory length. Ignoring.")
-        end
+        % generate prediction
+        pred = full_forecast_norecur(net, X_test{i}, ns(i), k);
+        pred_length = size(pred, 2);
+        forecast = pred(pitch_idx,end-k+1:end);
+
+        % recover ground truth for the forecast
+        g_truth_forecast = X_test{i}(pitch_idx,pred_length-k+2:pred_length+1);
+        
+        % compare forecast to ground truth
+        rmse = sqrt(immse(forecast, single(g_truth_forecast)));
         error = error + rmse;
     end
     pitch_error = error/numel(X_test);

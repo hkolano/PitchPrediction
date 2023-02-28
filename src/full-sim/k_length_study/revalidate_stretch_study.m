@@ -26,7 +26,6 @@ stretch_forecast_errors = zeros(3,8);
 for idx = 1:length(stretches)
     sf = stretches(idx)
     [Inputs_Test, Resp_Test] = transform_data_for_stretch_study(sorted_XTest_50hz, sf, k, all_idxs, pitch_idx);
-    val_ns = floor(val_ns_50hz./sf);
 
     for take_n = 1:3
         load(strcat("data\networks\iros-nets\simple_w_stretch_factor\stretch_", string(sf), "_take_", string(take_n), ".mat"))

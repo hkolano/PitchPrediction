@@ -23,7 +23,7 @@ all_idxs = get_remaining_idxs(elimd_gps, chan_idxs);
 %% Initialization
 
 % k = 5;     % Number of time steps to forecast (0.5s)
-ks = [5, 10]; % 20, 30, 40];
+ks = [5 10 20 30 40];
 mbatch = 16;
 num_trajs_before_update = 16;
 val_freq = 50;

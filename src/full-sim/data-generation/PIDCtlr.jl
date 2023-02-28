@@ -3,9 +3,9 @@ using RigidBodyDynamics, Distributions, Random
 # ------------------------------------------------------------------------
 #                              SETUP 
 # ------------------------------------------------------------------------
-arm_Kp = 2.25e-2 #.304e-2
-arm_Ki = .18 #9.38e-2
-arm_Kd = 2e-3 #9.63e-4
+arm_Kp =  3.38e-2 #.304e-2
+arm_Ki = 4.39e-1 #9.38e-2
+arm_Kd = 1.74e-3 #9.63e-4
 v_Kp = 1.2 #3.
 v_Ki = 0.6 #3.6
 v_Kd = 1.61 #1.68
@@ -253,7 +253,7 @@ function PID_ctlr(torque, t, vel_act, idx, c, ff)
     else # wrist joint
         lim = 0.006
     end
-    tau_diff_prev_to_inv_dyn = .1ff[idx] - .1torque
+    tau_diff_prev_to_inv_dyn = .25ff[idx] - .25torque
     d_tau_w_ff = limit_d_tau(tau_diff_prev_to_inv_dyn+d_tau, lim)
 
     # Torque limits
