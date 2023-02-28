@@ -9,7 +9,7 @@ chan_idxs = rmfield(chan_idxs, {'act_rpy', 'act_xyz', 'act_joint_pos', 'act_angu
 
 % Make a list of all channel indices
 all_idxs = 21:1:44;
-elimd_gps = ["meas_linear_vels"];
+elimd_gps = ["meas_linear_vels", "meas_joint_vels", "meas_xyz"];
 all_idxs = get_remaining_idxs(elimd_gps, chan_idxs);
 
 %%
@@ -17,7 +17,7 @@ all_idxs = get_remaining_idxs(elimd_gps, chan_idxs);
 % ks =[5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 100, 125, 150, 175, 200];
 k = 25;
 numUnits = 384;
-stretches = [8]; %[1, 2, 3, 4, 5, 6, 7, 8];
+stretches = [1, 2, 3, 4, 5, 6, 7, 8];
 
 all_losses = [];
 subgroup_losses = [];
@@ -44,7 +44,7 @@ for idx = 1:length(stretches)
         LearnRateDropPeriod=5, ...
         LearnRateSchedule='piecewise', ...
         LearnRateDropFactor=.9, ...
-        MaxEpochs = 1, ...
+        MaxEpochs = 100, ...
         MiniBatchSize=16, ...
         SequencePaddingDirection="right", ...
         Plots="none", ...
