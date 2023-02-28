@@ -71,6 +71,6 @@ TTrain = TTrain(idx);
 
 %% Save the output
 outputFile = fullfile("data/full-sim-data-022223", 'FullData.mat');
-save(outputFile, 'XTest', 'TTest', 'XTrain', 'TTrain', 'p')
+save(outputFile, 'XTest', 'TTest', 'XTrain', 'TTrain', 'p', '-v7.3')
 
 
