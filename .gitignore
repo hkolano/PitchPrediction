@@ -12,3 +12,7 @@ data/networks/iros-nets
 
 *.csv
 *.asv
+data/full-sim-data-022223/channel_dict.mat
+data/full-sim-data-022223/FullData.mat
+data/full-sim-data-022223/FullData_10Hz.mat
+data/full-sim-data-022223/FullData_50Hz.mat
