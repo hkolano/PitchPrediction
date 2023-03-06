@@ -1,8 +1,10 @@
 # Pitch Prediction
 
+## Data Generation
+Data generation is done in Julia with the RigidBodyDynamics library. See /src/full-sim/data-generation.
 
+## Data
+The most recent data lives in data/full-sim-data-022223. The actual data files live on Hannah's SSD. 
 
-## Running Notes
-
-6/15/22:
-If you want to update changes to an imported module, it's better to call the entire thing: MyMod.foo() instead of just foo(). "Include" just copies the current version of the code and doesn't update it when it gets changed.
+## Data Analysis
+The most recent networks are located in /src/full-sim. More details can be found there. 
