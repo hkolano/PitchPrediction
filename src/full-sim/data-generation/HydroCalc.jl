@@ -1,4 +1,7 @@
-# Hydrodynamics calculator functions 
+#=
+Hydrodynamics calculator functions; called within SimWExt.jl 
+
+=#
 using RigidBodyDynamics
 
 # ------------------------------------------------------------------------
@@ -21,7 +24,6 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
         # TODO: don't use fixed_transform because it's bad for computation time
         def_to_cob = fixed_transform(bod, body_default_frame, cob_frames[i])
         # Transform buoyancy force vector to the body's default frame (rotation only)
-        # NAN on third iteration
         buoy_force_trans = transform(state, buoy_lin_forces[i], body_default_frame)
         # Make the wrench: the buoyancy force through a point, the center of buoyancy.
         buoy_wrench = Wrench(Point3D(body_default_frame, translation(inv(def_to_cob))), buoy_force_trans)
@@ -113,25 +115,4 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
         hydro_wrenches[BodyID(bod)] = transform(state, wrench, root_frame(state.mechanism))
     end
     
-end;
-
-
-function simple_control!(torques::AbstractVector, t, state::MechanismState, hydro_wrenches::Dict{BodyID, Wrench{Float64}})
-    # Get buoyancy buoyancy forces 
-    # hydro_wrenches = Dict{BodyID, Wrench{Float64}}()
-    # hydro_calc!(hydro_wrenches, t, state) 
-    # Calculate inverse dynamics of alpha arm (including buoyancy)
-    # tau = inverse_dynamics(state, des_acc, hydro_wrenches)
-    # println(des_acc)
-
-    # torques[velocity_range(state, vehicle_joint)] .= [0.0, 0.0, 0.0, 50.0, 0.0, 0.0]
-    torques[velocity_range(state, vehicle_joint)] .= [0.0, 0.0, 0.0, 0.0, 0.0, 7.5]
-
-    torques[velocity_range(state, base_joint)] .= -.1 .* velocity(state, base_joint)
-    torques[velocity_range(state, shoulder_joint)] .= -.1 .* velocity(state, shoulder_joint)
-    torques[velocity_range(state, elbow_joint)] .= -.1 .* velocity(state, elbow_joint)
-    torques[velocity_range(state, wrist_joint)] .= -.01 .* velocity(state, wrist_joint)
-
-    # torques[velocity_range(state, vehicle_joint)] = tau[vehicle_joint][1:6]
-    # torques[velocity_range(state, base_joint)] .= tau[base_joint][1]
 end;
