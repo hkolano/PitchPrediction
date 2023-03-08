@@ -1,3 +1,10 @@
+%{
+Indicates which trajectories have normalized values of greater than 6
+(trajectories that have values outside of 6 standard deviations from the
+mean).
+
+Used by import_full_data_meas_and_actual.m
+%}
 function bad_idxs = ID_outliers(sequence_data)
 
     max_vals = [];
