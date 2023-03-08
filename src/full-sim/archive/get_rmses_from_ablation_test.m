@@ -1,3 +1,4 @@
+% Outdated plotting function
 
 elimd_gps = ["goal_poses", "manip_vels", "goal_vels", "xyz_poses", "manip_des_vels", "xyz_vels", "ry_vels", "manip_poses", "ry_poses"];
 

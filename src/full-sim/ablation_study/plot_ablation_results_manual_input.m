@@ -1,3 +1,11 @@
+%{
+Need to manually input the RMSE values gained from ablation_study_recursive
+and ablation_study_benchmark. Plots the validation RMSEs vs how many input
+channels were used. 
+
+Last modified 3/8/23
+%}
+
 new_rmses = [.0203, .0177, .0163, .0151, .0144, .0142, .0135, .0136, .0140];
 new_rmse_stdevs = [0, 0., 0, 0, 0, 0, 0, 0, 0];
 num_inputs = [40, 37, 34, 26, 22, 14, 12, 8, 6];

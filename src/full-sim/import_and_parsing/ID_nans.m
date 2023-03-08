@@ -1,3 +1,9 @@
+%{
+Takes the matlab table of trajectory data and indicates which trajectory
+numbers have NaNs, if any. 
+
+Used by import_full_data_meas_and_actual.m
+%}
 function bad_idxs = ID_nans(data)
 
 bad_idxs = [];
