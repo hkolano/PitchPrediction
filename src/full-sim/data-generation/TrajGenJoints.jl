@@ -204,9 +204,9 @@ function check_lim(vals::Array, lims, idx)
     return is_in_range
 end
 
-function scale_trajectory(params, poses, vels, max_scale)
+function scale_trajectory(params, poses, vels)
     a = Array{Float64}(undef, num_trajectory_dofs, 6)
-    scale_factor = rand(1:.01:max_scale)
+    scale_factor = rand(1:.01:2)
     T = params.T*scale_factor
     # println("Scaling factor: $(scale_factor)")
     for i in 1:num_trajectory_dofs
@@ -289,11 +289,10 @@ function define_multiple_waypoints!(params, swap_times, max_trajs)
         end
     end
 
-    # # Scale that trajectory to 1x-2x "top speed"
+    # # Scale that trajectory to 1x-3x "top speed"
     if do_scale_traj == true
         for traj in traj_list
-            # last argument is maximum time scaling factor
-            push!(scaled_traj_list, scale_trajectory(traj...), 2)
+            push!(scaled_traj_list, scale_trajectory(traj...))
         end
     else
         scaled_traj_list = traj_list

@@ -1,7 +1,3 @@
-#= 
-Plotting functions post-simulation 
-=# 
-
 function plot_desired_and_actual_poses(traj_pars, qs, ts_down)
     # Get list of desired poses and velocities
     des_poses, des_vs = get_pose_list(traj_pars.pts, traj_pars.a, traj_pars.T, length(ts_down))
@@ -152,11 +148,6 @@ function plot_joint_config(qs, ts_down)
     display(plot(plot_handles_arm..., layout=l_arm, plot_title="Joint Configurations"))
 end
 
-"""
-    plot_control_taus()
-
-Used for the pitch prediction simulations. Plots the control forces applied at each time step.
-"""
 function plot_control_taus(ctlr, ts_down, plot_veh=true, plot_arm=true)
 
     ctrl_tau_dict = OrderedDict();
@@ -204,12 +195,6 @@ function plot_control_taus(ctlr, ts_down, plot_veh=true, plot_arm=true)
     end
 end
 
-"""
-    plot_des_vs_act_velocities() 
-
-Used for the pitch prediction simulations. Plots the actual, desired, measured, and filtered velocities of each joint. 
-The velocities should be input as dictionaries with keys "vs1"-"vs6" for the vehicle and "vs7"+ for the manipulator.
-"""
 function plot_des_vs_act_velocities(ts_down, des_ts, paths, des_paths, meas_paths, filt_paths; plot_veh=true, plot_arm=true)
 
     if plot_veh == true
@@ -259,12 +244,6 @@ function plot_des_vs_act_velocities(ts_down, des_ts, paths, des_paths, meas_path
 
 end
 
-"""
-    plot_des_vs_act_positions() 
-
-Used for the pitch prediction simulations. Plots the actual, desired, and measured velocities of each joint. 
-The velocities should be input as dictionaries with keys "vs1"-"vs6" for the vehicle and "vs7"+ for the manipulator.
-"""
 function plot_des_vs_act_positions(ts_down, des_ts, paths, des_paths, meas_paths; plot_veh=true, plot_arm=true)
     if plot_veh == true
         l = @layout[grid(3,1) grid(3,1)]

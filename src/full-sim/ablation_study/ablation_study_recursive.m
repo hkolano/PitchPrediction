@@ -1,15 +1,5 @@
-%{
-Runs the ablation study. Requires that the data be normalized and chan_idxs
-be defined in a file. Does 3 runs per level. 
-
-Make sure data input is the correct one, and that MaxEpochs is set to 50 in
-define_new_opts. Make sure level_num reflects the number of data groups minus
-one. Make sure it is saving results to a good folder. 
-
-Last modified 3/8/23
-%}
 % Load in the data
-load("data/full-sim-data-022223/FullData.mat")
+load("data/full-sim-data-022223/FullData_50Hz.mat")
 
 %%
 load('data/full-sim-data-022223/channel_dict.mat')
@@ -18,6 +8,9 @@ chan_idxs = rmfield(chan_idxs, {'act_rpy', 'act_xyz', 'act_joint_pos', 'act_angu
 
 % Make a list of all channel indices
 all_idxs = 21:1:44;
+% Take out xyz_poses
+%all_idxs = all_idxs(~ismember(all_idxs, chan_idxs.('xyz_poses')))
+%chan_idxs = rmfield(chan_idxs, 'xyz_poses')
 
 % Initialize constants
 k = 25;
@@ -124,14 +117,14 @@ function init_options = define_new_opts(val_inputs, val_outputs)
         LearnRateDropPeriod=5, ...
         LearnRateSchedule='piecewise', ...
         LearnRateDropFactor=.8, ...
-        MaxEpochs = 2, ...
+        MaxEpochs = 50, ...
         MiniBatchSize=16, ...
         SequencePaddingDirection="right", ...
         Plots="none", ...
         Shuffle='every-epoch', ...
         ValidationData={val_inputs, val_outputs}, ...
         ValidationFrequency = 60, ...
-        OutputNetwork='best-validation-loss');
+        OutputNetwork='best-validation-loss', ExecutionEnvironment='gpu');
 end
 
 

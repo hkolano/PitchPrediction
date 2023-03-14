@@ -1,12 +1,3 @@
-%{
-defines which table indices belong to which data stream groups as of IROS
-resumbittion, March 2023. 
-
-If changes are made to MainSim.jl about which values are exported, this
-will also have to be changed. 
-
-Last modified 3/8/23.
-%}
 % Actual positions
 chan_idxs.act_rpy = [1:3];
 chan_idxs.act_xyz = [4:6];

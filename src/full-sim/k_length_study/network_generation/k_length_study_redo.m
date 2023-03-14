@@ -17,7 +17,8 @@ all_idxs = get_remaining_idxs(elimd_gps, chan_idxs);
 % ks =[5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 100, 125, 150, 175, 200];
 k = 25;
 numUnits = 384;
-stretches = [1, 2, 3, 4, 5, 6, 7, 8];
+%stretches = [1, 2, 3, 4, 5, 6, 7, 8];
+stretches = [5, 7]
 
 all_losses = [];
 subgroup_losses = [];
@@ -54,7 +55,7 @@ for idx = 1:length(stretches)
         OutputNetwork='best-validation-loss');
 
     %% Train the net
-   for take_n = 1:3
+   for take_n = 1:2
         [net, info] = trainNetwork(Inputs_Train,Resp_Train,layers,init_options);
         
         subgroup_losses = [subgroup_losses, info.FinalValidationLoss];

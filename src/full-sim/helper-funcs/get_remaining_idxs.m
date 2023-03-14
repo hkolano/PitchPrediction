@@ -8,7 +8,6 @@ input pool. Ex: ["xyz_poses", "xyz_vels"]
 Returns:
 rem_idxs: list of indices of remaining feature groups. 
 (1:41, minus the channels for the eliminated groups.)
-Last modified 3/8/23
 %}
 function rem_idxs = get_remaining_idxs(elimd_gps, chan_idxs)   
     all_idxs = 21:1:44;

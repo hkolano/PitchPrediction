@@ -1,9 +1,3 @@
-#=
-Handled some randomization of the hydrodynamic terms. 
-
-Last used September 2022. 
-=#
-
 # Hydrodynamics calculator function
 # ------------------------------------------------------------------------
 #                HYDRODYNAMICS (Grav & Buoy) CALCULATOR

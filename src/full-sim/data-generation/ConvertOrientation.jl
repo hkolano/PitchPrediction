@@ -1,8 +1,3 @@
-#= 
-Converts a csv of quaternions into a csv of rpy values. 
-
-Deprecated in use as of March 2023. 
-=# 
 using Rotations, StaticArrays, DataFrames, Tables, CSV
 
 convert_hydro = false
