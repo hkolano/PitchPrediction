@@ -1,5 +1,5 @@
 %{
-Downsamples data from 50Hz to 10Hz, saves as 'XTrain_10hz', etc.
+Downsamples data from 50Hz to 10Hz, saves as 'XTrain', etc.
 
 Used to generate FullData_10Hz.mat
 Last modified 12/6/22
