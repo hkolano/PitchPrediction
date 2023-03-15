@@ -1,4 +1,7 @@
-% Plot results from k_length study
+%{
+Plots the validation results from the simple stretch study and the
+autoregressive study (Figure 9 in the submitted IROS paper). 
+%}
 
 sfs = 1:8;
 lookahead_times = sfs*0.5;
