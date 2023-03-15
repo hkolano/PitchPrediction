@@ -1,3 +1,9 @@
+%{
+Validates the autoregressive networks on the validation set, which includes
+a set of 250 trajectories and an index to begin predicting from.
+
+Last modified March 2023
+%}
 % Validation Set
 load("data/full-sim-data-022223/FullData_50Hz.mat")
 [sorted_XTest_50Hz, I] = sort_data_by_length(XTest);

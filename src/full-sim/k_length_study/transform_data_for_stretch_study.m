@@ -11,8 +11,7 @@ data: XTrain or XTest. Includes all data channels.
 sf: "stretch factor" sf=1 --> predicts every 0.02s
 k: number of steps ahead to predict. Usually 25.
 input_idxs: list of indexes to include as feature inputs
-pitch_idx: index for the pitch (of the entire original feature set, usually
-23)
+pitch_idx: index for the pitch (of the entire original feature set)
 
 Ouptuts:
 Input_Data: cell array similar to "data", but only including the features in
