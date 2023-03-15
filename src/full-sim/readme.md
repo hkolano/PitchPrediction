@@ -22,8 +22,17 @@ ablation_study/ablation_study_benchmark does three runs of the neural network wi
 This study has two separate sections: making pitch-only prediction networks and autoregressive networks. After both sets of networks are generated, a validation set is used to evaluate their accuracy.
 
 ### Pitch Only Networks
+k_length_study/network_generation/k_length_study_redo.m is the main file for generating pitch-only prediction networks. It considers "stretches" from 1x to 8x for 25 steps on the 50Hz data set. (This corresponds to 0.5s to 4s predictions, in half second increments.) This uses 384 units and trains for 100 epochs, so it gets slightly better results than the ablation tests. All networks are saved to data/networks/iros-nets/simple_with_stretch_factor. The full network is saved each time. 
 
 ### Autoregressive Networks
+The autoregressive networks are trained in 2 steps. First, we need a single step network as a base. k_length_study/network_generation/generate_single_step_autoreg_net.m creates a single-step network from the 10Hz training data. It is trained for 50 epochs. In the future, we should generate three separate single step networks and train each autoregressive network off a different one, or the best one. 
+
+After the single step network is done, run k_length_study/network_generation/retrain_net.m to train on the autoregressive data. One mini-batch worth of trajectories are predicted, the network is updated based on those predictions vs ground truth, and then training is interrupted to re-generate more predictions. This is a very slow process, to make sure to run it on something with a GPU and sufficient computing power. The network should save every 5 epochs just in case it fails mid-run. 
 
 ### Validation and Plotting
+After the networks are generated, use k_length_study/revalidate_autoreg_study.m and revalidate_stretch_study.m to validate the networks against the same set of trajectories and prediction starting points. 
+
+plot_k_length_study.m plots the validation RMSEs against each other and fits lines to them. 
+
+visualize_k_study_goodness.m plots Figure 8 in the paper -- shows the prediction for the simple network and the autoregressive network for different prediction lengths on a validation trajectory. Change the variable val_num to visualize different trajectories. Some may be too short for visualization. 
 
