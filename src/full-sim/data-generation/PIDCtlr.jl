@@ -45,6 +45,7 @@ mutable struct CtlrCache
     swap_times
     traj_num
     
+
     function CtlrCache(dt, control_frequency, state, swap_times)
         mechanism = state.mechanism
         if length(joints(mechanism)) == 5
@@ -65,6 +66,7 @@ mutable struct CtlrCache
         =# configuration(state), velocity(state), #=
         =# zeros(num_dofs), zeros(num_dofs), 
         MechanismState(mechanism), zeros(6), swap_times, 1) 
+
     end
 end
 
@@ -213,6 +215,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
     if rem(c.step_ctr, 4000) == 0
         # println("At time $(c.step_ctr/4000)...")
         print("$(c.step_ctr/4000)... ")
+
     end
     c.step_ctr = c.step_ctr + 1
 end;
@@ -252,6 +255,7 @@ function PID_ctlr(torque, t, vel_act, idx, c, ff)
         lim = .1 
     else # wrist joint
         lim = 0.006
+
     end
     tau_diff_prev_to_inv_dyn = .25ff[idx] - .25torque
     d_tau_w_ff = limit_d_tau(tau_diff_prev_to_inv_dyn+d_tau, lim)

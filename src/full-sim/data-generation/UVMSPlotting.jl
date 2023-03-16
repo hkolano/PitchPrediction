@@ -182,6 +182,7 @@ function plot_control_taus(ctlr, ts_down, plot_veh=true, plot_arm=true)
         end
         display(plot(tau_plot_handles..., 
             layout=tl, 
+
             plot_title="Arm Control Forces", 
             size=(1000, 800)))
     end
