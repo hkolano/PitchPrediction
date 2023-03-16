@@ -1,7 +1,7 @@
-qs = readtable('data/traj_viz.csv');
-rpys = readtable('data/traj_viz_rpy.csv');
+qs = readtable('data/full-sim-data-022223/example_traj.csv');
+% rpys = readtable('data/traj_viz_rpy.csv');
 
-times = [1:996]/50;
+times = [1:size(qs,1)]/100;
 
 % dark blue: '#332288'
 % dark green: '#117733'
@@ -11,7 +11,7 @@ times = [1:996]/50;
 % pink: '#CC6677'
 % wine: '#882255'
 
-snaps = [1 8 14 18 20];
+snaps = [0 8 14 22 28];
 fig_width = 600;
 fig_height = 325;
 
@@ -43,7 +43,7 @@ set(gca, ...
 
 %%
 
-snaps = [1 8 14 18 20];
+snaps = [0 8 14 22 28];
 fig_width = 600;
 fig_height = 250;
 
@@ -77,17 +77,18 @@ set(gca, ...
   'YGrid'       , 'on'      , ...
   'XColor'      , [.3 .3 .3], ...
   'YColor'      , [.3 .3 .3], ...
+  'XLim'        , [0 29], ...
   'LineWidth'   , 1         );
 
 % RPY Figure
 
 figure 
-plot(times, rpys.("Roll"), 'Color', '#117733', 'LineWidth', 2)
+plot(times, qs.("qs1"), 'Color', '#117733', 'LineWidth', 2)
 hold on
 yyaxis right
-plot(times, rpys.("Pitch"), 'Color', '#88CCEE', 'LineWidth', 2)
+plot(times, qs.("qs2"), 'Color', '#88CCEE', 'LineWidth', 2)
 yyaxis left
-plot(times, rpys.("Yaw"), "Color", '#CC6677', 'LineWidth', 2)
+plot(times, qs.("qs3"), "Color", '#CC6677', 'LineWidth', 2)
 
 xlabel("Simulation Time (s)")
 ylabel("Roll and Yaw Angle (radians)")
@@ -109,6 +110,7 @@ set(gca, ...
   'YGrid'       , 'on'      , ...
   'XColor'      , [.3 .3 .3], ...
   'YColor'      , [.3 .3 .3], ...
+  'XLim'        , [0 29], ...
   'LineWidth'   , 1         );
 
 yyaxis right

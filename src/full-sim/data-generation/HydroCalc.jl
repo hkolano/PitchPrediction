@@ -1,4 +1,7 @@
-# Hydrodynamics calculator functions 
+#=
+Hydrodynamics calculator functions; called within SimWExt.jl 
+
+=#
 using RigidBodyDynamics
 
 # ------------------------------------------------------------------------
@@ -21,21 +24,34 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
         # TODO: don't use fixed_transform because it's bad for computation time
         def_to_cob = fixed_transform(bod, body_default_frame, cob_frames[i])
         # Transform buoyancy force vector to the body's default frame (rotation only)
-        # NAN on third iteration
         buoy_force_trans = transform(state, buoy_lin_forces[i], body_default_frame)
         # Make the wrench: the buoyancy force through a point, the center of buoyancy.
         buoy_wrench = Wrench(Point3D(body_default_frame, translation(inv(def_to_cob))), buoy_force_trans)
         push!(buoy_wrenches, buoy_wrench)
-
+        # if bod == wrist_body 
+        #     if rem(t, .25) < 0.002
+        #         @show t
+        #         @show buoy_wrench
+        #     end
+        # end
 
         # -------- Calculate Gravity Wrench -------
         def_to_com = fixed_transform(bod, body_default_frame, com_frames[i])
         grav_force_trans = transform(state, grav_lin_forces[i], body_default_frame)
         # println(grav_force_trans)
         # Make the wrench: the buoyancy force through a point, the center of buoyancy.
+        # COM = Point3D(body_default_frame, translation(inv(def_to_com)))
         grav_wrench = Wrench(Point3D(body_default_frame, translation(inv(def_to_com))), grav_force_trans)
+        # setelement!(mvis, COM)
         # Add wrench to buoy_wrenches
         push!(grav_wrenches, grav_wrench)
+
+        # if bod == wrist_body 
+        #     if rem(t, .25) < 0.002
+        #         @show t
+        #         @show grav_wrench
+        #     end
+        # end
 
         # Add the buoyancy wrench and grav wrench together
         wrench = buoy_wrench + grav_wrench
@@ -99,25 +115,4 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
         hydro_wrenches[BodyID(bod)] = transform(state, wrench, root_frame(state.mechanism))
     end
     
-end;
-
-
-function simple_control!(torques::AbstractVector, t, state::MechanismState, hydro_wrenches::Dict{BodyID, Wrench{Float64}})
-    # Get buoyancy buoyancy forces 
-    # hydro_wrenches = Dict{BodyID, Wrench{Float64}}()
-    # hydro_calc!(hydro_wrenches, t, state) 
-    # Calculate inverse dynamics of alpha arm (including buoyancy)
-    # tau = inverse_dynamics(state, des_acc, hydro_wrenches)
-    # println(des_acc)
-
-    # torques[velocity_range(state, vehicle_joint)] .= [0.0, 0.0, 0.0, 50.0, 0.0, 0.0]
-    torques[velocity_range(state, vehicle_joint)] .= [0.0, 0.0, 0.0, 0.0, 0.0, 7.5]
-
-    torques[velocity_range(state, base_joint)] .= -.1 .* velocity(state, base_joint)
-    torques[velocity_range(state, shoulder_joint)] .= -.1 .* velocity(state, shoulder_joint)
-    torques[velocity_range(state, elbow_joint)] .= -.1 .* velocity(state, elbow_joint)
-    torques[velocity_range(state, wrist_joint)] .= -.01 .* velocity(state, wrist_joint)
-
-    # torques[velocity_range(state, vehicle_joint)] = tau[vehicle_joint][1:6]
-    # torques[velocity_range(state, base_joint)] .= tau[base_joint][1]
 end;

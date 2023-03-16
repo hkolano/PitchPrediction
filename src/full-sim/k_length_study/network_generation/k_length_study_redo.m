@@ -1,16 +1,30 @@
+%{
+Generates the pitch-only prediction networks. Requires that the data be 
+normalized and chan_idxs be defined in a file. Does 3 runs per level. 
+
+Make sure data input is the correct one, and that MaxEpochs is set to 100 in
+init_opts. Make sure it is saving results to a good folder. 
+
+Last modified 3/8/23
+%}
 %% Setup
 % Load data set
-load("data/full-sim-data-110822/FullData.mat")
+load("data/full-sim-data-022223/FullData_50Hz.mat")
 
 % get indices of remaining feature groups
-elimd_gps = ["xyz_poses", "xyz_vels", "goal_poses", "manip_des_vels", "goal_vels"];
-all_idxs = get_remaining_idxs(elimd_gps);
+load('data/full-sim-data-022223/channel_dict.mat')
+pitch_idx = chan_idxs.act_pitch;
+chan_idxs = rmfield(chan_idxs, {'act_rpy', 'act_xyz', 'act_joint_pos', 'act_angular_vels', 'act_linear_vels', 'act_joint_vels', 'act_pitch'});
+
+% Make a list of all channel indices
+all_idxs = 21:1:44;
+elimd_gps = ["meas_linear_vels", "meas_joint_vels", "meas_xyz"];
+all_idxs = get_remaining_idxs(elimd_gps, chan_idxs);
 
 %%
 % Initialize constants
 % ks =[5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 100, 125, 150, 175, 200];
 k = 25;
-pitch_idx = 23;
 numUnits = 384;
 stretches = [1, 2, 3, 4, 5, 6, 7, 8];
 
@@ -55,7 +69,7 @@ for idx = 1:length(stretches)
         subgroup_losses = [subgroup_losses, info.FinalValidationLoss];
         subgroup_RMSEs = [subgroup_RMSEs, info.FinalValidationRMSE];
         %     
-        outputFile = fullfile("data/networks/icra-redo-nets/simple_w_stretch_factor", strcat('stretch_', string(sf), '_take_', string(take_n), '.mat'));
+        outputFile = fullfile("data/networks/iros-nets/simple_w_stretch_factor", strcat('stretch_', string(sf), '_take_', string(take_n), '.mat'));
 %         outputFile = fullfile("data/networks/full-nets", strcat('pre-ablationtest_', string(take_n), '.mat'));
         save(outputFile, 'net', 'info');
    end
