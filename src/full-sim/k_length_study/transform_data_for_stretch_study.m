@@ -11,8 +11,7 @@ data: XTrain or XTest. Includes all data channels.
 sf: "stretch factor" sf=1 --> predicts every 0.02s
 k: number of steps ahead to predict. Usually 25.
 input_idxs: list of indexes to include as feature inputs
-pitch_idx: index for the pitch (of the entire original feature set, usually
-23)
+pitch_idx: index for the pitch (of the entire original feature set)
 
 Ouptuts:
 Input_Data: cell array similar to "data", but only including the features in
@@ -21,7 +20,7 @@ Resp_Data: cell array recording pitch responses from the inputs. Each time
 step has 25 response values, equal to the pitch at k times in the future,
 spread apart by 0.02s*sf
 %}
-function [Input_Data, Resp_Data] = transform_data_for_stretch_study(data, sf, k, input_idxs, pitch_idx)
+function [Input_Data, Resp_Data, Pitch] = transform_data_for_stretch_study(data, sf, k, input_idxs, pitch_idx)
     short_trajs = [];
     for n = 1:numel(data)
         if size(data{n}, 2) > (sf+1)*k

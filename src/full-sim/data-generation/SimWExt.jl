@@ -19,13 +19,13 @@ function simulate_with_ext_forces(state0::MechanismState{X}, final_time, traj, c
             # println("Hydro wrenches")
             # println(hydro_wrenches)
 
-            control!(control_torques, t, state, traj, ctlr)
+            control!(control_torques, t, state, pars, ctlr, result, hydro_wrenches)
             # println("Control torques")
             # println(control_torques)
             # println("--------------- NEW ITERATION -------------------")
             # println("prev result")
             # println(result)
- 
+
             # println("State")
             # println(configuration(state))
             # println(velocity(state))

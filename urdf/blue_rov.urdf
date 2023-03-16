@@ -7,6 +7,9 @@
     <material name="gray">
         <color rgba="0.3 0.3 0.3 1"/>
     </material>
+    <material name="lightgray">
+      <color rgba="0.6 0.6 0.6 1"/>
+    </material>
     <material name="transparent" >
         <color rgba="0.3 0.3 0.3 0.25" />
     </material>
@@ -83,7 +86,7 @@
       </geometry>
       <origin rpy="1.57075 0 0" xyz="0 0 0"/>
       <!-- <origin rpy="0 0 0" xyz="0 0 0"/> -->
-      <material name="gray"/>
+      <material name="lightgray"/>
     </visual>
     <collision>
       <geometry>
@@ -114,7 +117,7 @@
         <!-- <mesh filename="/home/hkolano/Stuff/coupledDynamics/meshes/archived_meshes/ShoulderJoint3.obj"/> -->
         <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\ShoulderJoint3.obj"/>
       </geometry>
-      <material name="gray"/>
+      <material name="lightgray"/>
       <!-- <origin rpy="0 3.1415 -1.57075" xyz="0 0 0"/> -->
       <origin rpy="-1.57075 3.1415 1.57075" xyz="0 0 0"/>
     </visual>
@@ -149,7 +152,7 @@
       </geometry>
       <!-- <origin rpy="0 -1.57075 -0.2655555" xyz="0 0 -0.075"/> -->
       <origin rpy="0 -1.57075 1.305240" xyz="0 0 -0.075"/>
-      <material name="gray"/>
+      <material name="lightgray"/>
     </visual>
     <collision>
       <geometry>
@@ -185,7 +188,7 @@
         <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\ElbowJoint3.obj"/>
       </geometry>
       <origin rpy="1.57075 0 0" xyz="0 0 0"/>
-      <material name="gray"/>
+      <material name="lightgray"/>
     </visual>
     <collision>
       <geometry>
@@ -216,7 +219,7 @@
         <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\Wrist3.obj"/>
       </geometry>
       <origin rpy="1.57075 0 0" xyz="0 0 0"/>
-      <material name="gray"/>
+      <material name="lightgray"/>
     </visual>
     <collision>
       <geometry>
@@ -227,7 +230,8 @@
     <inertial>
       <mass value="0.559"/>
       <origin xyz="0.0 0.003 -0.098"/>
-      <inertia ixx="0.006152" ixy="-0.000002" ixz="-0.000004" iyy="0.006177" iyz="0.000000" izz="0.000079"/>
+      <!-- <inertia ixx="0.006152" ixy="-0.000002" ixz="-0.000004" iyy="0.006177" iyz="0.000000" izz="0.000079"/> -->
+      <inertia ixx="0.006152" ixy="-0.000002" ixz="-0.000004" iyy="0.006177" iyz="0.000000" izz="0.000160"/>
     </inertial>
   </link>
 
@@ -253,7 +257,7 @@
         <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\Jaw1_v2.obj"/>
       </geometry>
       <origin rpy="1.57075 0 0" xyz="0 0 0"/>
-      <material name="gray"/>
+      <material name="lightgray"/>
     </visual>
     <collision>
       <geometry>
@@ -276,7 +280,7 @@
         <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\Jaw2_v2.obj"/>
       </geometry>
       <origin rpy="1.57075 0 0" xyz="0 0 0"/>
-      <material name="gray"/>
+      <material name="lightgray"/>
     </visual>
     <collision>
       <geometry>

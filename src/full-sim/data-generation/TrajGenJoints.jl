@@ -91,6 +91,10 @@ function gen_rand_waypoints_to_rest()
     Waypoints(equil_pt, gen_rand_feasible_point_at_rest())
 end
 
+function gen_rand_waypoint_from_start(Js::jointState)
+    Waypoints(Js, gen_rand_feasible_point_at_rest())
+end
+
 """
     save_waypoints(wp::Waypoints, name::String)
 
@@ -169,6 +173,7 @@ velocity is.
 function get_desv_at_t(t, p)
     # println("Got request for desv. Params $(p))")
     des_vel = zeros(8)
+    # des_vel[1] = 0.05
     if t <= p.T # If the current time is less than the trajectory duration
         for i = 1:num_trajectory_dofs # des vel for last joint is always 0
             ds = vel_scale_at_t(p.a[i,:], t)
@@ -199,9 +204,9 @@ function check_lim(vals::Array, lims, idx)
     return is_in_range
 end
 
-function scale_trajectory(params, poses, vels)
+function scale_trajectory(params, poses, vels, max_scale)
     a = Array{Float64}(undef, num_trajectory_dofs, 6)
-    scale_factor = rand(1:.01:2)
+    scale_factor = rand(1:.01:max_scale)
     T = params.T*scale_factor
     # println("Scaling factor: $(scale_factor)")
     for i in 1:num_trajectory_dofs
@@ -254,3 +259,50 @@ function find_trajectory(pts::Waypoints; num_its=num_its, T_init=1.0)
 
 end
 
+function define_multiple_waypoints!(params, swap_times, max_trajs)
+    wp_list = Waypoints[]
+    traj_list = Any[]
+    scaled_traj_list = Any[]
+
+    wp = gen_rand_waypoints_to_rest()
+    traj = find_trajectory(wp) 
+
+    # # Keep trying until a good trajectory is found
+    while traj === nothing
+        global wp = gen_rand_waypoints_to_rest()
+        global traj = find_trajectory(wp)
+    end
+
+    push!(wp_list, wp)
+    push!(traj_list, traj)
+
+    if max_trajs > 1
+        for i in 1:rand(1:1:max_trajs-1)
+            new_traj = nothing
+            new_wp = nothing
+            while new_traj === nothing 
+                new_wp = gen_rand_waypoint_from_start(wp_list[end].goal)
+                new_traj = find_trajectory(new_wp)
+            end
+            push!(wp_list, new_wp)
+            push!(traj_list, new_traj)
+        end
+    end
+
+    # # Scale that trajectory to 1x-2x "top speed"
+    if do_scale_traj == true
+        for traj in traj_list
+            # last argument is maximum time scaling factor
+            push!(scaled_traj_list, scale_trajectory(traj...), 2)
+        end
+    else
+        scaled_traj_list = traj_list
+    end
+    
+    duration = 0
+    for traj in scaled_traj_list
+        push!(params, traj[1])
+        duration += traj[1].T
+        push!(swap_times, duration)
+    end
+end
