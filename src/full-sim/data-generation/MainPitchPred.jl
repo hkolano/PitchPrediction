@@ -1,5 +1,5 @@
 #= 
-Main flight code for running the dynamics simulations.
+Main flight code for running the Pitch Prediction pipeline.
 =# 
 
 # ----------------------------------------------------------
@@ -21,38 +21,22 @@ include("PIDCtlr.jl")
 include("TrajGenJoints.jl")
 include("UVMSPlotting.jl")
 include("HelperFuncs.jl")
+include("ConfigFiles/MagicNumPitchPred.jl")
 
-urdf_file = joinpath("urdf", "blue_rov.urdf")
+urdf_file = joinpath("urdf", "blue_rov_fixedjaw.urdf")
 
 #%%
 # ----------------------------------------------------------
 #                 One-Time Mechanism Setup
 # ----------------------------------------------------------
-vis = Visualizer()
-mech_blue_alpha = parse_urdf(urdf_file; floating=true, gravity = [0.0, 0.0, 0.0])
-
-delete!(vis)
-
-# Create visuals of the URDFs
-mvis = MechanismVisualizer(mech_blue_alpha, URDFVisuals(urdf_file), vis[:alpha])
-
-# Name the joints and bodies of the mechanism
-vehicle_joint, base_joint, shoulder_joint, elbow_joint, wrist_joint = joints(mech_blue_alpha)
-~, vehicle_body, shoulder_body, upper_arm_body, elbow_body, wrist_body = bodies(mech_blue_alpha)
-
-body_frame = default_frame(vehicle_body)
-shoulder_frame = default_frame(shoulder_body)
-upper_arm_frame = default_frame(upper_arm_body)
-elbow_frame = default_frame(elbow_body)
-wrist_frame = default_frame(wrist_body)
-base_frame = root_frame(mech_blue_alpha)
-# setelement!(mvis_alpha, shoulder_frame)
+foo(urdf_file)
 
 println("Mechanism built.")
 
 # ----------------------------------------------------------
 #                 COM and COB Frame Setup
 # ----------------------------------------------------------
+# TODO make these dictionaries
 frame_names_cob = ["vehicle_cob", "shoulder_cob", "ua_cob", "elbow_cob", "wrist_cob", "jaw_cob"]
 frame_names_com = ["vehicle_com", "shoulder_com", "ua_com", "elbow_com", "wrist_com", "jaw_com"]
 # Assume default frame = COM
@@ -120,7 +104,7 @@ duration_after_traj = 1.0   # How long to simulate after trajectory has ended
 #%%
 # (temporary adds while making changes to ctlr and traj generator)
 # include("PIDCtlr.jl")
-# include("TrajGenJoints.jl")
+include("TrajGenJoints.jl")
 # include("HydroCalc.jl")
 # include("SimWExt.jl")
 
@@ -134,6 +118,7 @@ show_animation = true
 bool_plot_velocities = false
 bool_plot_taus = false
 bool_plot_positions = false
+max_traj_scaling = 2
 
 # Create (num_trajs) different trajectories and save to csvs 
 # for n in ProgressBar(1:num_trajs)
@@ -141,7 +126,7 @@ bool_plot_positions = false
     # Create trajectory 
     params = trajParams[]
     swap_times = Vector{Float64}()
-    define_multiple_waypoints!(params, swap_times, 2)
+    define_multiple_waypoints!(params, swap_times, 2, max_traj_scaling)
     println("Scaled trajectory duration: $(swap_times[end]) seconds")
 
     # Reset the sim to the equilibrium position
