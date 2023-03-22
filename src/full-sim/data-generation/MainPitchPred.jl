@@ -14,14 +14,18 @@ using GeometryBasics
 using Printf, Plots, CSV, Tables, ProgressBars, Revise
 using Random
 
-include("FrameSetup.jl")
+include("UVMSsetup.jl")
 include("HydroCalc.jl")
 include("SimWExt.jl")
 include("PIDCtlr.jl")
 include("TrajGenJoints.jl")
 include("UVMSPlotting.jl")
 include("HelperFuncs.jl")
+include("Noiser.jl")
+include("ConfigFiles/ConstMagicNums.jl")
 include("ConfigFiles/MagicNumPitchPred.jl")
+include("ConfigFiles/MagicNumBlueROV.jl")
+include("ConfigFiles/MagicNumAlpha.jl")
 
 urdf_file = joinpath("urdf", "blue_rov_fixedjaw.urdf")
 
@@ -29,96 +33,24 @@ urdf_file = joinpath("urdf", "blue_rov_fixedjaw.urdf")
 # ----------------------------------------------------------
 #                 One-Time Mechanism Setup
 # ----------------------------------------------------------
-foo(urdf_file)
+mech_blue_alpha, mvis, joint_dict, body_dict, frame_dict = mechanism_reference_setup(urdf_file)
+cob_frame_dict, com_frame_dict = setup_frames(body_dict, body_names, cob_vec_dict, com_vec_dict)
+setup_buoyancy_and_gravity(buoyancy_mag_dict, grav_mag_dict)
+
+state = MechanismState(mech_blue_alpha)
 
 println("Mechanism built.")
-
-# ----------------------------------------------------------
-#                 COM and COB Frame Setup
-# ----------------------------------------------------------
-# TODO make these dictionaries
-frame_names_cob = ["vehicle_cob", "shoulder_cob", "ua_cob", "elbow_cob", "wrist_cob", "jaw_cob"]
-frame_names_com = ["vehicle_com", "shoulder_com", "ua_com", "elbow_com", "wrist_com", "jaw_com"]
-# Assume default frame = COM
-cob_vecs = [SVector{3, Float64}([0.0, 0.0, 0.02]), SVector{3, Float64}([-0.001, -0.003, .032]), SVector{3, Float64}([0.073, 0.0, -0.002]), SVector{3, Float64}([0.003, 0.001, -0.017]), SVector{3, Float64}([0.0, 0.0, -.098]), SVector{3, Float64}([0.0, 0.0, 0.0])]
-com_vecs = [SVector{3, Float64}([0.0, 0.0, 0.0]), SVector{3, Float64}([0.005, -.001, 0.016]), SVector{3, Float64}([0.073, 0.0, 0.0]), SVector{3, Float64}([0.017, -0.026, -0.002]), SVector{3, Float64}([0.0, 0.0, -.098]), SVector{3, Float64}([0.0, 0.0, 0.0])]
-cob_frames = []
-com_frames = []
-setup_frames!(mech_blue_alpha, frame_names_cob, frame_names_com, cob_vecs, com_vecs, cob_frames, com_frames)
-
 #%%
-# buoyancy force setup
-# ---------------------------------------------------------------
-#                       BUOYANCY SETUP
-# ---------------------------------------------------------------
-# f = rho * g * V
-# f = 997 (kg/m^3) * 9.81 (m/s^2) * V_in_L *.001 (m^3) = kg m / s^2
-# One time setup of buoyancy forces
-# KEEP ARM BASE VALUES AT END OF LIST for HydroCalc (jaw values will go before armbase values)
-rho = 997
-volumes = [10.23/(.001*rho), .018, .203, .025, .155, .202] # vehicle, shoulder, ua, elbow, wrist, armbase
-buoy_force_mags = volumes * rho * 9.81 * .001
-buoy_lin_forces = []
-for mag in buoy_force_mags
-    lin_force = FreeVector3D(base_frame, [0.0, 0.0, mag])
-    push!(buoy_lin_forces, lin_force)
-end
-# println(buoy_lin_forces)
-
-masses = [10.0, .194, .429, .115, .333, .341] # vehicle, shoulder, ua, elbow, wrist, armbase
-grav_forces = masses*9.81
-grav_lin_forces = []
-for f_g in grav_forces
-    lin_force = FreeVector3D(base_frame, [0.0, 0.0, -f_g])
-    push!(grav_lin_forces, lin_force)
-end
-# println(grav_lin_forces)
-
-drag_link1 = [0.26 0.26 0.3]*rho
-drag_link2 = [0.3 1.6 1.6]*rho
-drag_link3 = [0.26 0.3 0.26]*rho
-drag_link4 = [1.8 1.8 0.3]*rho
-link_drag_coeffs = [drag_link1, drag_link2, drag_link3, drag_link4]
-
-println("CoM and CoB frames initialized. \n")
-
-# ----------------------------------------------------------
-#                 State Initialization
-# ----------------------------------------------------------
-
-function reset_to_equilibrium!(state)
-    zero!(state)
-    set_configuration!(state, vehicle_joint, [.9777, -0.0019, 0.2098, .0079, 0., 0., 0.])
-    # set_velocity!(state, vehicle_joint, [0., 0., 0., 0., 0.0, 0.])
-end
-
-# Constants
-state = MechanismState(mech_blue_alpha)
-Δt = 1e-3
-ctrl_freq = 100 # Control frequency -- how often the control input can be changed
-goal_freq = 100 # Output frequency to CSV file
-sample_rate = Int(floor((1/Δt)/goal_freq))
-do_scale_traj = true   # Scale the trajectory?
-duration_after_traj = 1.0   # How long to simulate after trajectory has ended
-
-#%%
-# (temporary adds while making changes to ctlr and traj generator)
-# include("PIDCtlr.jl")
-include("TrajGenJoints.jl")
-# include("HydroCalc.jl")
-# include("SimWExt.jl")
-
 # ----------------------------------------------------------
 #                      Gather Sim Data
 # ----------------------------------------------------------
 # Control variables
 num_trajs = 1
-save_to_csv = true
+save_to_csv = false
 show_animation = true
 bool_plot_velocities = false
 bool_plot_taus = false
 bool_plot_positions = false
-max_traj_scaling = 2
 
 # Create (num_trajs) different trajectories and save to csvs 
 # for n in ProgressBar(1:num_trajs)
@@ -131,8 +63,15 @@ max_traj_scaling = 2
 
     # Reset the sim to the equilibrium position
     reset_to_equilibrium!(state)
+
     # Start up the controller
-    ctlr_cache = CtlrCache(Δt, ctrl_freq, state, swap_times)
+    if add_noise == true
+        noise_cache = NoiseCache(state)
+        filter_cache = FilterCache(mech_blue_alpha)
+        ctlr_cache = CtlrCache(state, noise_cache, filter_cache)
+    else
+        ctlr_cache = CtlrCache(state, nothing, nothing)
+    end
 
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end

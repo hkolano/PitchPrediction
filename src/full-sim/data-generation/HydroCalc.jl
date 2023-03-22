@@ -10,7 +10,6 @@ using RigidBodyDynamics
 function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::MechanismState)
     buoy_wrenches = []
     grav_wrenches = []
-    names = ["cob1", "cob2", "cob3", "cob4", "cob5", "cob6"]
     num_bodies = length(bodies(state.mechanism))-1
     # Iterate through each body 
     for i in 1:num_bodies
@@ -79,8 +78,6 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
             # NANs on second iteration
             vel=velocity(state, joints(state.mechanism)[1])
             # println(vel)
-            d_lin_coeffs = [4.03, 6.22, 5.18, .07, .07, .07]
-            d_nonlin_coeffs = [18.18, 21.66, 36.99, 1.55, 1.55, 1.55]
             tau_d = -d_lin_coeffs .* vel .+ -d_nonlin_coeffs .* vel .* abs.(vel)
             drag_wrench = Wrench(body_default_frame, tau_d[1:3], tau_d[4:6])  
             # println("Vehicle velocity is $(vel)")
