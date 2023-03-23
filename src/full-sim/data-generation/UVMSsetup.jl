@@ -1,7 +1,7 @@
 function setup_frames(body_dict, body_name_list, cob_vec_dict, com_vec_dict)
     cob_frame_dict = Dict{String, CartesianFrame3D}()
     com_frame_dict = Dict{String, CartesianFrame3D}()
-    vis_element = 6
+    vis_element = 1
 
     for (i, body_name) in enumerate(body_name_list)
         # Get the body of interest
@@ -77,6 +77,7 @@ function setup_buoyancy_and_gravity(buoyancy_mag_dict, grav_mag_dict)
         buoyancy_force_dict[k] = FreeVector3D(root_frame(mech_blue_alpha), [0.0, 0.0, mag])
     end
     for (k, mag) in grav_mag_dict
-        gravity_force_dict[k] = FreeVector3D(root_frame(mech_blue_alpha), [0.0, 0.0, mag])
+        gravity_force_dict[k] = FreeVector3D(root_frame(mech_blue_alpha), [0.0, 0.0, -mag])
     end
+    return buoyancy_force_dict, gravity_force_dict
 end

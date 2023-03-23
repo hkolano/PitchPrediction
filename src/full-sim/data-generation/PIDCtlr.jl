@@ -109,7 +109,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         # end
 
         if rem(c.step_ctr, ctrl_loop_num_steps) == 0 && c.step_ctr != 0
-
+            println("doing a control action")
             # TODO arbitration method for how to get the desired velocity
             # Maybe an input to the controller is the function that should be called?
             if t > swap_times[c.traj_num]

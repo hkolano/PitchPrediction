@@ -3,8 +3,10 @@
 cob_vec_dict["shoulder"] = SVector{3, Float64}([-.001, -.003, .032])
 cob_vec_dict["upperarm"] = SVector{3, Float64}([.073, 0.0, -.002])
 cob_vec_dict["elbow"] = SVector{3, Float64}([.003, .001, -.017])
-cob_vec_dict["wrist"] = SVector{3, Float64}([0.0, 0.0, -0.98])
+cob_vec_dict["wrist"] = SVector{3, Float64}([0.0, 0.0, -0.098])
 cob_vec_dict["jaw"] = SVector{3, Float64}([0.0, 0.0, 0.0])
+# TODO double check these numbers against the documentation
+com_vec_dict["armbase"] = SVector{3, Float64}([-.075, -.006, -.003])
 
 # Center of mass vectors for the arm links
 com_vec_dict["shoulder"] = SVector{3, Float64}([0.005, -.001, 0.016])
@@ -41,7 +43,8 @@ end
 link_drags = Dict("shoulder" => [0.26 0.26 0.3]*rho, 
                     "upperarm" => [0.3 1.6 1.6]*rho,
                     "elbow" => [0.26 0.3 0.26]*rho,
-                    "wrist" => [1.8 1.8 0.3]*rho)
+                    "wrist" => [1.8 1.8 0.3]*rho, 
+                    "jaw" => [.2, .2, .2]*rho)
 
 # Add manipulator torque limits
 torque_lim_dict["base"] = 10.

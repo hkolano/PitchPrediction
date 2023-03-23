@@ -35,7 +35,7 @@ urdf_file = joinpath("urdf", "blue_rov_fixedjaw.urdf")
 # ----------------------------------------------------------
 mech_blue_alpha, mvis, joint_dict, body_dict, frame_dict = mechanism_reference_setup(urdf_file)
 cob_frame_dict, com_frame_dict = setup_frames(body_dict, body_names, cob_vec_dict, com_vec_dict)
-setup_buoyancy_and_gravity(buoyancy_mag_dict, grav_mag_dict)
+buoyancy_force_dict, gravity_force_dict = setup_buoyancy_and_gravity(buoyancy_mag_dict, grav_mag_dict)
 
 state = MechanismState(mech_blue_alpha)
 
@@ -75,9 +75,11 @@ bool_plot_positions = false
 
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
-    ts, qs, vs = simulate_with_ext_forces(state, swap_times[end], params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, .001, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     # ts, qs, vs = simulate_with_ext_forces(state, 20, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
+
+#%%
 
     # Downsample the time steps to goal_freq
     ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
@@ -175,7 +177,7 @@ bool_plot_positions = false
     if show_animation == true
         print("Animating... ")
         # MeshCatMechanisms.animate(mvis, ts[1:stop_step], qs[1:stop_step]; realtimerate = 5.0)
-        MeshCatMechanisms.animate(mvis, ts, qs; realtimerate=1.0)
+        MeshCatMechanisms.animate(mvis, ts, qs; realtimerate=.01)
         println("done.")
     end
 
