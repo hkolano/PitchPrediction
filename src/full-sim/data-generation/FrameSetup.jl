@@ -30,18 +30,18 @@ function setup_frames!(mech, frame_names_cob, frame_names_com, cob_vecs, com_vec
 
     alphabase_com_wrt_linkframe = SVector{3, Float64}([-0.075, -0.006, -.003])
     # Arm base is rigidly attached to vehicle, so it has a transform in the vehicle's frame. It's the 5th body in the URDF attached to the vehicle. 
-    linkframe_wrt_vehframe = translation(RigidBodyDynamics.frame_definitions(vehicle_body)[5])
+    linkframe_wrt_vehframe = translation(RigidBodyDynamics.frame_definitions(body_dict["vehicle"])[5])
     # # IF THE ARM IS ROTATED THIS HAS TO CHANGE!!!!
     alphabase_com_wrt_vehframe = alphabase_com_wrt_linkframe + linkframe_wrt_vehframe
     alphabase_com_frame = CartesianFrame3D("armbase_com_cob")
-    com_transform = Transform3D(alphabase_com_frame, default_frame(vehicle_body), alphabase_com_wrt_vehframe)
+    com_transform = Transform3D(alphabase_com_frame, default_frame(body_dict["vehicle"]), alphabase_com_wrt_vehframe)
 
-    if !(RigidBodyDynamics.is_fixed_to_body(vehicle_body, alphabase_com_frame))
-        add_frame!(vehicle_body, com_transform)
+    if !(RigidBodyDynamics.is_fixed_to_body(body_dict["vehicle"], alphabase_com_frame))
+        add_frame!(body_dict["vehicle"], com_transform)
         push!(cob_frames, alphabase_com_frame)
         push!(com_frames, alphabase_com_frame)
         # setelement!(mvis, alphabase_com_frame)
     end
     # print("THIS SHOULD SAY after_arm_to_vehicle: ")
-    println(RigidBodyDynamics.frame_definitions(vehicle_body)[5].from)
+    println(RigidBodyDynamics.frame_definitions(body_dict["vehicle"])[5].from)
 end

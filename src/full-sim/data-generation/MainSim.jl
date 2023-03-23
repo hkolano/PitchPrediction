@@ -14,7 +14,7 @@ using GeometryBasics
 using Printf, Plots, CSV, Tables, ProgressBars, Revise
 using Random
 
-include("FrameSetup.jl")
+# include("FrameSetup.jl")
 include("HydroCalc.jl")
 include("SimWExt.jl")
 include("PIDCtlr.jl")
@@ -22,9 +22,11 @@ include("TrajGenJoints.jl")
 include("UVMSPlotting.jl")
 include("HelperFuncs.jl")
 
+include("UVMSsetup.jl")
+include("ConfigFiles/MagicNumPitchPred.jl")
 include("ConfigFiles/ConstMagicNums.jl")
-# include("ConfigFiles/MagicNumBlueROV.jl")
-# include("ConfigFiles/MagicNumAlpha.jl")
+include("ConfigFiles/MagicNumBlueROV.jl")
+include("ConfigFiles/MagicNumAlpha.jl")
 
 urdf_file = joinpath("urdf", "blue_rov.urdf")
 
@@ -32,66 +34,11 @@ urdf_file = joinpath("urdf", "blue_rov.urdf")
 # ----------------------------------------------------------
 #                 One-Time Mechanism Setup
 # ----------------------------------------------------------
-vis = Visualizer()
-mech_blue_alpha = parse_urdf(urdf_file; floating=true, gravity = [0.0, 0.0, 0.0])
-
-delete!(vis)
-
-# Create visuals of the URDFs
-mvis = MechanismVisualizer(mech_blue_alpha, URDFVisuals(urdf_file), vis[:alpha])
-
-# Name the joints and bodies of the mechanism
-vehicle_joint, base_joint, shoulder_joint, elbow_joint, wrist_joint = joints(mech_blue_alpha)
-~, vehicle_body, shoulder_body, upper_arm_body, elbow_body, wrist_body = bodies(mech_blue_alpha)
-
-body_frame = default_frame(vehicle_body)
-shoulder_frame = default_frame(shoulder_body)
-upper_arm_frame = default_frame(upper_arm_body)
-elbow_frame = default_frame(elbow_body)
-wrist_frame = default_frame(wrist_body)
-base_frame = root_frame(mech_blue_alpha)
-# setelement!(mvis_alpha, shoulder_frame)
-
-println("Mechanism built.")
-
-# ----------------------------------------------------------
-#                 COM and COB Frame Setup
-# ----------------------------------------------------------
-frame_names_cob = ["vehicle_cob", "shoulder_cob", "ua_cob", "elbow_cob", "wrist_cob", "jaw_cob"]
-frame_names_com = ["vehicle_com", "shoulder_com", "ua_com", "elbow_com", "wrist_com", "jaw_com"]
-# Assume default frame = COM
-cob_vecs = [SVector{3, Float64}([0.0, 0.0, 0.02]), SVector{3, Float64}([-0.001, -0.003, .032]), SVector{3, Float64}([0.073, 0.0, -0.002]), SVector{3, Float64}([0.003, 0.001, -0.017]), SVector{3, Float64}([0.0, 0.0, -.098]), SVector{3, Float64}([0.0, 0.0, 0.0])]
-com_vecs = [SVector{3, Float64}([0.0, 0.0, 0.0]), SVector{3, Float64}([0.005, -.001, 0.016]), SVector{3, Float64}([0.073, 0.0, 0.0]), SVector{3, Float64}([0.017, -0.026, -0.002]), SVector{3, Float64}([0.0, 0.0, -.098]), SVector{3, Float64}([0.0, 0.0, 0.0])]
-cob_frames = []
-com_frames = []
-setup_frames!(mech_blue_alpha, frame_names_cob, frame_names_com, cob_vecs, com_vecs, cob_frames, com_frames)
+mech_blue_alpha, mvis, joint_dict, body_dict = mechanism_reference_setup(urdf_file)
+cob_frame_dict, com_frame_dict = setup_frames(body_dict, body_names, cob_vec_dict, com_vec_dict)
+buoyancy_force_dict, gravity_force_dict = setup_buoyancy_and_gravity(buoyancy_mag_dict, grav_mag_dict)
 
 #%%
-# buoyancy force setup
-# ---------------------------------------------------------------
-#                       BUOYANCY SETUP
-# ---------------------------------------------------------------
-# f = rho * g * V
-# f = 997 (kg/m^3) * 9.81 (m/s^2) * V_in_L *.001 (m^3) = kg m / s^2
-# One time setup of buoyancy forces
-# KEEP ARM BASE VALUES AT END OF LIST for HydroCalc (jaw values will go before armbase values)
-volumes = [10.23/(.001*rho), .018, .203, .025, .155, .202] # vehicle, shoulder, ua, elbow, wrist, armbase
-buoy_force_mags = volumes * rho * 9.81 * .001
-buoy_lin_forces = []
-for mag in buoy_force_mags
-    lin_force = FreeVector3D(base_frame, [0.0, 0.0, mag])
-    push!(buoy_lin_forces, lin_force)
-end
-# println(buoy_lin_forces)
-
-masses = [10.0, .194, .429, .115, .333, .341] # vehicle, shoulder, ua, elbow, wrist, armbase
-grav_forces = masses*9.81
-grav_lin_forces = []
-for f_g in grav_forces
-    lin_force = FreeVector3D(base_frame, [0.0, 0.0, -f_g])
-    push!(grav_lin_forces, lin_force)
-end
-# println(grav_lin_forces)
 
 drag_link1 = [0.26 0.26 0.3]*rho
 drag_link2 = [0.3 1.6 1.6]*rho
@@ -105,23 +52,10 @@ println("CoM and CoB frames initialized. \n")
 #                 State Initialization
 # ----------------------------------------------------------
 #%%
-function reset_to_equilibrium!(state)
-    zero!(state)
-    set_configuration!(state, vehicle_joint, [.9777, -0.0019, 0.2098, .0079, 0., 0., 0.])
-    # set_velocity!(state, vehicle_joint, [0., 0., 0., 0., 0.0, 0.])
-end
 
 # Constants
 state = MechanismState(mech_blue_alpha)
-do_scale_traj = true   # Scale the trajectory?
-duration_after_traj = 1.0   # How long to simulate after trajectory has ended
 
-#%%
-# (temporary adds while making changes to ctlr and traj generator)
-# include("PIDCtlr.jl")
-# include("TrajGenJoints.jl")
-# include("HydroCalc.jl")
-# include("SimWExt.jl")
 
 # ----------------------------------------------------------
 #                      Gather Sim Data

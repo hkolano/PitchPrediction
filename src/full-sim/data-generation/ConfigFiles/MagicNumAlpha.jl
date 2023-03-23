@@ -20,7 +20,7 @@ com_vec_dict["armbase"] = SVector{3, Float64}([-.075, -.006, -.003])
 link_volumes = Dict("shoulder" =>   0.018, # volume in L
                     "upperarm" =>   0.203,
                     "elbow" =>      0.025,
-                    "wrist" =>      0.115,
+                    "wrist" =>      0.155,
                     "armbase" =>    0.202,
                     "jaw" =>        0.02) # reasonable estimate 
 # f = 997 (kg/m^3) * 9.81 (m/s^2) * V_in_L *.001 (m^3) = kg m / s^2
@@ -44,17 +44,17 @@ link_drags = Dict("shoulder" => [0.26 0.26 0.3]*rho,
                     "upperarm" => [0.3 1.6 1.6]*rho,
                     "elbow" => [0.26 0.3 0.26]*rho,
                     "wrist" => [1.8 1.8 0.3]*rho, 
-                    "jaw" => [.2, .2, .2]*rho)
+                    "jaw" => [.05, .05, .05]*rho)
 
-# Add manipulator torque limits
-torque_lim_dict["base"] = 10.
-torque_lim_dict["shoulder"] = 10.
-torque_lim_dict["elbow"] = 10.
-torque_lim_dict["wrist"] = 0.6
-torque_lim_dict["jaw"] = 1. 
+# # Add manipulator torque limits
+# torque_lim_dict["base"] = 10.
+# torque_lim_dict["shoulder"] = 10.
+# torque_lim_dict["elbow"] = 10.
+# torque_lim_dict["wrist"] = 0.6
+# torque_lim_dict["jaw"] = 1. 
 
-dtau_lim_dict["base"] = .1
-dtau_lim_dict["shoulder"] = .1
-dtau_lim_dict["elbow"] = .1
-dtau_lim_dict["wrist"] = 0.006
-dtau_lim_dict["jaw"] = 0.006
+# dtau_lim_dict["base"] = .1
+# dtau_lim_dict["shoulder"] = .1
+# dtau_lim_dict["elbow"] = .1
+# dtau_lim_dict["wrist"] = 0.006
+# dtau_lim_dict["jaw"] = 0.006

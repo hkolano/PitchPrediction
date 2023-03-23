@@ -16,10 +16,10 @@ ctrl_loop_num_steps = 4*(1/Δt)/ctrl_freq
 # System-specific functions
 # ----------------------------------------------------------
 # equilibrium of unmodified ROV + Alpha arm
-# function reset_to_equilibrium!(state)
-#     zero!(state)
-#     set_configuration!(state, joint_dict["vehicle"], [.9777, -0.0019, 0.2098, .0079, 0., 0., 0.])
-# end
+function reset_to_equilibrium!(state)
+    zero!(state)
+    set_configuration!(state, joint_dict["vehicle"], [.9777, -0.0019, 0.2098, .0079, 0., 0., 0.])
+end
 
 # FF torques to station keep at equilibrium
 # function set_torques_equilibrium!(torques)
