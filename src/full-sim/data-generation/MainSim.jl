@@ -22,6 +22,10 @@ include("TrajGenJoints.jl")
 include("UVMSPlotting.jl")
 include("HelperFuncs.jl")
 
+include("ConfigFiles/ConstMagicNums.jl")
+# include("ConfigFiles/MagicNumBlueROV.jl")
+# include("ConfigFiles/MagicNumAlpha.jl")
+
 urdf_file = joinpath("urdf", "blue_rov.urdf")
 
 #%%
@@ -71,7 +75,6 @@ setup_frames!(mech_blue_alpha, frame_names_cob, frame_names_com, cob_vecs, com_v
 # f = 997 (kg/m^3) * 9.81 (m/s^2) * V_in_L *.001 (m^3) = kg m / s^2
 # One time setup of buoyancy forces
 # KEEP ARM BASE VALUES AT END OF LIST for HydroCalc (jaw values will go before armbase values)
-rho = 997
 volumes = [10.23/(.001*rho), .018, .203, .025, .155, .202] # vehicle, shoulder, ua, elbow, wrist, armbase
 buoy_force_mags = volumes * rho * 9.81 * .001
 buoy_lin_forces = []
@@ -101,7 +104,7 @@ println("CoM and CoB frames initialized. \n")
 # ----------------------------------------------------------
 #                 State Initialization
 # ----------------------------------------------------------
-
+#%%
 function reset_to_equilibrium!(state)
     zero!(state)
     set_configuration!(state, vehicle_joint, [.9777, -0.0019, 0.2098, .0079, 0., 0., 0.])
@@ -110,10 +113,6 @@ end
 
 # Constants
 state = MechanismState(mech_blue_alpha)
-Δt = 1e-3
-ctrl_freq = 100 # Control frequency -- how often the control input can be changed
-goal_freq = 100 # Output frequency to CSV file
-sample_rate = Int(floor((1/Δt)/goal_freq))
 do_scale_traj = true   # Scale the trajectory?
 duration_after_traj = 1.0   # How long to simulate after trajectory has ended
 
@@ -151,10 +150,10 @@ bool_plot_positions = false
 
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
-    ts, qs, vs = simulate_with_ext_forces(state, .004, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, .001, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     # ts, qs, vs = simulate_with_ext_forces(state, 20, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
-
+#%%
     # Downsample the time steps to goal_freq
     ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
     ts_down_no_zero = ts_down[2:end]
