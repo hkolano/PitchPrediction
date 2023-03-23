@@ -19,6 +19,10 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
         # Get default frame of the body
         body_default_frame = default_frame(bod)
 
+        println("------------------")
+        @show bod
+        println("------------------")
+
         # -------- Calculate Buoyancy Wrench-------
         # Get transform between the defualt frame and the center of buoyancy
         # TODO: don't use fixed_transform because it's bad for computation time
@@ -27,6 +31,7 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
         buoy_force_trans = transform(state, buoy_lin_forces[i], body_default_frame)
         # Make the wrench: the buoyancy force through a point, the center of buoyancy.
         buoy_wrench = Wrench(Point3D(body_default_frame, translation(inv(def_to_cob))), buoy_force_trans)
+        @show buoy_wrench
         push!(buoy_wrenches, buoy_wrench)
         # if bod == wrist_body 
         #     if rem(t, .25) < 0.002
@@ -44,6 +49,7 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
         grav_wrench = Wrench(Point3D(body_default_frame, translation(inv(def_to_com))), grav_force_trans)
         # setelement!(mvis, COM)
         # Add wrench to buoy_wrenches
+        @show grav_wrench
         push!(grav_wrenches, grav_wrench)
 
         # if bod == wrist_body 
@@ -74,6 +80,8 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
             # setelement!(mvis_alpha, Point3D(body_default_frame, translation(inv(def_to_armbase_com))), 0.02, "armbase_com")
             # println("Wrench without drag:")
             # println(wrench)
+            @show grav_wrench_arm
+            @show buoy_wrench_arm
 
             # ----- Drag of the vehicle -----
             # NANs on second iteration
@@ -85,6 +93,7 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
             drag_wrench = Wrench(body_default_frame, tau_d[1:3], tau_d[4:6])  
             # println("Vehicle velocity is $(vel)")
             # println("Vehicle drag is $(drag_wrench)")
+            @show drag_wrench
             
             wrench = wrench + drag_wrench
             # println("Wrench drag:")
@@ -109,6 +118,7 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
             #     println("Point Velocity= $(cob_vel.v)")
             #     println("to be added: $(drag_wrench_at_default)")
             # end
+            @show drag_wrench_at_default
             wrench = wrench + drag_wrench_at_default
         end
         # Transform the wrench to the root frame and assign it to the body

@@ -293,7 +293,7 @@ function define_multiple_waypoints!(params, swap_times, max_trajs)
     if do_scale_traj == true
         for traj in traj_list
             # last argument is maximum time scaling factor
-            push!(scaled_traj_list, scale_trajectory(traj...), 2)
+            push!(scaled_traj_list, scale_trajectory(traj..., 2))
         end
     else
         scaled_traj_list = traj_list
