@@ -54,7 +54,9 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
             buoy_wrench_arm = Wrench(Point3D(body_default_frame, translation(inv(def_to_armbase_cob))), buoy_force_trans_armbase)
             grav_wrench_arm = Wrench(Point3D(body_default_frame, translation(inv(def_to_armbase_com))), grav_force_trans_armbase)
             wrench = wrench + buoy_wrench_arm + grav_wrench_arm
-
+            @show buoy_wrench_arm
+            @show grav_wrench_arm
+            
             # Drag on the vehicle 
             vel = velocity(state, joints(state.mechanism)[1])
             @show vel
