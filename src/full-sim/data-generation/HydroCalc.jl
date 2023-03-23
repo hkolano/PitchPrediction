@@ -10,9 +10,8 @@ using RigidBodyDynamics
 function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::MechanismState)
     buoy_wrenches = []
     grav_wrenches = []
-    num_bodies = length(bodies(state.mechanism))-1
     # Iterate through each body 
-    for (idx, body_name) in enumerate(body_names)
+    for body_name in body_names
         # Get the body
         bod = body_dict[body_name]
         # Get default frame of the body
@@ -59,7 +58,7 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
             @show grav_wrench_arm
             
             # Drag on the vehicle 
-            vel = velocity(state, joints(state.mechanism)[1])
+            vel = velocity(state, joint_dict["vehicle"])
             @show vel
             tau_d = -d_lin_coeffs .* vel .+ -d_nonlin_coeffs .* vel .* abs.(vel)
             drag_wrench = Wrench(body_default_frame, tau_d[1:3], tau_d[4:6])
@@ -74,13 +73,7 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
             # COB_point = Point3D(body_default_frame, translation(inv(def_to_cob)))
             twist_body = transform(twist_world, inv(root_transform))
             cob_vel = point_velocity(twist_body, Point3D(body_default_frame, translation(inv(def_to_cob))))
-            # @show(i)
-            F_d = transpose(-link_drag_coeffs[idx-1]) .* abs.(cob_vel.v) .* cob_vel.v
-            # println("Drag Force = $(F_d)")
-            # println("Current Wrench = $(wrench)")
-            # println([@printf(" %5.2f", x) for x in twist_body.linear])
-            # println([@printf(" %5.2f", x) for x in F_d])
-            # Wrench(frame, angular, linear)
+            F_d = transpose(-link_drags[body_name]) .* abs.(cob_vel.v) .* cob_vel.v
             drag_wrench_at_cob = Wrench(cob_frame_dict[body_name], [0.0, 0.0, 0.0], [F_d[1], F_d[2], F_d[3]])
             drag_wrench_at_default = transform(drag_wrench_at_cob, inv(def_to_cob))
             @show drag_wrench_at_default

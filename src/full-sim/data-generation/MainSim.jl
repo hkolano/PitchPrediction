@@ -14,7 +14,6 @@ using GeometryBasics
 using Printf, Plots, CSV, Tables, ProgressBars, Revise
 using Random
 
-# include("FrameSetup.jl")
 include("HydroCalc.jl")
 include("SimWExt.jl")
 include("PIDCtlr.jl")
@@ -38,19 +37,7 @@ mech_blue_alpha, mvis, joint_dict, body_dict = mechanism_reference_setup(urdf_fi
 cob_frame_dict, com_frame_dict = setup_frames(body_dict, body_names, cob_vec_dict, com_vec_dict)
 buoyancy_force_dict, gravity_force_dict = setup_buoyancy_and_gravity(buoyancy_mag_dict, grav_mag_dict)
 
-#%%
 
-drag_link1 = [0.26 0.26 0.3]*rho
-drag_link2 = [0.3 1.6 1.6]*rho
-drag_link3 = [0.26 0.3 0.26]*rho
-drag_link4 = [1.8 1.8 0.3]*rho
-link_drag_coeffs = [drag_link1, drag_link2, drag_link3, drag_link4]
-
-println("CoM and CoB frames initialized. \n")
-
-# ----------------------------------------------------------
-#                 State Initialization
-# ----------------------------------------------------------
 #%%
 
 # Constants
@@ -84,7 +71,7 @@ bool_plot_positions = false
 
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
-    ts, qs, vs = simulate_with_ext_forces(state, .001, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, .009, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     # ts, qs, vs = simulate_with_ext_forces(state, 20, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 #%%
