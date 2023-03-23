@@ -37,13 +37,9 @@ mech_blue_alpha, mvis, joint_dict, body_dict = mechanism_reference_setup(urdf_fi
 cob_frame_dict, com_frame_dict = setup_frames(body_dict, body_names, cob_vec_dict, com_vec_dict)
 buoyancy_force_dict, gravity_force_dict = setup_buoyancy_and_gravity(buoyancy_mag_dict, grav_mag_dict)
 
-
-#%%
-
-# Constants
 state = MechanismState(mech_blue_alpha)
 
-
+#%%
 # ----------------------------------------------------------
 #                      Gather Sim Data
 # ----------------------------------------------------------
@@ -71,7 +67,7 @@ bool_plot_positions = false
 
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
-    ts, qs, vs = simulate_with_ext_forces(state, .009, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, 1, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     # ts, qs, vs = simulate_with_ext_forces(state, 20, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 #%%
