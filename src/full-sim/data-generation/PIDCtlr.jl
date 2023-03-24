@@ -4,33 +4,44 @@ using RigidBodyDynamics, Distributions, Random
 #                              SETUP 
 # ------------------------------------------------------------------------
 mutable struct CtlrCache
+    n_cache 
+    f_cache
     vel_error_cache::Array{Float64}
     vel_int_error_cache::Array{Float64}
     step_ctr::Int
     des_vel::Array{Float64}
     taus
-    noisy_qs
-    noisy_vs
-    filtered_vs
     last_v̇
-    filtered_state
-    rand_walks
     traj_num
     
-    function CtlrCache(state)
+    function CtlrCache(state, n_cache, f_cache)
         mechanism = state.mechanism
-        if length(joints(mechanism)) == 5
-            num_actuated_dofs = 8
-            num_dofs = 10
-        elseif length(joints(mechanism)) == 6
-            num_actuated_dofs = 9
-            num_dofs = 11
-        end
-        new(zeros(num_actuated_dofs), zeros(num_actuated_dofs), 0, #=
-        =# zeros(num_actuated_dofs), Array{Float64}(undef, num_dofs, 1), #=
-        =# configuration(state), velocity(state), #=
-        =# zeros(num_dofs), zeros(num_dofs), 
-        MechanismState(mechanism), zeros(6), 1) 
+        num_dofs = num_velocities(mechanism)
+        num_actuated_dofs = num_dofs-2
+
+        new(n_cache, f_cache, 
+            zeros(num_actuated_dofs), zeros(num_actuated_dofs), 0, 
+            zeros(num_actuated_dofs), Array{Float64}(undef, num_dofs, 1), 
+            zeros(num_dofs), 1) 
+    end
+end
+
+mutable struct NoiseCache
+    noisy_qs 
+    noisy_vs
+    rand_walks
+
+    function NoiseCache(state)
+        new(configuration(state), velocity(state), zeros(6))
+    end
+end
+
+mutable struct FilterCache
+    filtered_vs 
+    filtered_state :: MechanismState
+    
+    function FilterCache(state)
+        new(zeros(num_velocities(state.mechanism)), MechanismState(state.mechanism))
     end
 end
 
@@ -100,7 +111,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         # c.des_vel = TrajGen.get_desv_at_t(t, pars)
 
         # if rem(c.step_ctr, 1000) == 0
-        #     @show c.rand_walks
+        #     @show c.n_cache.rand_walks
         #     # @show result.jointwrenches
         # #     # println("Desired velocity vector: $(c.des_vel)")
         # #     wrist_wrenches = result.totalwrenches[BodyID(wrist_body)]
@@ -123,18 +134,18 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             fill!(noisy_poses, 0.)
             fill!(noisy_vels, 0.)
 
-            c.rand_walks[1:3] .+= rand(gyro_rand_walk_dist, 3)
-            c.rand_walks[4:6] .+= rand(accel_rand_walk_dist, 3)
+            c.n_cache.rand_walks[1:3] .+= rand(gyro_rand_walk_dist, 3)
+            c.n_cache.rand_walks[4:6] .+= rand(accel_rand_walk_dist, 3)
 
-            last_noisy_R = Rotations.QuatRotation(c.noisy_qs[1:4,end])
+            last_noisy_R = Rotations.QuatRotation(c.n_cache.noisy_qs[1:4,end])
             # println("Starting to add noise... Starting noisy poses")
             # @show velocity(state)
             # @show noisy_vels
-            add_arm_noise!(noisy_poses, noisy_vels, configuration(state)[8:end], c.noisy_qs[8:end,end], 1/ctrl_freq)
+            add_arm_noise!(noisy_poses, noisy_vels, configuration(state)[8:end], c.n_cache.noisy_qs[8:end,end], 1/ctrl_freq)
             # @show noisy_vels
-            new_noisy_R = add_rotational_noise!(noisy_poses, noisy_vels, velocity(state)[1:3], last_noisy_R, 1/ctrl_freq, c.rand_walks)
+            new_noisy_R = add_rotational_noise!(noisy_poses, noisy_vels, velocity(state)[1:3], last_noisy_R, 1/ctrl_freq, c.n_cache.rand_walks)
             # @show noisy_vels
-            add_linear_noise!(noisy_poses, noisy_vels, result.v̇[1:6], c.last_v̇, c.noisy_vs[1:6,end], c.noisy_qs[5:7,end], last_noisy_R, new_noisy_R, 1/ctrl_freq, c.rand_walks)
+            add_linear_noise!(noisy_poses, noisy_vels, result.v̇[1:6], c.last_v̇, c.n_cache.noisy_vs[1:6,end], c.n_cache.noisy_qs[5:7,end], last_noisy_R, new_noisy_R, 1/ctrl_freq, c.n_cache.rand_walks)
             # @show noisy_vels
             # if rem(c.step_ctr, 1000) == 0
             #     @show result.v̇[6]
@@ -142,17 +153,17 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             # end
 
             c.last_v̇ = result.v̇
-            c.noisy_vs = cat(c.noisy_vs, noisy_vels, dims=2)
-            c.noisy_qs = cat(c.noisy_qs, noisy_poses, dims=2)
+            c.n_cache.noisy_vs = cat(c.n_cache.noisy_vs, noisy_vels, dims=2)
+            c.n_cache.noisy_qs = cat(c.n_cache.noisy_qs, noisy_poses, dims=2)
 
-            filtered_velocity = moving_average_filter_velocity(5, c.noisy_vs, velocity(state))
-            c.filtered_vs = cat(c.filtered_vs, filtered_velocity, dims=2)
+            filtered_velocity = moving_average_filter_velocity(5, c.n_cache.noisy_vs, velocity(state))
+            c.f_cache.filtered_vs = cat(c.f_cache.filtered_vs, filtered_velocity, dims=2)
             filtered_vels = similar(velocity(state))
             filtered_vels[:] = filtered_velocity
 
-            set_configuration!(c.filtered_state, noisy_poses)
-            set_velocity!(c.filtered_state, filtered_vels)
-            ff_torques = dynamics_bias(c.filtered_state, h_wrenches)
+            set_configuration!(c.f_cache.filtered_state, noisy_poses)
+            set_velocity!(c.f_cache.filtered_state, filtered_vels)
+            ff_torques = dynamics_bias(c.f_cache.filtered_state, h_wrenches)
 
             # Get forces for vehicle (yaw, surge, sway, heave)
             for dir_idx = 3:6

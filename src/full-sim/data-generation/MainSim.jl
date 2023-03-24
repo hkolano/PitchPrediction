@@ -64,11 +64,13 @@ include("PIDCtlr.jl")
     # Reset the sim to the equilibrium position
     reset_to_equilibrium!(state)
     # Start up the controller
-    ctlr_cache = CtlrCache(state)
+    noise_cache = NoiseCache(state)
+    filter_cache = FilterCache(state)
+    ctlr_cache = CtlrCache(state, noise_cache, filter_cache)
 
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
-    ts, qs, vs = simulate_with_ext_forces(state, .015, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, 2, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     # ts, qs, vs = simulate_with_ext_forces(state, 20, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
