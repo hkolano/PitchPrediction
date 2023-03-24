@@ -3,29 +3,6 @@ using RigidBodyDynamics, Distributions, Random
 # ------------------------------------------------------------------------
 #                              SETUP 
 # ------------------------------------------------------------------------
-arm_Kp =  3.38e-2 #.304e-2
-arm_Ki = 4.39e-1 #9.38e-2
-arm_Kd = 1.74e-3 #9.63e-4
-v_Kp = 1.2 #3.
-v_Ki = 0.6 #3.6
-v_Kd = 1.61 #1.68
-Kp = [2.0, v_Kp, v_Kp, v_Kp, arm_Kp, 4.59e-2, 1.35e-2, 5.4e-4] #, 20.]
-Ki = [1., v_Ki, v_Ki, v_Ki, arm_Ki, 3.73e-1, 9.64e-2, 3.6e-3] #3.037e-6] #, .1]
-Kd = [0.1, v_Kd, v_Kd, v_Kd, arm_Kd, 3.82e-3, 1.27e-3, 2.03e-5] #, .002]
-
-torque_lims = [20., 71.5, 88.2, 177., 10.0, 10.0, 10.0, 0.6] #, 600]
-
-# Sensor noise distributions 
-# Implemented:
-# Encoder --> joint position noise -integration-> joint velocity noise
-# Gyroscope --> vehicle body vel noise 
-v_ang_vel_noise_dist = Distributions.Normal(0, .0013) # 75 mdps (LSM6DSOX)
-arm_pos_noise_dist = Distributions.Normal(0, .0017/6) # .1 degrees, from Reach website
-accel_noise_dist = Distributions.Normal(0, 0.017658/10) # 1.8 mg = .0176 m/s2 (LSM6DSOX)
-
-gyro_rand_walk_dist = Distributions.Normal(0, .000001)
-accel_rand_walk_dist = Distributions.Normal(0, 0)#0.00001)
-
 mutable struct CtlrCache
     time_step::Float64
     ctrl_freq::Float64
@@ -234,29 +211,23 @@ Returns a controller torque value, bounded by the torque limits and some dτ/dt 
 function PID_ctlr(torque, t, vel_act, idx, c, ff)
     dt = 1/c.ctrl_freq 
     actuated_idx = idx-2
+    dof_name = dof_names[idx]
+
     d_vel = c.des_vel[actuated_idx]
     vel_error = vel_act[1] - d_vel
     d_vel_error = (vel_error - c.vel_error_cache[actuated_idx])/dt
     # println("D_Velocity error on idx$(j_idx): $(d_vel_error)")
     c.vel_int_error_cache[actuated_idx] += vel_error*dt
 
-    p_term = -Kp[actuated_idx]*vel_error
-    d_term = - Kd[actuated_idx]*d_vel_error
-    i_term = - Ki[actuated_idx]*c.vel_int_error_cache[actuated_idx]
+    p_term = -Kp_dict[dof_name]*vel_error
+    d_term = - Kd_dict[dof_name]*d_vel_error
+    i_term = - Ki_dict[dof_name]*c.vel_int_error_cache[actuated_idx]
     d_tau = p_term + d_term + i_term
     # println("Ideal tau: $(d_tau)")
 
     # Can only change torque a small amount per time step 
-    # arm joints can change faster than thrusters
-    #TODO if ever change controller or actual time step, change limits
-    if actuated_idx < 5 # vehicle joints
-        lim = .001 # N per 0.01s
-    elseif actuated_idx < 8 # arm joints
-        lim = .1 
-    else # wrist joint
-        lim = 0.006
+    lim = dtau_lim_dict[dof_name]
 
-    end
     tau_diff_prev_to_inv_dyn = .25ff[idx] - .25torque
     d_tau_w_ff = limit_d_tau(tau_diff_prev_to_inv_dyn+d_tau, lim)
 
@@ -269,7 +240,7 @@ function PID_ctlr(torque, t, vel_act, idx, c, ff)
         new_tau = torque .+ d_tau
     end 
     
-    new_tau = impose_torque_limit(new_tau, torque_lims[actuated_idx])
+    new_tau = impose_torque_limit(new_tau, torque_lim_dict[dof_name])
 
     # if rem(c.step_ctr, 100) == 0 && actuated_idx == 7
     #     @show new_tau

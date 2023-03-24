@@ -13,8 +13,9 @@ sample_rate = Int(floor((1/Δt)/goal_freq))
 ctrl_loop_num_steps = 4*(1/Δt)/ctrl_freq
 
 # ----------------------------------------------------------
-# System-specific functions
+# System-specific functions and information
 # ----------------------------------------------------------
+                     
 # equilibrium of unmodified ROV + Alpha arm
 function reset_to_equilibrium!(state)
     zero!(state)
@@ -37,3 +38,14 @@ end
 #         torques[11] = 0.0   # jaw joint (Joint A)
 #     end
 # end
+
+
+# Sensor noise distributions 
+# Encoder --> joint position noise -integration-> joint velocity noise
+# Gyroscope --> vehicle body vel noise 
+v_ang_vel_noise_dist = Distributions.Normal(0, .0013) # 75 mdps (LSM6DSOX)
+arm_pos_noise_dist = Distributions.Normal(0, .0017/6) # .1 degrees, from Reach website
+accel_noise_dist = Distributions.Normal(0, 0.017658/10) # 1.8 mg = .0176 m/s2 (LSM6DSOX)
+
+gyro_rand_walk_dist = Distributions.Normal(0, .000001)
+accel_rand_walk_dist = Distributions.Normal(0, 0)#0.00001)

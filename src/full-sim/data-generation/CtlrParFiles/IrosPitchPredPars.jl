@@ -1,5 +1,6 @@
 # Controller parameters used for the pitch prediction trials for the IROS redo. 
 # Uses 25% feedforward term.
+# TODO add jaw controller to this
 v_Kp = 1.2 #3.
 v_Ki = 0.6 #3.6
 v_Kd = 1.61 #1.68
