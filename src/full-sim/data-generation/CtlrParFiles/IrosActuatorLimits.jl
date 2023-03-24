@@ -8,7 +8,8 @@ torque_lim_dict = Dict("roll" => 0.0,
                         "base" => 10.,
                         "shoulder" => 10.,
                         "elbow" => 10.,
-                        "wrist" => 0.6)
+                        "wrist" => 0.6, 
+                        "jaw" => 0.6)
 
 # D_tau limits for a controller at 100Hz
 thruster_dtau_lim = 0.001

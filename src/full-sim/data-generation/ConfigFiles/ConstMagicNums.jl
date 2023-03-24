@@ -8,6 +8,7 @@ rho = 997 # kg/m^3 (density of the water)
 # ----------------------------------------------------------
 Δt = 1.e-3          # simulation time step
 ctrl_freq = 100     # frequency of call to controller
+ctrl_steps = 4*(1/Δt)/ctrl_freq # number of steps to take before changing controller action
 goal_freq = 50      # frequency of the output CSV
 sample_rate = Int(floor((1/Δt)/goal_freq))
 ctrl_loop_num_steps = 4*(1/Δt)/ctrl_freq

@@ -4,13 +4,9 @@ using RigidBodyDynamics, Distributions, Random
 #                              SETUP 
 # ------------------------------------------------------------------------
 mutable struct CtlrCache
-    time_step::Float64
-    ctrl_freq::Float64
-    ctrl_steps::Float64
     vel_error_cache::Array{Float64}
     vel_int_error_cache::Array{Float64}
     step_ctr::Int
-    joint_vec
     des_vel::Array{Float64}
     taus
     noisy_qs
@@ -19,31 +15,22 @@ mutable struct CtlrCache
     last_v̇
     filtered_state
     rand_walks
-    swap_times
     traj_num
     
-
-    function CtlrCache(dt, control_frequency, state, swap_times)
+    function CtlrCache(state)
         mechanism = state.mechanism
         if length(joints(mechanism)) == 5
-            vehicle_joint, jointE, jointD, jointC, jointB = joints(mechanism)
-            joint_vec = [vehicle_joint, jointE, jointD, jointC, jointB]
             num_actuated_dofs = 8
             num_dofs = 10
         elseif length(joints(mechanism)) == 6
-            vehicle_joint, jointE, jointD, jointC, jointB, jawjoint = joints(mechanism)
-            joint_vec = [vehicle_joint, jointE, jointD, jointC, jointB, jawjoint]
             num_actuated_dofs = 9
             num_dofs = 11
         end
-        ctrl_loop_num_steps = 4*(1/dt)/control_frequency
-        new(dt, control_frequency, ctrl_loop_num_steps, #=
-        =# zeros(num_actuated_dofs), zeros(num_actuated_dofs), 0, joint_vec, #=
+        new(zeros(num_actuated_dofs), zeros(num_actuated_dofs), 0, #=
         =# zeros(num_actuated_dofs), Array{Float64}(undef, num_dofs, 1), #=
         =# configuration(state), velocity(state), #=
         =# zeros(num_dofs), zeros(num_dofs), 
-        MechanismState(mechanism), zeros(6), swap_times, 1) 
-
+        MechanismState(mechanism), zeros(6), 1) 
     end
 end
 
@@ -121,12 +108,12 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         # #     @show wrist_wrench_wrist_frame
         # end
 
-        if rem(c.step_ctr, c.ctrl_steps) == 0 && c.step_ctr != 0
+        if rem(c.step_ctr, ctrl_steps) == 0 && c.step_ctr != 0
 
-            if t > c.swap_times[c.traj_num]
+            if t > swap_times[c.traj_num]
                 c.traj_num += 1
             end
-            mod_time = c.traj_num == 1 ? t : t-c.swap_times[c.traj_num-1]
+            mod_time = c.traj_num == 1 ? t : t-swap_times[c.traj_num-1]
             c.des_vel = get_desv_at_t(mod_time, pars[c.traj_num])
     
             # ff_torques = dynamics_bias(state, h_wrenches)
@@ -143,11 +130,11 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             # println("Starting to add noise... Starting noisy poses")
             # @show velocity(state)
             # @show noisy_vels
-            add_arm_noise!(noisy_poses, noisy_vels, configuration(state)[8:end], c.noisy_qs[8:end,end], 1/c.ctrl_freq)
+            add_arm_noise!(noisy_poses, noisy_vels, configuration(state)[8:end], c.noisy_qs[8:end,end], 1/ctrl_freq)
             # @show noisy_vels
-            new_noisy_R = add_rotational_noise!(noisy_poses, noisy_vels, velocity(state)[1:3], last_noisy_R, 1/c.ctrl_freq, c.rand_walks)
+            new_noisy_R = add_rotational_noise!(noisy_poses, noisy_vels, velocity(state)[1:3], last_noisy_R, 1/ctrl_freq, c.rand_walks)
             # @show noisy_vels
-            add_linear_noise!(noisy_poses, noisy_vels, result.v̇[1:6], c.last_v̇, c.noisy_vs[1:6,end], c.noisy_qs[5:7,end], last_noisy_R, new_noisy_R, 1/c.ctrl_freq, c.rand_walks)
+            add_linear_noise!(noisy_poses, noisy_vels, result.v̇[1:6], c.last_v̇, c.noisy_vs[1:6,end], c.noisy_qs[5:7,end], last_noisy_R, new_noisy_R, 1/ctrl_freq, c.rand_walks)
             # @show noisy_vels
             # if rem(c.step_ctr, 1000) == 0
             #     @show result.v̇[6]
@@ -170,7 +157,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             # Get forces for vehicle (yaw, surge, sway, heave)
             for dir_idx = 3:6
                 # println("PID ctlr on vehicle")
-                actual_vel = velocity(state, c.joint_vec[1])
+                actual_vel = velocity(state, joint_dict["vehicle"])
                 ctlr_tau = PID_ctlr(torques[dir_idx][1], t, filtered_velocity[dir_idx], dir_idx, c, ff_torques)
                 # ctlr_tau = torques[dir_idx]
                 c_taus[dir_idx] = ctlr_tau 
@@ -178,10 +165,11 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             end
             
             # Get torques for the arm joints
-            for jt_idx in 2:length(c.joint_vec) # Joint index (1:vehicle, 2:baseJoint, etc)
-                idx = jt_idx+5 # velocity index (7 to 10)
+            for idx in 7:length(dof_names) # Joint index (1:vehicle, 2:baseJoint, etc)
+                joint_name = dof_names[idx]
+                jt_idx = idx-5 # velocity index (7 to 10)
                 ctlr_tau = PID_ctlr(torques[idx][1], t, filtered_velocity[idx], idx, c, ff_torques) 
-                torques[velocity_range(state, c.joint_vec[jt_idx])] .= [ctlr_tau] 
+                torques[velocity_range(state, joint_dict[joint_name])] .= [ctlr_tau] 
                 c_taus[idx] = ctlr_tau 
             end
             #TODO switch to push! ?
@@ -209,7 +197,7 @@ Imposes a PID controller on one joint.
 Returns a controller torque value, bounded by the torque limits and some dτ/dt value. 
 """
 function PID_ctlr(torque, t, vel_act, idx, c, ff)
-    dt = 1/c.ctrl_freq 
+    dt = 1/ctrl_freq 
     actuated_idx = idx-2
     dof_name = dof_names[idx]
 
@@ -227,6 +215,7 @@ function PID_ctlr(torque, t, vel_act, idx, c, ff)
 
     # Can only change torque a small amount per time step 
     lim = dtau_lim_dict[dof_name]
+
 
     tau_diff_prev_to_inv_dyn = .25ff[idx] - .25torque
     d_tau_w_ff = limit_d_tau(tau_diff_prev_to_inv_dyn+d_tau, lim)

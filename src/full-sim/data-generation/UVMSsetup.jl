@@ -64,8 +64,13 @@ function mechanism_reference_setup(urdf_file)
     joint_dict = Dict{String, RigidBodyDynamics.Joint}()
     body_dict = Dict{String, RigidBodyDynamics.RigidBody}()
     for (idx, link_name) in enumerate(body_names)
-        joint_dict[link_name] = joints(mech_blue_alpha)[idx]
         body_dict[link_name] = bodies(mech_blue_alpha)[idx+1]
+    end
+    joint_dict["vehicle"] = joints(mech_blue_alpha)[1]
+    for (idx, dof_name) in enumerate(dof_names)
+        if idx > 6
+            joint_dict[dof_name] = joints(mech_blue_alpha)[idx-5]
+        end
     end
     return mech_blue_alpha, mvis, joint_dict, body_dict
 end

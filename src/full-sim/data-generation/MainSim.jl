@@ -29,7 +29,6 @@ include("ConfigFiles/MagicNumAlpha.jl")
 
 urdf_file = joinpath("urdf", "blue_rov.urdf")
 
-#%%
 # ----------------------------------------------------------
 #                 One-Time Mechanism Setup
 # ----------------------------------------------------------
@@ -60,16 +59,20 @@ bool_plot_positions = false
     define_multiple_waypoints!(params, swap_times, 2)
     println("Scaled trajectory duration: $(swap_times[end]) seconds")
 
+#%%
+include("PIDCtlr.jl")
     # Reset the sim to the equilibrium position
     reset_to_equilibrium!(state)
     # Start up the controller
-    ctlr_cache = CtlrCache(Δt, ctrl_freq, state, swap_times)
+    ctlr_cache = CtlrCache(state)
 
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
-    ts, qs, vs = simulate_with_ext_forces(state, 1, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, .015, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     # ts, qs, vs = simulate_with_ext_forces(state, 20, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
+
+    @show vs[end]'
 #%%
     # Downsample the time steps to goal_freq
     ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
