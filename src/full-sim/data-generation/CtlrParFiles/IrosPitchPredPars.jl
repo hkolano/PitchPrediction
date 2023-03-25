@@ -33,3 +33,15 @@ do_feedforward = true
 ff_prop = 0.25
 
 filtering_kernel = 5
+
+function set_equilibrium_torques!(torques)
+    torques[3] = 0.         # ff yaw value
+    torques[4] = -2.3       # ff x value
+    torques[5] = 0.         # ff y value
+    torques[6] = 5.2        # ff z value
+
+    torques[7] = -.002      # ff joint E value
+    torques[8] = -.32255    # ff Joint D value 
+    torques[9] = -.0335     # ff Joint C value
+    torques[10] = 0         #.5e-5
+end

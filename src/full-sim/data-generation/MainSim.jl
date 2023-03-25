@@ -20,6 +20,7 @@ include("PIDCtlr.jl")
 include("TrajGenJoints.jl")
 include("UVMSPlotting.jl")
 include("HelperFuncs.jl")
+include("Noiser.jl")
 
 include("UVMSsetup.jl")
 include("ConfigFiles/MagicNumPitchPred.jl")
@@ -61,6 +62,7 @@ bool_plot_positions = false
 
 #%%
 include("PIDCtlr.jl")
+include("Noiser.jl.")
     # Reset the sim to the equilibrium position
     reset_to_equilibrium!(state)
     # Start up the controller
@@ -70,7 +72,7 @@ include("PIDCtlr.jl")
 
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
-    ts, qs, vs = simulate_with_ext_forces(state, 2, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, .5, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     # ts, qs, vs = simulate_with_ext_forces(state, 20, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
