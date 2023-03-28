@@ -26,15 +26,6 @@ mutable struct CtlrCache
     end
 end
 
-mutable struct FilterCache
-    filtered_vs 
-    filtered_state :: MechanismState
-    
-    function FilterCache(state)
-        new(zeros(num_velocities(state.mechanism)), MechanismState(state.mechanism))
-    end
-end
-
 # ------------------------------------------------------------------------
 #                          UTILITY FUNCTIONS
 # ------------------------------------------------------------------------
@@ -103,15 +94,11 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
 
         if rem(c.step_ctr, ctrl_steps) == 0 && c.step_ctr != 0
 
-            if t > swap_times[c.traj_num]
-                c.traj_num += 1
-            end
-            mod_time = c.traj_num == 1 ? t : t-swap_times[c.traj_num-1]
-            c.des_vel = get_desv_at_t(mod_time, pars[c.traj_num])
+            c.des_vel = get_desv_at_t(t, pars)
     
-            # ff_torques = dynamics_bias(state, h_wrenches)
+            #
             noisy_poses, noisy_vels = add_sensor_noise(state, c, result)
-            filtered_vels = filter_velocity(state, c)
+            filtered_vels = filter_velocity(state, c) 
 
             set_configuration!(c.f_cache.filtered_state, noisy_poses)
             set_velocity!(c.f_cache.filtered_state, filtered_vels[:])

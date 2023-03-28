@@ -8,6 +8,15 @@ mutable struct NoiseCache
     end
 end
 
+mutable struct FilterCache
+    filtered_vs 
+    filtered_state :: MechanismState
+    
+    function FilterCache(state)
+        new(zeros(num_velocities(state.mechanism)), MechanismState(state.mechanism))
+    end
+end
+
 function add_sensor_noise(state, c, result)
     noisy_poses = similar(configuration(state))
     noisy_vels = similar(velocity(state))

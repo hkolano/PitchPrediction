@@ -211,7 +211,7 @@ end
 Used for the pitch prediction simulations. Plots the actual, desired, measured, and filtered velocities of each joint. 
 The velocities should be input as dictionaries with keys "vs1"-"vs6" for the vehicle and "vs7"+ for the manipulator.
 """
-function plot_des_vs_act_velocities(ts_down, des_ts, paths, des_paths, meas_paths, filt_paths; plot_veh=true, plot_arm=true)
+function plot_des_vs_act_velocities(ts_down, paths, des_paths, meas_paths, filt_paths; plot_veh=true, plot_arm=true)
 
     if plot_veh == true
         l = @layout[grid(3,1) grid(3,1)]
@@ -224,7 +224,6 @@ function plot_des_vs_act_velocities(ts_down, des_ts, paths, des_paths, meas_path
             p = plot(ts_down, [meas_paths[var], filt_paths[var], paths[var]], 
             title=lab,
             legend=false, titlefontsize=12)
-            # plot!(p, des_ts, des_paths[var])
             push!(plot_handles, p)
         end
         display(plot(plot_handles..., 
@@ -241,15 +240,14 @@ function plot_des_vs_act_velocities(ts_down, des_ts, paths, des_paths, meas_path
         for k = 1:4
             var = var_names[k]
             lab = plot_labels[k]
-            p = plot(ts_down, 
-            [meas_paths[var], filt_paths[var], paths[var]], 
+            p = plot(ts_down[1:750], 
+            [meas_paths[var][1:750], filt_paths[var][1:750], paths[var][1:750], des_paths[var][1:750]], 
             title=lab, 
-            label=["Noisy" "Filtered" "Actual"], 
+            label=["Noisy" "Filtered" "Actual" "Desired"], 
             # xticks = [1.2, 1.4, 1.6, 1.8],
             # ylim=(-4.,4.), 
             titlefontsize=12, 
             size=(1000, 800))
-            plot!(p, des_ts, des_paths[var], label="Desired")
             push!(plot_handles, p)
         end
         display(plot(plot_handles..., 
@@ -312,4 +310,54 @@ function plot_des_vs_act_positions(ts_down, des_ts, paths, des_paths, meas_paths
                     plot_title="Joint Positions",
                     size=(1000, 800)))
     end
+end
+
+function prep_data_for_plotting()
+    
+    meas_paths = OrderedDict();
+    filt_paths = OrderedDict();
+
+    return meas_paths, filt_paths
+end
+
+function prep_desired_vels_and_qs_for_plotting()
+    des_paths = OrderedDict();
+
+    des_vs_same_ts = []
+    des_qs_same_ts = []
+    for t in ts_down_no_zero
+        this_des_vs = get_desv_at_t(t, params)  
+        this_des_qs = get_desq_at_t(t, params)
+        des_qs_same_ts = cat(des_qs_same_ts, this_des_qs[5:8]', dims=1)          
+        des_vs_same_ts = cat(des_vs_same_ts, this_des_vs[5:8]', dims=1)
+    end
+
+    for idx = 7:num_dofs
+        des_paths[string("vs",idx)] = des_vs_same_ts[:,idx-6]
+        des_paths[string("qs",idx)] = des_qs_same_ts[:,idx-6]
+    end
+end
+
+function prep_actual_vels_and_qs_for_plotting()
+    paths = OrderedDict();
+
+    qs_down = Array{Float64}(undef, length(ts_down_no_zero), num_dofs)
+    vs_down = zeros(length(ts_down_no_zero), num_dofs)
+
+    ct = 1
+    i = 1
+    while ct <= length(ts_down_no_zero)
+        qs_down[ct, 1:3] = convert_to_rpy(qs[i][1:4])
+        qs_down[ct,4:end] = qs[i][5:end]
+        vs_down[ct,:] = vs[i]
+        ct += 1
+        i += sample_rate
+    end
+
+    for idx = 1:num_dofs
+        paths[string("qs", idx)] = qs_down[:,idx] 
+        paths[string("vs", idx)] = vs_down[:,idx]
+    end
+
+    return paths
 end

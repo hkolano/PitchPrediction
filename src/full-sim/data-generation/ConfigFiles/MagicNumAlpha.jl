@@ -46,15 +46,17 @@ link_drags = Dict("shoulder" => [0.26 0.26 0.3]*rho,
                     "wrist" => [1.8 1.8 0.3]*rho, 
                     "jaw" => [.05, .05, .05]*rho)
 
-# # Add manipulator torque limits
-# torque_lim_dict["base"] = 10.
-# torque_lim_dict["shoulder"] = 10.
-# torque_lim_dict["elbow"] = 10.
-# torque_lim_dict["wrist"] = 0.6
-# torque_lim_dict["jaw"] = 1. 
+# Arm position joint limits
+joint_lim_dict = Dict("base" => [-175*pi/180, 175*pi/180], 
+                    "shoulder" => [0, 200*pi/180], 
+                    "elbow" => [0, 200*pi/180], 
+                    "wrist" => [-165*pi/180, 165*pi/180],
+                    "jaw" => [0., 0.022])
 
-# dtau_lim_dict["base"] = .1
-# dtau_lim_dict["shoulder"] = .1
-# dtau_lim_dict["elbow"] = .1
-# dtau_lim_dict["wrist"] = 0.006
-# dtau_lim_dict["jaw"] = 0.006
+θb = deg2rad(30)
+θc = deg2rad(50)
+vel_lim_dict = Dict("base" => [-θb, θb], 
+                    "shoulder" => [-θb, θb], 
+                    "elbow" => [-θb, θb], 
+                    "wrist" => [-θc, θc],
+                    "jaw" => [-.003, .003])
