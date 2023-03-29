@@ -43,7 +43,7 @@ num_dofs = num_velocities(mech_blue_alpha)
 num_actuated_dofs = num_dofs-2
 #%%
 # ----------------------------------------------------------
-#                      Gather Sim Data
+#                   Start: Gather Sim Data
 # ----------------------------------------------------------
 # Control variables
 num_trajs = 1
@@ -55,16 +55,20 @@ bool_plot_positions = false
 
 # Create (num_trajs) different trajectories and save to csvs 
 # for n in ProgressBar(1:num_trajs)
-include("TrajGenJoints.jl")
-    # Create trajectory 
+
+    # ----------------------------------------------------------
+    #                   Define a Trajectory
+    # ----------------------------------------------------------
     params = quinticTrajParams[]
     swap_times = Vector{Float64}()
     define_multiple_waypoints!(params, swap_times, 2)
     println("Scaled trajectory duration: $(swap_times[end]) seconds")
 
 #%%
-include("PIDCtlr.jl")
-include("Noiser.jl.")
+
+    # ----------------------------------------------------------
+    #                  Setup and Run Simulation
+    # ----------------------------------------------------------
     # Reset the sim to the equilibrium position
     reset_to_equilibrium!(state)
     # Start up the controller
@@ -80,35 +84,21 @@ include("Noiser.jl.")
 
     @show vs[end]'
 #%%
+    # ----------------------------------------------------------
+    #                      Prepare Plots
+    # ----------------------------------------------------------
     # Downsample the time steps to goal_freq
     ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
     ts_down_no_zero = ts_down[2:end]
 
+    include("UVMSPlotting.jl")
+
     # Set up data collection dicts
     paths = prep_actual_vels_and_qs_for_plotting()
     des_paths = prep_desired_vels_and_qs_for_plotting()
+    meas_paths = prep_measured_vels_and_qs_for_plotting()
+    filt_paths = prep_filtered_vels_for_plotting()
     
-    meas_paths, filt_paths = prep_data_for_plotting()
-
-    
-    qs_noisy = Array{Float64}(undef, length(ts_down_no_zero), 10)
-    for i = 1:length(ts_down_no_zero)
-        qs_noisy[i,1:3] = convert_to_rpy(ctlr_cache.n_cache.noisy_qs[1:4, i])
-        qs_noisy[i,4:end] = ctlr_cache.n_cache.noisy_qs[5:end,i]
-    end
-    
-    for idx=1:10 
-        # Positions
-        meas_paths[string("qs", idx)] = qs_noisy[:,idx]
-    end
-    for idx = 1:10
-        # Velocities
-        meas_paths[string("vs", idx)] = [ctlr_cache.n_cache.noisy_vs[idx,Int(i*plot_factor)] for i in 1:length(ts_down_no_zero)]
-        filt_paths[string("vs", idx)] = [ctlr_cache.f_cache.filtered_vs[idx,Int(i*plot_factor)] for i in 1:length(ts_down_no_zero)]
-    end
-
-    include("UVMSPlotting.jl")
-
     if bool_plot_velocities == true
         plot_des_vs_act_velocities(ts_down_no_zero, 
             paths, des_paths, meas_paths, filt_paths, 
@@ -121,10 +111,13 @@ include("Noiser.jl.")
             plot_veh = true, plot_arm=true)
     end
 
-    # if bool_plot_taus == true
-    #     plot_control_taus(ctlr_cache, ts_down)
-    # end 
+    if bool_plot_taus == true
+        plot_control_taus(ctlr_cache, ts_down)
+    end 
 
+    # ----------------------------------------------------------
+    #                  Animate the Trajectory
+    # ----------------------------------------------------------
     # Use stop_step to visualize specific points in the trajectory
     # stop_step = 29*1000
     if show_animation == true
@@ -134,6 +127,9 @@ include("Noiser.jl.")
         println("done.")
     end
 
+    # ----------------------------------------------------------
+    #                 Save Trajectory to CSV
+    # ----------------------------------------------------------
     # only save the trajectory if Joint 1 doesn't exceed the joint velocity limits (which is a proxy for indicating whether it is unstable)
     if save_to_csv == true && maximum(paths["vs7"]) < 0.9
         # Rows:
@@ -142,34 +138,9 @@ include("Noiser.jl.")
         # 21-30: Noisy position data (noisy_qs)
         # 31-40: Noisy velocity data (noisy_vs)
         # 41-44: Desired velocities 
+        include("HelperFuncs.jl")
         num_rows = 44
-        data = Array{Float64}(undef, length(ts_down_no_zero), num_rows)
-        fill!(data, 0.0)
-        labels = Array{String}(undef, num_rows)
-
-        row_n = 1
-        for (key, value) in paths
-            labels[row_n] = key
-            data[:,row_n] = value 
-            row_n = row_n + 1
-        end  
-        for (key, value) in meas_paths
-            # @show key
-            labels[row_n] = "meas_"*key 
-            data[:,row_n] = value 
-            row_n = row_n + 1
-        end
-        for (key, value) in des_paths_same_ts
-            # @show key
-            labels[row_n] = "des_"*key 
-            data[:,row_n] = value
-            row_n = row_n + 1
-        end
-        tab = Tables.table(data)
-        println("Saving trajectory...")
-        CSV.write("data/full-sim-data-022323/states$(n).csv", tab, header=labels)
-        # to save an example trajectory to plot in MATLAB:
-        # CSV.write("data/full-sim-data-022223/example_traj.csv", tab, header=labels)
+        save_traj_to_csv(num_rows)
     else
         println("Not saving trajectory")
     end

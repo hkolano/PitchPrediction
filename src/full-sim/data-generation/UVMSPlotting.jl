@@ -160,8 +160,8 @@ Used for the pitch prediction simulations. Plots the control forces applied at e
 function plot_control_taus(ctlr, ts_down, plot_veh=true, plot_arm=true)
 
     ctrl_tau_dict = OrderedDict();
-    for idx = 1:10
-        joint_taus = [ctlr.taus[idx, tstep] for tstep in 2:size(ctlr.taus,2)]
+    for idx = 1:num_dofs
+        joint_taus = [ctlr.taus[idx, Int(i*plot_factor)] for i in 1:length(ts_down_no_zero)]
         ctrl_tau_dict[idx] = joint_taus
     end
 
@@ -240,12 +240,11 @@ function plot_des_vs_act_velocities(ts_down, paths, des_paths, meas_paths, filt_
         for k = 1:4
             var = var_names[k]
             lab = plot_labels[k]
-            p = plot(ts_down[1:750], 
-            [meas_paths[var][1:750], filt_paths[var][1:750], paths[var][1:750], des_paths[var][1:750]], 
-            title=lab, 
-            label=["Noisy" "Filtered" "Actual" "Desired"], 
-            # xticks = [1.2, 1.4, 1.6, 1.8],
-            # ylim=(-4.,4.), 
+            p = plot(ts_down, [meas_paths[var], filt_paths[var], paths[var], des_paths[var]], 
+                title=lab, 
+                label=["Noisy" "Filtered" "Actual" "Desired"], 
+            # # xticks = [1.2, 1.4, 1.6, 1.8],
+            # # ylim=(-4.,4.), 
             titlefontsize=12, 
             size=(1000, 800))
             push!(plot_handles, p)
@@ -312,14 +311,6 @@ function plot_des_vs_act_positions(ts_down, des_ts, paths, des_paths, meas_paths
     end
 end
 
-function prep_data_for_plotting()
-    
-    meas_paths = OrderedDict();
-    filt_paths = OrderedDict();
-
-    return meas_paths, filt_paths
-end
-
 function prep_desired_vels_and_qs_for_plotting()
     des_paths = OrderedDict();
 
@@ -333,9 +324,12 @@ function prep_desired_vels_and_qs_for_plotting()
     end
 
     for idx = 7:num_dofs
-        des_paths[string("vs",idx)] = des_vs_same_ts[:,idx-6]
         des_paths[string("qs",idx)] = des_qs_same_ts[:,idx-6]
     end
+    for idx = 7:num_dofs
+        des_paths[string("vs",idx)] = des_vs_same_ts[:,idx-6]
+    end
+    return des_paths
 end
 
 function prep_actual_vels_and_qs_for_plotting()
@@ -354,10 +348,42 @@ function prep_actual_vels_and_qs_for_plotting()
         i += sample_rate
     end
 
+    # Keep separate so all qs are saved to dict first 
     for idx = 1:num_dofs
         paths[string("qs", idx)] = qs_down[:,idx] 
+    end
+    for idx = 1:num_dofs
         paths[string("vs", idx)] = vs_down[:,idx]
     end
 
     return paths
+end
+
+function prep_measured_vels_and_qs_for_plotting()
+    meas_paths = OrderedDict()
+
+    qs_noisy = Array{Float64}(undef, length(ts_down_no_zero), num_dofs)
+    for i = 1:length(ts_down_no_zero)
+        qs_noisy[i,1:3] .= convert_to_rpy(ctlr_cache.n_cache.noisy_qs[1:4, i])
+        qs_noisy[i,4:end] .= ctlr_cache.n_cache.noisy_qs[5:end,i]
+    end
+
+    for idx=1:num_dofs
+        meas_paths[string("qs", idx)] = qs_noisy[:,idx]
+    end
+    for idx=1:num_dofs
+        meas_paths[string("vs", idx)] = [ctlr_cache.n_cache.noisy_vs[idx,Int(i*plot_factor)] for i in 1:length(ts_down_no_zero)]
+    end
+    
+    return meas_paths
+end
+
+function prep_filtered_vels_for_plotting()
+    filt_paths = OrderedDict();
+
+    for idx = 1:num_dofs
+        filt_paths[string("vs", idx)] = [ctlr_cache.f_cache.filtered_vs[idx,Int(i*plot_factor)] for i in 1:length(ts_down_no_zero)]
+    end
+
+    return filt_paths
 end
