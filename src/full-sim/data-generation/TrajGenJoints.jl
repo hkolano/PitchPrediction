@@ -29,6 +29,7 @@ extended_pt = jointState([0.01, 1.5, 2.6, 0.01, 0.], zeros(num_trajectory_dofs))
 # ----------------------------------------------------------
 """ 
     gen_rand_feasible_point()
+
 Randomly generates a jointState, checking for joint and velocity limits.
 """
 function gen_rand_feasible_point()
@@ -44,6 +45,7 @@ end
 
 """
     gen_rand_feasible_point_at_rest()
+
 Randomly generates a jointState where the velocity is 0. 
 """
 function gen_rand_feasible_point_at_rest()
@@ -113,6 +115,7 @@ end
 # ----------------------------------------------------------
 """ 
     get_coeffs(pts::Waypoints, T, idx)
+
 Given a set of waypoints and a time scaling, determine the time scaling coefficients
 for a quintic trajectory. 
 """
@@ -258,6 +261,11 @@ function check_lim(vals::Array, lims)
     return is_in_range
 end
 
+"""
+    scale_trajectory(params, poses, vels, max_scale)
+
+Increases the time scaling of the trajectory by a factor between 1 and max_scale.
+"""
 function scale_trajectory(params::quinticTrajParams, poses, vels, max_scale)
     a = Array{Float64}(undef, num_trajectory_dofs, 6)
     scale_factor = rand(1:.01:max_scale)
@@ -270,6 +278,18 @@ function scale_trajectory(params::quinticTrajParams, poses, vels, max_scale)
     return [quinticTrajParams(a, params.wp, T), poses, vels]
 end
 
+"""
+    find_quintic_trajectory(pts, num_its, T_init)
+
+Get the parameters for a quintic trajectory between the two given waypoints. 
+
+...
+# Arguments
+'pts::Waypoints':   Two points in joint space, specified as a Waypoint struct
+'num_its=50':   Number of points in the output poses and vels vectors 
+'T_init=1':   Minimum trajectory duration
+...
+"""
 function find_quintic_trajectory(pts::Waypoints; num_its=num_its, T_init=1.0)
     T = T_init
     poses = Array{Float64}(undef, num_its, num_trajectory_dofs)
@@ -313,6 +333,18 @@ function find_quintic_trajectory(pts::Waypoints; num_its=num_its, T_init=1.0)
 
 end
 
+"""
+    define_multiple_waypoints!(params, swap_times, max_trajs)
+
+Inputs:
+    params: an empty array of type quinticTrajParams[]
+    swap_times: an empty vector of type Float64 
+    max_trajs: the maximum number of waypoints to plan trajectories to 
+
+Gets the parameters to execute some number of quintic trajectories to random 
+zero-velocity waypoints in the joint space. Stores this information in params 
+and swap_times.
+"""
 function define_multiple_waypoints!(params, swap_times, max_trajs)
     wp_list = Waypoints[]
     traj_list = Any[]
