@@ -59,10 +59,15 @@ bool_plot_positions = false
     # ----------------------------------------------------------
     #                   Define a Trajectory
     # ----------------------------------------------------------
+    include("TrajGenJoints.jl")
     params = quinticTrajParams[]
     swap_times = Vector{Float64}()
     define_multiple_waypoints!(params, swap_times, 2)
     println("Scaled trajectory duration: $(swap_times[end]) seconds")
+
+    # t_test_list = 0:.1:swap_times[end]
+    # des_paths = prep_desired_vels_and_qs_for_plotting(t_test_list)
+    # plot(t_test_list, des_paths["vs10"])
 
 #%%
 
@@ -95,7 +100,7 @@ bool_plot_positions = false
 
     # Set up data collection dicts
     paths = prep_actual_vels_and_qs_for_plotting()
-    des_paths = prep_desired_vels_and_qs_for_plotting()
+    des_paths = prep_desired_vels_and_qs_for_plotting(ts_down_no_zero)
     meas_paths = prep_measured_vels_and_qs_for_plotting()
     filt_paths = prep_filtered_vels_for_plotting()
     

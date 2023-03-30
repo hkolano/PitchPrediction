@@ -311,12 +311,12 @@ function plot_des_vs_act_positions(ts_down, des_ts, paths, des_paths, meas_paths
     end
 end
 
-function prep_desired_vels_and_qs_for_plotting()
+function prep_desired_vels_and_qs_for_plotting(t_list)
     des_paths = OrderedDict();
 
     des_vs_same_ts = []
     des_qs_same_ts = []
-    for t in ts_down_no_zero
+    for t in t_list
         this_des_vs = get_desv_at_t(t, params)  
         this_des_qs = get_desq_at_t(t, params)
         des_qs_same_ts = cat(des_qs_same_ts, this_des_qs[5:8]', dims=1)          

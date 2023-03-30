@@ -143,6 +143,12 @@ function acc_scale_at_t(a, t)
     dds = 2a[3] + 6a[4]*t + 12a[5]*t^2 + 20a[6]*t^3
 end
 
+"""
+    get_path!(poses, vels, θ1, θ2, T, a, num_its)
+
+Gets the poses and velocities of the manipulator joints along a potential desired trajectory. 
+Used to check whether the proposed duration exceeds the position or velocity limits of the joints. 
+"""
 function get_path!(poses, vels, θ1, θ2, T, a, num_its=num_its)
     dt = T/num_its
 
@@ -161,6 +167,9 @@ end
     
 Given a set of trajectory parameters p and a time t, determine what the desired 
 velocity is. 
+
+If the parameters is an array of parameters, this handles swiching between parameters
+at the input time. 
 """
 function get_desv_at_t(t, p::quinticTrajParams)
     # println("Got request for desv. Params $(p))")
@@ -186,10 +195,13 @@ function get_desv_at_t(t, p_array::Array{quinticTrajParams})
     end
     t_mod = traj_num ==1 ? t : t-swap_times[traj_num-1]
     p = p_array[traj_num]
+    
+    # @show t 
+    # @show t_mod 
 
     if t_mod <= p.T # If the current time is less than the trajectory duration
         for i = 1:num_trajectory_dofs # des vel for last joint is always 0
-            ds = vel_scale_at_t(p.a[i,:], t)
+            ds = vel_scale_at_t(p.a[i,:], t_mod)
             des_vel[i+4] = ds*(p.wp.goal.θs[i]-p.wp.start.θs[i])
         end
     end
@@ -197,6 +209,15 @@ function get_desv_at_t(t, p_array::Array{quinticTrajParams})
     return des_vel
 end
 
+"""
+    get_desq_at_t(t, p)
+    
+Given a set of trajectory parameters p and a time t, determine what the desired 
+joint positions are. 
+
+If the input for p is an array of parameters, this handles swiching between parameters
+at the input time. 
+"""
 function get_desq_at_t(t, p::quinticTrajParams)
     des_qs = zeros(num_velocities(mech_blue_alpha)-2)
     if t < p.T 
@@ -218,9 +239,10 @@ function get_desq_at_t(t, p_array::Array{quinticTrajParams})
     end
     t_mod = traj_num ==1 ? t : t-swap_times[traj_num-1]
     p = p_array[traj_num]
-    if t < p.T 
+
+    if t_mod < p.T 
         for i = 1:num_trajectory_dofs
-            s = pos_scale_at_t(p.a[i,:], t)
+            s = pos_scale_at_t(p.a[i,:], t_mod)
             des_qs[i+4] = p.wp.start.θs[i] + s*(p.wp.goal.θs[i]-p.wp.start.θs[i])
         end
     end
@@ -261,6 +283,8 @@ function find_quintic_trajectory(pts::Waypoints; num_its=num_its, T_init=1.0)
             dof_name = dof_names[i+6]
             # println("Joint $(i)")
             # Get trajectory 
+            # @show i
+            # @show get_coeffs(pts, T, i)
             a[i,:] = get_coeffs(pts, T, i)
             (poses[:,i], vels[:,i]) = get_path!(poses[:,i], vels[:,i], pts.start.θs[i], pts.goal.θs[i], T, a[i,:])
 
@@ -318,6 +342,8 @@ function define_multiple_waypoints!(params, swap_times, max_trajs)
             push!(traj_list, new_traj)
         end
     end
+
+    # @show 
 
     # # Scale that trajectory to 1x-2x "top speed"
     if do_scale_traj == true
