@@ -176,12 +176,12 @@ at the input time.
 """
 function get_desv_at_t(t, p::quinticTrajParams)
     # println("Got request for desv. Params $(p))")
-    des_vel = zeros(num_velocities(mech_blue_alpha)-2)
+    des_vel = zeros(num_velocities(mech_blue_alpha)-6)
     # des_vel[1] = 0.05
     if t <= p.T # If the current time is less than the trajectory duration
         for i = 1:num_trajectory_dofs # des vel for last joint is always 0
             ds = vel_scale_at_t(p.a[i,:], t)
-            des_vel[i+4] = ds*(p.wp.goal.θs[i]-p.wp.start.θs[i])
+            des_vel[i] = ds*(p.wp.goal.θs[i]-p.wp.start.θs[i])
         end
     end
     # fill!(des_vel, 0)
@@ -189,7 +189,7 @@ function get_desv_at_t(t, p::quinticTrajParams)
 end
 
 function get_desv_at_t(t, p_array::Array{quinticTrajParams})
-    des_vel = zeros(num_velocities(mech_blue_alpha)-2)
+    des_vel = zeros(num_velocities(mech_blue_alpha)-6)
     traj_num = 1
     for i in 1:length(params)
         if t > swap_times[i]
@@ -205,7 +205,7 @@ function get_desv_at_t(t, p_array::Array{quinticTrajParams})
     if t_mod <= p.T # If the current time is less than the trajectory duration
         for i = 1:num_trajectory_dofs # des vel for last joint is always 0
             ds = vel_scale_at_t(p.a[i,:], t_mod)
-            des_vel[i+4] = ds*(p.wp.goal.θs[i]-p.wp.start.θs[i])
+            des_vel[i] = ds*(p.wp.goal.θs[i]-p.wp.start.θs[i])
         end
     end
     # fill!(des_vel, 0)

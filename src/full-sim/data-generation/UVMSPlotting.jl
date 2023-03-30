@@ -319,8 +319,8 @@ function prep_desired_vels_and_qs_for_plotting(t_list)
     for t in t_list
         this_des_vs = get_desv_at_t(t, params)  
         this_des_qs = get_desq_at_t(t, params)
-        des_qs_same_ts = cat(des_qs_same_ts, this_des_qs[5:8]', dims=1)          
-        des_vs_same_ts = cat(des_vs_same_ts, this_des_vs[5:8]', dims=1)
+        des_qs_same_ts = cat(des_qs_same_ts, this_des_qs', dims=1)          
+        des_vs_same_ts = cat(des_vs_same_ts, this_des_vs', dims=1)
     end
 
     for idx = 7:num_dofs

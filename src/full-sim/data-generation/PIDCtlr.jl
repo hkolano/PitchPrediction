@@ -6,24 +6,34 @@ using RigidBodyDynamics, Distributions, Random
 mutable struct CtlrCache
     n_cache 
     f_cache
-    vel_error_cache::Array{Float64}
-    vel_int_error_cache::Array{Float64}
+    vel_error_cache::Dict{String, Float64}
+    vel_int_error_cache::Dict{String, Float64}
     step_ctr::Int
-    des_vel::Array{Float64}
+    des_vel::Dict{String, Float64}
     taus
     last_v̇
-    traj_num
     
     function CtlrCache(state, n_cache, f_cache)
         mechanism = state.mechanism
         num_dofs = num_velocities(mechanism)
         num_actuated_dofs = num_dofs-2
 
+        vel_error_cache_dict = Dict{String, Float64}()
+        vel_int_error_cache_dict = Dict{String, Float64}()
+        des_vel_dict = Dict{String, Float64}()
+        for dof in dof_names
+            vel_error_cache_dict[dof] = 0.0
+            vel_int_error_cache_dict[dof] = 0.0
+            des_vel_dict[dof] = 0.0
+        end
+
+
         new(n_cache, f_cache, 
-            zeros(num_actuated_dofs), zeros(num_actuated_dofs), 0, 
-            zeros(num_actuated_dofs), Array{Float64}(undef, num_dofs, 1), 
-            zeros(num_dofs), 1) 
+            vel_error_cache_dict, vel_int_error_cache_dict, 0, 
+            des_vel_dict, Array{Float64}(undef, num_dofs, 1), 
+            zeros(num_dofs)) 
     end
+
 end
 
 # ------------------------------------------------------------------------
@@ -94,8 +104,10 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
 
         if rem(c.step_ctr, ctrl_steps) == 0 && c.step_ctr != 0
 
-            c.des_vel = get_desv_at_t(t, pars)
-    
+            manip_des_vels = get_desv_at_t(t, pars)
+            for (idx, dof_name) in enumerate(dof_names[7:end])
+                c.des_vel[dof_name] = manip_des_vels[idx]
+            end
             #
             noisy_poses, noisy_vels = add_sensor_noise(state, c, result)
             filtered_vels = filter_velocity(state, c) 
@@ -115,7 +127,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             end
             
             # Get torques for the arm joints
-            for idx in 7:length(dof_names) # Joint index (1:vehicle, 2:baseJoint, etc)
+            for idx in 7:lastindex(dof_names) # Joint index (1:vehicle, 2:baseJoint, etc)
                 joint_name = dof_names[idx]
                 jt_idx = idx-5 # velocity index (7 to 10)
                 ctlr_tau = PID_ctlr(torques[idx][1], t, filtered_vels[idx], idx, c, ff_torques) 
@@ -151,15 +163,15 @@ function PID_ctlr(torque, t, vel_act, idx, c, ff)
     actuated_idx = idx-2
     dof_name = dof_names[idx]
 
-    d_vel = c.des_vel[actuated_idx]
+    d_vel = c.des_vel[dof_name]
     vel_error = vel_act[1] - d_vel
-    d_vel_error = (vel_error - c.vel_error_cache[actuated_idx])/dt
+    d_vel_error = (vel_error - c.vel_error_cache[dof_name])/dt
     # println("D_Velocity error on idx$(j_idx): $(d_vel_error)")
-    c.vel_int_error_cache[actuated_idx] += vel_error*dt
+    c.vel_int_error_cache[dof_name] += vel_error*dt
 
     p_term = -Kp_dict[dof_name]*vel_error
     d_term = - Kd_dict[dof_name]*d_vel_error
-    i_term = - Ki_dict[dof_name]*c.vel_int_error_cache[actuated_idx]
+    i_term = - Ki_dict[dof_name]*c.vel_int_error_cache[dof_name]
     d_tau = p_term + d_term + i_term
     # println("Ideal tau: $(d_tau)")
 
@@ -189,7 +201,7 @@ function PID_ctlr(torque, t, vel_act, idx, c, ff)
     #     @show new_tau
     # end
     # # store velocity error term
-    c.vel_error_cache[actuated_idx]=vel_error
+    c.vel_error_cache[dof_name]=vel_error
     # c.vel_int_error = c.vel_int_error + vel_error
 
     return new_tau
