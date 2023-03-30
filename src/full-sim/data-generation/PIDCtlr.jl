@@ -115,25 +115,18 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             set_configuration!(c.f_cache.filtered_state, noisy_poses)
             set_velocity!(c.f_cache.filtered_state, filtered_vels[:])
             ff_torques = dynamics_bias(c.f_cache.filtered_state, h_wrenches)
+            ff_torques[1:6] .= zeros(6)
 
-            # Get forces for vehicle (yaw, surge, sway, heave)
-            for dir_idx = 3:6
-                # println("PID ctlr on vehicle")
-                actual_vel = velocity(state, joint_dict["vehicle"])
-                ctlr_tau = PID_ctlr(torques[dir_idx][1], t, filtered_vels[dir_idx], dir_idx, c, ff_torques)
-                # ctlr_tau = torques[dir_idx]
-                c_taus[dir_idx] = ctlr_tau 
+            for dir_idx = 3:num_dofs
+                dof = dof_names[dir_idx]
+
+                meas_vel = filtered_vels[dir_idx]
+                ctlr_tau = joint_controller(torques[dir_idx][1], filtered_vels[dir_idx], dof, c, ff_torques[dir_idx])
+
+                c_taus[dir_idx] = ctlr_tau
                 torques[dir_idx] = ctlr_tau
             end
-            
-            # Get torques for the arm joints
-            for idx in 7:lastindex(dof_names) # Joint index (1:vehicle, 2:baseJoint, etc)
-                joint_name = dof_names[idx]
-                jt_idx = idx-5 # velocity index (7 to 10)
-                ctlr_tau = PID_ctlr(torques[idx][1], t, filtered_vels[idx], idx, c, ff_torques) 
-                torques[velocity_range(state, joint_dict[joint_name])] .= [ctlr_tau] 
-                c_taus[idx] = ctlr_tau 
-            end
+
             #TODO switch to push! ?
             c.taus = cat(c.taus, c_taus, dims=2)
             # push!(c.taus, copy(c_taus))
@@ -158,52 +151,33 @@ Imposes a PID controller on one joint.
 
 Returns a controller torque value, bounded by the torque limits and some dτ/dt value. 
 """
-function PID_ctlr(torque, t, vel_act, idx, c, ff)
+function joint_controller(torque, vel_act, dof_name, c, ff)
     dt = 1/ctrl_freq 
-    actuated_idx = idx-2
-    dof_name = dof_names[idx]
 
-    d_vel = c.des_vel[dof_name]
-    vel_error = vel_act[1] - d_vel
-    d_vel_error = (vel_error - c.vel_error_cache[dof_name])/dt
-    # println("D_Velocity error on idx$(j_idx): $(d_vel_error)")
-    c.vel_int_error_cache[dof_name] += vel_error*dt
-
+    # Calculate proportional term
+    vel_error = vel_act[1] - c.des_vel[dof_name]
     p_term = -Kp_dict[dof_name]*vel_error
+
+    # Calculate derivative term 
+    d_vel_error = (vel_error - c.vel_error_cache[dof_name])/dt
     d_term = - Kd_dict[dof_name]*d_vel_error
+    c.vel_error_cache[dof_name]=vel_error
+
+    # Calculate integral term
+    c.vel_int_error_cache[dof_name] += vel_error*dt
     i_term = - Ki_dict[dof_name]*c.vel_int_error_cache[dof_name]
+
     d_tau = p_term + d_term + i_term
-    # println("Ideal tau: $(d_tau)")
+    # println("Feedback tau: $(d_tau)")
 
     # Can only change torque a small amount per time step 
-    lim = dtau_lim_dict[dof_name]
-
-
-    tau_diff_prev_to_inv_dyn = .25ff[idx] - .25torque
-    d_tau_w_ff = limit_d_tau(tau_diff_prev_to_inv_dyn+d_tau, lim)
-
-    # Torque limits
-    if actuated_idx >= 5
-        new_tau = torque .+ d_tau_w_ff
-        # new_tau = torque .+ d_tau
-    else
-        d_tau = limit_d_tau(d_tau, lim)
-        new_tau = torque .+ d_tau
-    end 
+    tau_diff_prev_to_inv_dyn = .25ff - .25torque
+    d_tau_w_ff = limit_d_tau(tau_diff_prev_to_inv_dyn+d_tau, dtau_lim_dict[dof_name])
     
+    # impose maximum torque limits
+    new_tau = torque .+ d_tau_w_ff
     new_tau = impose_torque_limit(new_tau, torque_lim_dict[dof_name])
-
-    # if rem(c.step_ctr, 100) == 0 && actuated_idx == 7
-    #     @show new_tau
-    # end
-    # if  t > 12 && rem(c.step_ctr, 100) == 0
-    #     @show actuated_idx
-    #     @show new_tau
-    # end
-    # # store velocity error term
-    c.vel_error_cache[dof_name]=vel_error
-    # c.vel_int_error = c.vel_int_error + vel_error
-
+ 
     return new_tau
 end
 

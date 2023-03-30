@@ -74,6 +74,7 @@ bool_plot_positions = false
     # ----------------------------------------------------------
     #                  Setup and Run Simulation
     # ----------------------------------------------------------
+    include("PIDCtlr.jl")
     # Reset the sim to the equilibrium position
     reset_to_equilibrium!(state)
     # Start up the controller
@@ -83,8 +84,8 @@ bool_plot_positions = false
 
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
-    ts, qs, vs = simulate_with_ext_forces(state, swap_times[end], params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    # ts, qs, vs = simulate_with_ext_forces(state, 20, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    # ts, qs, vs = simulate_with_ext_forces(state, swap_times[end], params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, 5, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
     @show vs[end]'
