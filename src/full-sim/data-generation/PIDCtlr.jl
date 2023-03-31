@@ -37,24 +37,6 @@ mutable struct CtlrCache
 
 end
 
-mutable struct NoiseCache
-    noisy_qs 
-    noisy_vs
-    rand_walks
-
-    function NoiseCache(state)
-        new(configuration(state), velocity(state), zeros(6))
-    end
-end
-
-mutable struct FilterCache
-    filtered_vs 
-    filtered_state :: MechanismState
-    
-    function FilterCache(mechanism)
-        new(zeros(num_velocities(mechanism)), MechanismState(mechanism))
-    end
-end
 # ------------------------------------------------------------------------
 #                          UTILITY FUNCTIONS
 # ------------------------------------------------------------------------
