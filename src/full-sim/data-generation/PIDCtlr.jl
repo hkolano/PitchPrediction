@@ -1,5 +1,6 @@
 using RigidBodyDynamics, Distributions, Random
 
+include("CtlrParFiles/IrosPitchPredPars.jl")
 # ------------------------------------------------------------------------
 #                              SETUP 
 # ------------------------------------------------------------------------
@@ -77,7 +78,6 @@ Only happens every 4 steps because integration is done with Runge-Kutta.
 # function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c)
 function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c, result, h_wrenches)
     # If it's the first time called in the Runge-Kutta, update the control torque
-    # println("Made it inside the function! Ctr = $(time_step_ctr)")
     if rem(c.step_ctr, 4) == 0
 
         # Set up empty vector for control torques

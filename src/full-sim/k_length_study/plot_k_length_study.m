@@ -31,7 +31,7 @@ stretch_dots = plot(lookahead_times,stretch_forecast_avgs');
 auto_dots = plot(auto_times, auto_forecast_errors);
 
 my_xlab = xlabel('Prediction Length (s)');
-my_ylab = ylabel('RMSE');
+my_ylab = ylabel('Validation RMSE');
 xlim([0.25, 4.5])
 ylim([-0.0, .25])
 
@@ -86,5 +86,5 @@ set(gca, ...
   'LineWidth'   , 1         );
 
 set(gcf, ...
-'Position', [100 100 600 250]);
+'Position', [100 100 700 250]);
 leg = legend("Pitch-Only", "Autoregressive", 'Location', 'northwest');
