@@ -27,8 +27,6 @@ include("ConfigFiles/ConstMagicNums.jl")
 include("ConfigFiles/MagicNumBlueROV.jl")
 include("ConfigFiles/MagicNumAlpha.jl")
 
-include("Tasks.jl")
-
 urdf_file = joinpath("urdf", "blue_rov_revjaw.urdf")
 
 #%%
@@ -36,7 +34,9 @@ urdf_file = joinpath("urdf", "blue_rov_revjaw.urdf")
 #                 One-Time Mechanism Setup
 # ----------------------------------------------------------
 mech_blue_alpha, mvis, joint_dict, body_dict = mechanism_reference_setup(urdf_file)
+
 include("TrajGenWorld.jl")
+include("Tasks.jl")
 
 cob_frame_dict, com_frame_dict = setup_frames(body_dict, body_names, cob_vec_dict, com_vec_dict)
 buoyancy_force_dict, gravity_force_dict = setup_buoyancy_and_gravity(buoyancy_mag_dict, grav_mag_dict)
