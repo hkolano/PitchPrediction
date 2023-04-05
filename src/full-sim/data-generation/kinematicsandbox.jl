@@ -14,7 +14,7 @@ function jacobian_transpose_ik!(state::MechanismState,
     set_configuration!(state, q)
 end
 
-function rotational_velocity_map(θr, θp, θy)
+function rotational_velocity_map(α, β, γ)
     # Tθ = [  0    cos(θy)      sin(θp)*sin(θy);
     #         1    0           cos(θp);
     #         0    sin(θy)      -sin(θp)*cos(θy)]
@@ -22,9 +22,9 @@ function rotational_velocity_map(θr, θp, θy)
     #     cos(θp)             0           1;
     #     sin(θp)*sin(θy)     cos(θy)     0]
     #TODO figure out how to make this right
-    Tθ = [  1       0           cos(θp);
-            0       cos(θy)     sin(θy)*sin(θp);
-            0       -sin(θy)    cos(θy)*sin(θp)]
+    Tθ = [  1       0           sin(β);
+            0       cos(α)      -sin(α)*cos(β);
+            0       sin(α)      cos(α)*cos(β)]
     TA = [Tθ zeros(3,3) 
     zeros(3,3) I]
 end
@@ -88,6 +88,7 @@ end
     println(translation(current_pose))
 
     og_ee_ori = RotMatrix(rotation(current_pose))
+    @show og_ee_ori
     og_ee_ori_eul = RotXYZ(og_ee_ori)
     println(og_ee_ori_eul.theta1, "  ", og_ee_ori_eul.theta2, "  ", og_ee_ori_eul.theta3)
     
@@ -106,7 +107,8 @@ end
         # println("Desired zeta:")
         # println(ζ)
         # @show ζ[1:3]
-        @show ζ[4:6]
+        # @show ζ[4:6]
+
 
         des_veh_twist_body = RigidBodyDynamics.Twist(body_frame, root_frame(mechanism), body_frame, SVector{3}(ζ[1:3]), SVector{3}(ζ[4:6])) 
         des_veh_twist_space = transform(des_veh_twist_body, transform_to_root(new_state, body_dict["vehicle"]))
@@ -116,17 +118,16 @@ end
         # Ω = (skew(ζ[1:3]...) - skew(prev_ωb...))/2
         # new_rot_mat = prev_rot*(I+(Δt/2)*Ω)*inv(I-(Δt/2)*Ω) # MP-R method from https://repozitorij.uni-lj.si/Dokument.php?id=85693&dn=
         new_R = prev_rot*exp(skew(ζ[1:3]...)*Δt)
+        # Ṙ = Rotations.kinematics(prev_rot, ζ[1:3])
+        # @show Ṙ
+        # @show Ṙ*Δt*Rotations.params(QuatRotation(prev_rot))
         new_rot = Rotations.RotMatrix(SMatrix{3,3}(new_R))
+        # @show new_rot
         new_rot = QuatRotation(new_rot)
-        # cur_ori_rpy = RotXYZ(QuatRotation(prev_state_qs[1:4]))
-        # next_ori_r = cur_ori_rpy.theta1 + Δt*ζ[1]
-        # next_ori_p = cur_ori_rpy.theta2 + Δt*ζ[2]
-        # next_ori_y = cur_ori_rpy.theta3 + Δt*ζ[3]
-        # new_rot = QuatRotation(RotXYZ(next_ori_r, next_ori_p, next_ori_y))
-        new_state_qs[1:4] = [new_rot.w, new_rot.x, new_rot.y, new_rot.z]
+        new_state_qs[1:4] .= Rotations.params(new_rot)
 
         # # Integrate velocities 
-        @show prev_rot*linear(des_veh_twist_body)
+        # @show prev_rot*linear(des_veh_twist_body)
         new_state_qs[5:7] = prev_state_qs[5:7]+Δt*prev_rot*linear(des_veh_twist_body)
         # new_state_qs[5:7] = prev_state_qs[5:7]+Δt*ζ[4:6]
 
@@ -152,6 +153,8 @@ end
     println("Orientation Change:")
     final_ee_ori = RotMatrix(rotation(final_pose))
     final_ee_ori_eul = RotXYZ(final_ee_ori)
+    @show og_ee_ori_eul
+    @show final_ee_ori_eul
     ori_diff = [final_ee_ori_eul.theta1 - og_ee_ori_eul.theta1, final_ee_ori_eul.theta2 - og_ee_ori_eul.theta2, final_ee_ori_eul.theta3 - og_ee_ori_eul.theta3]
     println(ori_diff)
     # println(convert_to_rpy(new_state_qs[1:4]) - og_rpy)
