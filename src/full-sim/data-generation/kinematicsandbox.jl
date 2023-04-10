@@ -1,19 +1,3 @@
-function jacobian_transpose_ik!(state::MechanismState,
-                                traj::trajParams,
-                                c::CtlrCache,
-                                t,
-                                α=0.001)
-    mechanism = state.mechanism
-    world = root_frame(mechanism)
-
-    q = copy(configuration(state))
-
-    ζ = get_zeta(traj, t, state, c)
-    Δq = α*ζ
-    q .=configuration(state) .+ Δq 
-    set_configuration!(state, q)
-end
-
 function rotational_velocity_map(α, β, γ)
     Tθ = [  1       0           sin(β);
             0       cos(α)      -sin(α)*cos(β);
@@ -24,8 +8,7 @@ end
 
 # try https://www.youtube.com/watch?v=Z8nwjouP58o
 
-
-function simplest_ik_transpose(this_state, des_σdot)
+function funky_ik_transpose(this_state, des_σdot)
     # Get geometric Jacobian
     J = Array(calculate_full_ee_jacobian(this_state))
     # Get current pose
@@ -45,40 +28,18 @@ function simplest_ik_transpose(this_state, des_σdot)
     return ζ
 end
 
-function point_ik_transpose(state, des_σdot)
-    point = Point3D(default_frame(jaw_body), 0., 0., 0.)
-    Jp = point_jacobian(state, p_arm, transform(state, point, root_frame(mechanism)))
-    ζ = get_mp_pinv(Array(Jp))*des_σdot[4:6]
-    # println(ζ[11])
+
+function simplest_ik_transpose(this_state, des_σdot)
+    # Get geometric Jacobian
+    J = Array(calculate_full_ee_jacobian(this_state))
+    ζ = get_mp_pinv(J)*des_σdot
+    return ζ
 end
 
 function skew(x1, x2, x3)
     output = [0 -x3 x2;
             x3 0 -x1;
             -x2 x1 0]
-end
-
-function calc_jacobian_from_scratch(state)
-    # ---- Gather variables ----
-    # Consider 'arm base' and 'vehicle frame' are coincident
-    # Rotation of vehicle wrt world
-    R_v_I_quat = configuration(state, joint_dict["vehicle"])[1:4]
-    R_v_I_mat = QuatRotation(R_v_I_quat)
-    # vector connecting the origin of the vehicle frame and the origin of the arm base frame, expressed in the vehicle frame
-    # r_v0_v = translation(RigidBodyDynamics.frame_definitions(body_dict["vehicle"])[5])
-    r_v0_v = [0., 0., 0.]
-    R_0_I = R_v_I_mat
-    # end effector position in the vehicle frame 
-    η_ee_v = translation(relative_transform(state, default_frame(body_dict["jaw"]), default_frame(body_dict["vehicle"])))
-    # arm jacobian 
-    path_arm_only = RigidBodyDynamics.path(state.mechanism, body_dict["vehicle"], body_dict["jaw"])
-    J_arm_full = geometric_jacobian(state, path_arm_only)
-    J_pos_I = R_0_I*Array(J_arm_full)[4:6,7:end]
-    J_ori_I = R_0_I*Array(J_arm_full)[1:3,7:end]
-
-    J_pos_full = hcat(skew(R_v_I_mat*η_ee_v...)*R_v_I_mat, R_v_I_mat, J_pos_I)
-    J_ori_full = hcat(R_v_I_mat, zeros(3,3), J_ori_I)
-    J = vcat(J_ori_full, J_pos_full)
 end
 
 function compensate_for_rotational_offset(this_state, des_σdot)
@@ -93,7 +54,7 @@ end
 # function simple_ik_iterator(state)
     # des_σdot = [1., 0., 0., 0., 0., 0.]
     # des_σdot = [0., 1., 0, 0., 0., 0.]
-    des_σdot = [0, 0, 1, 0, 0, .1]
+    des_σdot = [1, 0, 0, 0, 0, .1]
     simTime = 1 #2*pi
     viewRate=0.5
     mechanism = state.mechanism
