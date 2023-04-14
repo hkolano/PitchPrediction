@@ -54,7 +54,7 @@ end
 # function simple_ik_iterator(state)
     # des_σdot = [1., 0., 0., 0., 0., 0.]
     # des_σdot = [0., 1., 0, 0., 0., 0.]
-    des_σdot = [1, 0, 0, 0, 0, .1]
+    des_σdot = [0, 0, 1, 0, 0, .2]
     simTime = 1 #2*pi
     viewRate=0.5
     mechanism = state.mechanism

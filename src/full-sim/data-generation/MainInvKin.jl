@@ -27,7 +27,8 @@ include("ConfigFiles/ConstMagicNums.jl")
 include("ConfigFiles/MagicNumBlueROV.jl")
 include("ConfigFiles/MagicNumAlpha.jl")
 
-urdf_file = joinpath("urdf", "blue_rov_revjaw.urdf")
+# urdf_file = joinpath("urdf", "blue_rov_revjaw.urdf")
+urdf_file = joinpath("urdf", "blue_rov_revjaw_zephyrus.urdf")
 
 #%%
 # ----------------------------------------------------------
