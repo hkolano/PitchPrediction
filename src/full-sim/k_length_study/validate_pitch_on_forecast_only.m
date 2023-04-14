@@ -10,13 +10,15 @@ outputs:
 RMSE of the pitch over the k step forecast
 %}
 
-function pitch_error = validate_pitch_on_forecast_only(net, X_test, ns, k, pitch_idx)
+function pitch_error = validate_pitch_on_forecast_only(net, X_test, ns, k, input_idxs, pitch_idx)
     error = 0;
     for i = 1:numel(X_test)
+        
         % generate prediction
-        pred = full_forecast_norecur(net, X_test{i}, ns(i), k);
+        pred = full_forecast_norecur(net, X_test{i}(input_idxs,:), ns(i), k);
         pred_length = size(pred, 2);
-        forecast = pred(pitch_idx,end-k+1:end);
+        % TODO: If the second value is not pitch, change the 2 below
+        forecast = pred(2, end-k+1:end);
 
         % recover ground truth for the forecast
         g_truth_forecast = X_test{i}(pitch_idx,pred_length-k+2:pred_length+1);
