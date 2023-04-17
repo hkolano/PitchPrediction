@@ -29,10 +29,19 @@ function funky_ik_transpose(this_state, des_σdot)
 end
 
 
-function simplest_ik_transpose(this_state, des_σdot)
+function get_des_movement_jacobian(this_state, des_σdot)
     # Get geometric Jacobian
     J = Array(calculate_full_ee_jacobian(this_state))
-    ζ = get_mp_pinv(J)*des_σdot
+
+    r_ee = translation(inv(relative_transform(this_state, root_frame(this_state.mechanism), default_frame(body_dict["jaw"]))))
+    J_mod = inv([I zeros(3,3); skew(r_ee...) I])*J
+    return J_mod
+end
+
+function compose_jacobians(this_state, des_σdot)
+    J_movement = get_des_movement_jacobian(this_state, des_σdot)
+
+    ζ = get_mp_pinv(J_movement)*des_σdot
     return ζ
 end
 
@@ -44,7 +53,7 @@ end
 
 function compensate_for_rotational_offset(this_state, des_σdot)
     this_pose = inv(relative_transform(this_state, root_frame(state.mechanism), default_frame(body_dict["jaw"])))
-    @show translation(this_pose)
+    # @show translation(this_pose)
     new_des_lin = cross(translation(this_pose),  des_σdot[1:3])
     new_des_lin = new_des_lin + des_σdot[4:6]
     return [des_σdot[1:3]; new_des_lin]
@@ -54,7 +63,7 @@ end
 # function simple_ik_iterator(state)
     # des_σdot = [1., 0., 0., 0., 0., 0.]
     # des_σdot = [0., 1., 0, 0., 0., 0.]
-    des_σdot = [0, 0, 1, 0, 0, .2]
+    des_σdot = [0, 1, 0, 0, 0, .5]
     simTime = 1 #2*pi
     viewRate=0.5
     mechanism = state.mechanism
@@ -92,10 +101,11 @@ end
         println(convert_to_rpy(new_state.q[1:4]))
         println(new_state.q[5:end])
 
-        new_des_σdot = compensate_for_rotational_offset(new_state, des_σdot)
+        # new_des_σdot = compensate_for_rotational_offset(new_state, des_σdot)
 
         # Do inverse kinematics
-        ζ = simplest_ik_transpose(new_state, new_des_σdot)
+        # ζ = simplest_ik_transpose(new_state, new_des_σdot)
+        ζ = simplest_ik_transpose(new_state, des_σdot)
         # ζ = point_ik_transpose(new_state, des_σdot)
         # println("Desired zeta:")
         # println(ζ)
