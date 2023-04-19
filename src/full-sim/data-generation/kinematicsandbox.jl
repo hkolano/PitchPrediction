@@ -1,3 +1,8 @@
+"""
+    rotational_velocity_map(α, β, γ)
+
+Deprecated. Used to find TΘ used to transform between geometric and analytic jacobians. 
+"""
 function rotational_velocity_map(α, β, γ)
     Tθ = [  1       0           sin(β);
             0       cos(α)      -sin(α)*cos(β);
@@ -6,8 +11,15 @@ function rotational_velocity_map(α, β, γ)
     zeros(3,3) Tθ]
 end
 
-# try https://www.youtube.com/watch?v=Z8nwjouP58o
 
+"""
+    funky_ik_transpose(this_state, des_σdot)
+
+Deprecated. (hypothetically) Transforms the geometric Jacobian into an analytic Jacobian. 
+Not confident this ever worked. 
+
+# try https://www.youtube.com/watch?v=Z8nwjouP58o
+"""
 function funky_ik_transpose(this_state, des_σdot)
     # Get geometric Jacobian
     J = Array(calculate_full_ee_jacobian(this_state))
@@ -28,8 +40,32 @@ function funky_ik_transpose(this_state, des_σdot)
     return ζ
 end
 
+"""
+    compensate_for_rotational_offset(this_state, des_σdot)
 
-function get_des_movement_jacobian(this_state, des_σdot)
+Deprecated. Multiplies desired velocity vector by r_ee x ω to change the center of rotation 
+from the world frame to the end effector frame. 
+"""
+function compensate_for_rotational_offset(this_state, des_σdot)
+    this_pose = inv(relative_transform(this_state, root_frame(state.mechanism), default_frame(body_dict["jaw"])))
+    # @show translation(this_pose)
+    new_des_lin = cross(translation(this_pose),  des_σdot[1:3])
+    new_des_lin = new_des_lin + des_σdot[4:6]
+    return [des_σdot[1:3]; new_des_lin]
+end
+
+"""
+    skew(x1, x2, x3)
+
+Ouputs the skew-symmetric matrix representation of the three inputs. 
+"""
+function skew(x1, x2, x3)
+    output = [0 -x3 x2;
+            x3 0 -x1;
+            -x2 x1 0]
+end
+
+function get_des_movement_jacobian(this_state)
     # Get geometric Jacobian
     J = Array(calculate_full_ee_jacobian(this_state))
 
@@ -39,33 +75,69 @@ function get_des_movement_jacobian(this_state, des_σdot)
 end
 
 function compose_jacobians(this_state, des_σdot)
-    J_movement = get_des_movement_jacobian(this_state, des_σdot)
+    J_i[1] = [Matrix{Int}(I, 6, 6) zeros(6, 5)]
 
-    ζ = get_mp_pinv(J_movement)*des_σdot
-    return ζ
+    σdot_veh = velocity(this_state)[1:6]
+    A = diagm(vec([1 1 0 0 0 0]))
+    J_i_A[1] = A*J_i[1]
+    ζ_i[1] = get_mp_pinv(A*J_i[1])*A*σdot_veh
+    # ζ_i[1] = get_mp_pinv(J_i[1])*(diagm(vec([1 1 0 0 0 0]))*σdot_veh)
+ 
+    J_i[2] = get_des_movement_jacobian(this_state)
+    J_i_A[2] = vcat(J_i_A[1], J_i[2])
+    N_i_A[1] = I - get_mp_pinv(J_i_A[1])*J_i_A[1]
+    # @show N_i_A[1]
+
+    ζ_i[2] = ζ_i[1] + get_mp_pinv(J_i[2]*N_i_A[1])*(des_σdot - J_i[2]*ζ_i[1])
+    # @show ζ_i[2]'
+    # J_movement = get_des_movement_jacobian(this_state)
+    # ζ = get_mp_pinv(J_movement)*des_σdot
+    return ζ_i[2]
 end
 
-function skew(x1, x2, x3)
-    output = [0 -x3 x2;
-            x3 0 -x1;
-            -x2 x1 0]
+function iCAT_jacobians(this_state, des_σdot)
+    ρ0 = zeros(11)
+    Q0 = I
+
+    # Set up first task
+    J1 = [Matrix{Int}(I, 6, 6) zeros(6, 5)]
+    σdot_veh = velocity(this_state)[1:6]
+    # σdot_veh = velocity(state)[1:6]
+    A1 = diagm(vec([1 1 0 0 0 0]))
+
+    W1 = J1*Q0*regd_inverse(J1*Q0, A1, Q0)
+    Q1 = Q0*(I-regd_inverse(J1*Q0, A1, I)*J1*Q0)
+    T1 = I-Q0*regd_inverse(J1*Q0, A1, I)*W1*J1
+    ρ1 = T1*ρ0 + Q0*regd_inverse(J1*Q0, A1, I)*W1*σdot_veh 
+
+    J2 = get_des_movement_jacobian(this_state)
+    # J2 = get_des_movement_jacobian(state)
+    A2 = I 
+
+    W2 = J2*Q1*regd_inverse(J2*Q1, A2, Q1)
+    Q2 = Q1*(I-regd_inverse(J2*Q1, A2, I)*J2*Q1)
+    T2 = I-Q1*regd_inverse(J2*Q1, A2, I)*W2*J2
+    ρ2 = T2*ρ1 + Q1*regd_inverse(J2*Q1, A2, I)*W2*des_σdot 
 end
 
-function compensate_for_rotational_offset(this_state, des_σdot)
-    this_pose = inv(relative_transform(this_state, root_frame(state.mechanism), default_frame(body_dict["jaw"])))
-    # @show translation(this_pose)
-    new_des_lin = cross(translation(this_pose),  des_σdot[1:3])
-    new_des_lin = new_des_lin + des_σdot[4:6]
-    return [des_σdot[1:3]; new_des_lin]
+function regd_inverse(X, A, Q)
+    η = 1
+    P = .1I
+    B = X'*A*X + η*(I-Q)'*(I-Q)
+    F = svd(B)
+    # @show F.Vt
+    inv(B + F.Vt*P*F.V)*X'*A*A
 end
 
 #%%
 # function simple_ik_iterator(state)
     # des_σdot = [1., 0., 0., 0., 0., 0.]
     # des_σdot = [0., 1., 0, 0., 0., 0.]
-    des_σdot = [0, 1, 0, 0, 0, .5]
+    des_σdot = [0., 0., -0.5, 0, 0, 0.]
     simTime = 1 #2*pi
     viewRate=0.5
+    Δt = 0.05
+
     mechanism = state.mechanism
     qs = typeof(configuration(state))[]
 
@@ -75,7 +147,6 @@ end
     new_state_qs = copy(configuration(new_state))
     prev_state_qs = copy(configuration(new_state))
    
-    Δt = 0.05
     prev_ωb = [0., 0., 0.]
     prev_rot = Rotations.QuatRotation(new_state_qs[1:4])
     og_rpy = convert_to_rpy(new_state_qs[1:4])
@@ -93,7 +164,11 @@ end
     p_arm = get_ee_path(mechanism, body_dict["jaw"])
     body_frame = default_frame(body_dict["vehicle"])
 
-    
+    # Null Space Projection containers
+    N_i_A = Dict{Int, Any}(0 => I)
+    J_i = Dict{Int, Array}()
+    ζ_i = Dict{Int, Array}()
+    J_i_A = Dict{Int, Array}()
 
     for t in range(0, stop=simTime, step=Δt)
         println("----- new state-----")
@@ -104,14 +179,9 @@ end
         # new_des_σdot = compensate_for_rotational_offset(new_state, des_σdot)
 
         # Do inverse kinematics
-        # ζ = simplest_ik_transpose(new_state, new_des_σdot)
-        ζ = simplest_ik_transpose(new_state, des_σdot)
-        # ζ = point_ik_transpose(new_state, des_σdot)
-        # println("Desired zeta:")
-        # println(ζ)
-        # @show ζ[1:3]
-        # @show ζ[4:6]
-
+        ζ = iCAT_jacobians(new_state, des_σdot)
+        println("Desired zeta:")
+        println(ζ)
 
         des_veh_twist_body = RigidBodyDynamics.Twist(body_frame, root_frame(mechanism), body_frame, SVector{3}(ζ[1:3]), SVector{3}(ζ[4:6])) 
         des_veh_twist_space = transform(des_veh_twist_body, transform_to_root(new_state, body_dict["vehicle"]))
