@@ -15,44 +15,53 @@ load(val_set)
 load('data/full-sim-data-022223/channel_dict.mat')
 
 pitch_idx = chan_idxs.act_pitch;
-elimd_gps = ["meas_rpy"];
+elimd_gps = ["meas_xyz", "meas_joint_vels", "meas_linear_vels"];
 all_idxs = get_remaining_idxs(elimd_gps, chan_idxs);
+all_idxs = [20, all_idxs]
 %%
 
 k = 25;
-stretches = [1, 2, 3, 4, 5, 6, 7, 8];
-stretch_forecast_errors = zeros(3,8);
+stretches = 1:8;
+stretch_forecast_errors = zeros(3,length(stretches));
 
 for idx = 1:length(stretches)
     sf = stretches(idx)
     [Inputs_Test, Resp_Test] = transform_data_for_stretch_study(sorted_XTest_50hz, sf, k, all_idxs, pitch_idx);
 
     for take_n = 1:3
-        load(strcat("data\networks\iros-nets\simple_w_stretch_factor\stretch_", string(sf), "_take_", string(take_n), ".mat"))
+        load(strcat("/nfs/stak/users/rosettem/PitchPrediction/data/networks/iros-nets/simple_w_stretch_factor/stretch_", string(sf), "_take_", string(take_n), ".mat"))
+%         load(strcat("data\networks\iros-nets\simple_w_stretch_factor\stretch_", string(sf), "_take_", string(take_n), ".mat"))
         pitch_error = validate_pitch_on_stretch_forecast(net, Inputs_Test, Resp_Test, val_ns_50hz, val_idxs)
         stretch_forecast_errors(take_n, idx) = pitch_error;
     end
 end
 
-outputFile = fullfile("data/networks/iros-nets", 'k_study_results.mat');
+outputFile = fullfile("data/networks/iros-nets", 'k_study_results2.mat');
 save(outputFile, 'stretch_forecast_errors');
 
 function pitch_error = validate_pitch_on_stretch_forecast(net, XTest, G_truth, ns, val_idxs)
     error = 0;
+    num_long_enough_trajs = 0;
     for i = 1:250
-        resetState(net);
-
-        % Get values for this validation point
-        pred_start_idx = ns(i);
-        data = XTest{val_idxs(i)};
-        traj_len = size(data, 2);
-%         fprintf('Trajectory length: %d ; prediction start %d \n', traj_len, pred_start_idx);
-        
-        [net, pred] = predictAndUpdateState(net, data(:,1:pred_start_idx));
-        pred_forecast = pred(:, end);
-        g_truth = G_truth{val_idxs(i)}(:,pred_start_idx);
-        rmse = 0.5*sqrt(immse(pred_forecast, single(g_truth)));
-        error = error + rmse;
+        if ns(i) > 125
+            resetState(net);
+            
+            % Get values for this validation point
+            pred_start_idx = ns(i);
+            data = XTest{val_idxs(i)};
+            traj_len = size(data, 2);
+    %         fprintf('Trajectory length: %d ; prediction start %d \n', traj_len, pred_start_idx);
+            
+            [net, pred] = predictAndUpdateState(net, data(:,1:pred_start_idx));
+            pred_forecast = pred(:, end);
+            g_truth = G_truth{val_idxs(i)}(:,pred_start_idx);
+            %rmse = sqrt(immse(pred_forecast, single(g_truth)));
+%             disp("new traj")
+%             disp([pred_forecast single(g_truth)])
+            RMSE = rmse(pred_forecast, single(g_truth));
+            error = error + RMSE;
+            num_long_enough_trajs = num_long_enough_trajs + 1;
+        end
     end
-    pitch_error = error/numel(XTest);
+    pitch_error = error/num_long_enough_trajs;
 end

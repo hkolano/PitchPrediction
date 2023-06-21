@@ -1,9 +1,10 @@
 % Load in the data
-load("data/full-sim-data-022223/FullData.mat")
+load("data/full-sim-data-022223/FullData_50Hz.mat")
 
 %%
 load('data/full-sim-data-022223/channel_dict.mat')
-chan_idxs = rmfield(chan_idxs, {'act_rpy', 'act_xyz', 'act_joint_pos', 'act_angular_vels', 'act_linear_vels', 'act_joint_vels'});
+pitch_idx = chan_idxs.act_pitch;
+chan_idxs = rmfield(chan_idxs, {'act_rpy', 'act_xyz', 'act_joint_pos', 'act_angular_vels', 'act_linear_vels', 'act_joint_vels', 'act_pitch'});
 
 % Make a list of all measured indices
 all_idxs = 21:1:44;
@@ -14,7 +15,6 @@ all_idxs = 21:1:44;
 % Initialize constants
 k = 25;
 numUnits = 128;
-pitch_idx = chan_idxs.act_pitch;
 
 % Set up vectors to store loss values
 all_losses = {};
@@ -118,7 +118,7 @@ function init_options = define_new_opts(val_inputs, val_outputs)
         LearnRateDropPeriod=5, ...
         LearnRateSchedule='piecewise', ...
         LearnRateDropFactor=.8, ...
-        MaxEpochs = 5, ...
+        MaxEpochs = 50, ...
         MiniBatchSize=16, ...
         SequencePaddingDirection="right", ...
         Plots="none", ...
