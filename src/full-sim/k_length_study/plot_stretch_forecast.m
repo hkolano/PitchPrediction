@@ -1,14 +1,16 @@
-function plot_stretch_forecast(nets, data1, data2, n, k, pitch_idx, p)
+function plot_stretch_forecast(s_nets, a_nets, data_50hz, data_10hz, n, all_idxs, pitch_idx, p)
 
 close all
 t = tiledlayout(2, 4);
-cutoff = n+k*9+50;
+cutoff = n+25*9+50;
+k = 25;
 
 time_steps = 1:cutoff;
-time_stamps = time_steps/50;
+time_stamps_50 = time_steps/50;
+time_stamps_10 = time_steps/10;
 
-mu = p.mu(23);
-sig = p.sig(23);
+mu = p.mu(pitch_idx);
+sig = p.sig(pitch_idx);
 
 % dark blue: '#332288'
 % dark green: '#117733'
@@ -22,17 +24,18 @@ dashed1_color = '#332288';
 dashed2_color = '#CC6677';
 
 for sf = [2, 4, 6, 8]
-    net = nets{sf};
-    
+    net = s_nets{sf};
+    [Inputs_Test, Resp_Test] = transform_data_for_stretch_study(data_50hz, sf, 25, all_idxs, pitch_idx);
+
     % Make prediction
     resetState(net);
-    [new_net, Z] = predictAndUpdateState(net, [data1(:,1:end-k)]); %repmat(0.02, 1, size(data,2)-k)], "ExecutionEnvironment","auto");
+    [new_net, Z] = predictAndUpdateState(net, [data_50hz(:,1:end-k)]); %repmat(0.02, 1, size(data,2)-k)], "ExecutionEnvironment","auto");
     
     nexttile
-    plot(time_stamps, data1(pitch_idx,1:cutoff)*sig+mu, 'Color', gt_color, 'LineWidth', 1)
+    plot(time_stamps_50, data_50hz(pitch_idx,1:cutoff)*sig+mu, 'Color', gt_color, 'LineWidth', 1)
     hold on
-    plot(time_stamps(sf+1:n+sf), Z(1,1:n)*sig+mu, '-.', 'Color', dashed1_color, 'LineWidth', 2.)
-    plot(time_stamps(n+sf:sf:n+sf*k), Z(:,n)*sig+mu, ':', 'Color', dashed2_color, 'LineWidth', 2.5)
+    plot(time_stamps_50(sf+1:n+sf), Z(1,1:n)*sig+mu, '-.', 'Color', dashed1_color, 'LineWidth', 2.)
+    plot(time_stamps_50(n+sf:sf:n+sf*k), Z(:,n)*sig+mu, ':', 'Color', dashed2_color, 'LineWidth', 2.5)
     
     title(strcat(string(sf/2), "s Prediction"))
     set(gca, ...
@@ -46,22 +49,28 @@ for sf = [2, 4, 6, 8]
       'YColor'      , [.3 .3 .3], ...
       'LineWidth'   , 1         );
     if sf == 2
-        ylabel("Trajectory 1")
+        ylabel("Pitch Only")
     end
 end
 
-for sf = [2, 4, 6, 8]
-    net = nets{sf};
+ks = [10 20 30 40];
+for auto_id = 1:4
+    k = ks(auto_id);
+    net=a_nets{auto_id+1};
+    cutoff_10hz = floor(cutoff/5);
+    n_10hz = floor(n/5);
+    clear pred
     
     % Make prediction
     resetState(net);
-    [new_net, Z] = predictAndUpdateState(net, [data2(:,1:end-k)]); %repmat(0.02, 1, size(data,2)-k)], "ExecutionEnvironment","auto");
-    
+    pred = full_forecast_norecur(net, data_10hz, n_10hz, k);
+
+
     nexttile
-    plot(time_stamps, data2(pitch_idx,1:cutoff)*sig+mu, 'Color', gt_color, 'LineWidth', 1)
+    plot(time_stamps_10(1:cutoff_10hz), data_10hz(adj_pitch_idx, 1:cutoff_10hz)*sig+mu, 'Color', gt_color, 'LineWidth', 1)
     hold on
-    plot(time_stamps(sf+1:n+sf), Z(1,1:n)*sig+mu, '-.', 'Color', dashed1_color, 'LineWidth', 2.)
-    plot(time_stamps(n+sf:sf:n+sf*k), Z(:,n)*sig+mu, ':', 'Color', dashed2_color, 'LineWidth', 2.5)
+    plot(time_stamps_10(2:n_10hz+1), pred(adj_pitch_idx, 1:n_10hz)*sig+mu, '-.', 'Color', dashed1_color, 'LineWidth', 2.)
+    plot(time_stamps_10(n_10hz+2:n_10hz+k), pred(adj_pitch_idx, n_10hz+1:end)*sig+mu, ':', 'Color', dashed2_color, 'LineWidth', 2.5)
     
 %     title(strcat(string(sf/2), "s Prediction"))
     set(gca, ...
@@ -74,8 +83,8 @@ for sf = [2, 4, 6, 8]
       'XColor'      , [.3 .3 .3], ...
       'YColor'      , [.3 .3 .3], ...
       'LineWidth'   , 1         );
-    if sf == 2 
-        ylabel("Trajectory 2")
+    if auto_id == 1
+        ylabel("Autoregressive")
     end
 end
 

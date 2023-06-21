@@ -21,7 +21,7 @@ Resp_Data: cell array recording pitch responses from the inputs. Each time
 step has 25 response values, equal to the pitch at k times in the future,
 spread apart by 0.02s*sf
 %}
-function [Input_Data, Resp_Data] = transform_data_for_stretch_study(data, sf, k, input_idxs, pitch_idx)
+function [Input_Data, Resp_Data, Pitch] = transform_data_for_stretch_study(data, sf, k, input_idxs, pitch_idx)
     short_trajs = [];
     for n = 1:numel(data)
         if size(data{n}, 2) > (sf+1)*k

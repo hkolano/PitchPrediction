@@ -1,19 +1,20 @@
 %% Setup
-load("data/full-sim-data-110822/FullData_10Hz.mat")
-XTrain = XTrain_10hz;
-XTest = XTest_10hz;
+load("data/full-sim-data-022223/FullData_10Hz.mat")
+% XTrain = XTrain_10hz;
+% XTest = XTest_10hz;
 
 %%
-elimd_gps = ["xyz_poses", "xyz_vels", "goal_poses", "manip_des_vels", "goal_vels"];
-all_idxs = get_remaining_idxs(elimd_gps);
+load("data/full-sim-data-022223/channel_dict.mat")
+pitch_idx = chan_idxs.act_pitch;
+elimd_gps = ["meas_xyz", "meas_linear_vels", "meas_joint_vels"];
+all_idxs = get_remaining_idxs(elimd_gps, chan_idxs);
 
 %%
 % Initialize constants
 % ks =[5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 100, 125, 150, 175, 200];
 k = 1; %25
-pitch_idx = 23;
 numUnits = 384;
-stretches = [1]; %[1, 2, 3, 4, 5, 6, 7, 8];
+stretches = [1];%, 2, 3, 4, 5, 6, 7, 8];
 % stretches = [7, 8, 9];
 
 all_losses = [];
@@ -80,7 +81,7 @@ for idx = 1:length(stretches)
         subgroup_losses = [subgroup_losses, info.FinalValidationLoss];
         subgroup_RMSEs = [subgroup_RMSEs, info.FinalValidationRMSE];
         %     
-        outputFile = fullfile("data/networks/icra-redo-nets", "SingleStepNet_10Hz.mat")
+        outputFile = fullfile("data/networks/iros-nets", "SingleStepNet_10Hz.mat")
 %         outputFile = fullfile("data/networks/icra-redo-nets/simple_w_stretch_factor", strcat('stretch_', string(sf), '_take_', string(take_n), '.mat'));
 %         outputFile = fullfile("data/networks/full-nets", strcat('pre-ablationtest_', string(take_n), '.mat'));
         save(outputFile, 'net', 'info');
