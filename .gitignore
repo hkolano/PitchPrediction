@@ -7,15 +7,5 @@ data/mini-sets
 data/full-data-matlab
 data/full-sim-with-hydro
 data/networks/full-nets/simple_network_unit_testing/checkpoints
-data/networks/full-nets
-data/networks/iros-nets
-data/networks/icra-redo-nets
-
 *.csv
 *.asv
-data/full-sim-data-022223/channel_dict.mat
-data/full-sim-data-022223/FullData.mat
-data/full-sim-data-022223/FullData_10Hz.mat
-data/full-sim-data-022223/FullData_50Hz.mat
-data/full-sim-data-110822/FullData.mat
-data/full-sim-data-110822/FullData_10Hz.mat

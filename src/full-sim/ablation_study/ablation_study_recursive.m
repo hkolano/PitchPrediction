@@ -1,20 +1,23 @@
 % Load in the data
-load("data/full-sim-data-022223/FullData_50Hz.mat")
+load("data/full-sim-data-110822/FullData.mat")
 
 %%
-load('data/full-sim-data-022223/channel_dict.mat')
-pitch_idx = chan_idxs.act_pitch;
-chan_idxs = rmfield(chan_idxs, {'act_rpy', 'act_xyz', 'act_joint_pos', 'act_angular_vels', 'act_linear_vels', 'act_joint_vels', 'act_pitch'});
+load('data/channel_dict.mat')
+chan_idxs = rmfield(chan_idxs, 'pitch');
+chan_idxs = rmfield(chan_idxs, 'dt');
 
+
+% chan_idxs = rmfield(chan_idxs, {'xyz_poses', 'xyz_vels', 'ry_vels', 'manip_vels', 'manip_des_vels', 'goal_poses'});
 % Make a list of all channel indices
-all_idxs = 21:1:44;
+all_idxs = 1:1:41;
 % Take out xyz_poses
-%all_idxs = all_idxs(~ismember(all_idxs, chan_idxs.('xyz_poses')))
-%chan_idxs = rmfield(chan_idxs, 'xyz_poses')
+all_idxs = all_idxs(~ismember(all_idxs, chan_idxs.('xyz_poses')))
+chan_idxs = rmfield(chan_idxs, 'xyz_poses')
 
 % Initialize constants
 k = 25;
 numUnits = 128;
+pitch_idx = 23;
 
 % Set up vectors to store loss values
 all_losses = {};
@@ -22,7 +25,7 @@ all_RMSEs = {};
 removed_features = {};
 feature_group_list = {};
 
-for level_num = 1:6
+for level_num = 2:8
     fn = fieldnames(chan_idxs)
     feature_group_list{level_num} = fn;
     level_losses = [];
@@ -59,7 +62,7 @@ for level_num = 1:6
             subgroup_losses = [subgroup_losses, info.FinalValidationLoss];
             subgroup_RMSEs = [subgroup_RMSEs, info.FinalValidationRMSE];
             %     
-            outputFile = strcat("data/networks/iros-nets/abl_rnd", string(level_num), "/no_", feat_name, '_take_', string(take_n), '.mat');
+            outputFile = strcat("data/networks/icra-redo-nets/abl_rnd", string(level_num), "/no_", feat_name, '_take_', string(take_n), '.mat');
             save(outputFile, 'net', 'info');
        end
     
@@ -83,7 +86,7 @@ for level_num = 1:6
     chan_idxs = rmfield(chan_idxs, smallest_impact_feat);
 end
 
-outputfile = strcat("data/networks/iros-nets/ablationstudyresults.mat");
+outputfile = strcat("data/networks/icra-redo-nets/ablationstudyresults.mat");
 save(outputfile, 'all_losses', 'all_RMSEs', 'feature_group_list', 'removed_features');
 % disp("Final Losses:")
 % disp(all_losses)
@@ -124,7 +127,7 @@ function init_options = define_new_opts(val_inputs, val_outputs)
         Shuffle='every-epoch', ...
         ValidationData={val_inputs, val_outputs}, ...
         ValidationFrequency = 60, ...
-        OutputNetwork='best-validation-loss', ExecutionEnvironment='gpu');
+        OutputNetwork='best-validation-loss');
 end
 
 
