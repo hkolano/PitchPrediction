@@ -7,10 +7,9 @@ using RigidBodyDynamics
 function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::MechanismState)
     buoy_wrenches = []
     grav_wrenches = []
-    names = ["cob1", "cob2", "cob3", "cob4", "cob5", "cob6"]
-    num_bodies = length(bodies(state.mechanism))-1
+    names = ["cob1", "cob2", "cob3", "cob4", "cob5"]
     # Iterate through each body 
-    for i in 1:num_bodies
+    for i in 1:5
         # Get the body
         bod = bodies(state.mechanism)[i+1]
         # Get default frame of the body
@@ -21,35 +20,19 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
         # TODO: don't use fixed_transform because it's bad for computation time
         def_to_cob = fixed_transform(bod, body_default_frame, cob_frames[i])
         # Transform buoyancy force vector to the body's default frame (rotation only)
-        # NAN on third iteration
         buoy_force_trans = transform(state, buoy_lin_forces[i], body_default_frame)
         # Make the wrench: the buoyancy force through a point, the center of buoyancy.
         buoy_wrench = Wrench(Point3D(body_default_frame, translation(inv(def_to_cob))), buoy_force_trans)
         push!(buoy_wrenches, buoy_wrench)
-        # if bod == wrist_body 
-        #     if rem(t, .25) < 0.002
-        #         @show t
-        #         @show buoy_wrench
-        #     end
-        # end
+
 
         # -------- Calculate Gravity Wrench -------
         def_to_com = fixed_transform(bod, body_default_frame, com_frames[i])
         grav_force_trans = transform(state, grav_lin_forces[i], body_default_frame)
-        # println(grav_force_trans)
         # Make the wrench: the buoyancy force through a point, the center of buoyancy.
-        # COM = Point3D(body_default_frame, translation(inv(def_to_com)))
         grav_wrench = Wrench(Point3D(body_default_frame, translation(inv(def_to_com))), grav_force_trans)
-        # setelement!(mvis, COM)
         # Add wrench to buoy_wrenches
         push!(grav_wrenches, grav_wrench)
-
-        # if bod == wrist_body 
-        #     if rem(t, .25) < 0.002
-        #         @show t
-        #         @show grav_wrench
-        #     end
-        # end
 
         # Add the buoyancy wrench and grav wrench together
         wrench = buoy_wrench + grav_wrench
@@ -60,10 +43,10 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
         # ----- Special calculaitons for the vehicle -----
         if i == 1
             # ----- Grav/buoy for arm base link ----- 
-            def_to_armbase_cob = fixed_transform(bod, body_default_frame, cob_frames[end])
-            def_to_armbase_com = fixed_transform(bod, body_default_frame, com_frames[end])
-            buoy_force_trans_armbase = transform(state, buoy_lin_forces[end], body_default_frame)
-            grav_force_trans_armbase = transform(state, grav_lin_forces[end], body_default_frame)
+            def_to_armbase_cob = fixed_transform(bod, body_default_frame, cob_frames[6])
+            def_to_armbase_com = fixed_transform(bod, body_default_frame, com_frames[6])
+            buoy_force_trans_armbase = transform(state, buoy_lin_forces[6], body_default_frame)
+            grav_force_trans_armbase = transform(state, grav_lin_forces[6], body_default_frame)
             buoy_wrench_arm = Wrench(Point3D(body_default_frame, translation(inv(def_to_armbase_cob))), buoy_force_trans_armbase)
             grav_wrench_arm = Wrench(Point3D(body_default_frame, translation(inv(def_to_armbase_com))), grav_force_trans_armbase)
             wrench = wrench + buoy_wrench_arm + grav_wrench_arm
@@ -74,11 +57,9 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
             # println(wrench)
 
             # ----- Drag of the vehicle -----
-            # NANs on second iteration
             vel=velocity(state, joints(state.mechanism)[1])
-            # println(vel)
-            d_lin_coeffs = [4.03, 6.22, 5.18, .07, .07, .07]
-            d_nonlin_coeffs = [18.18, 21.66, 36.99, 1.55, 1.55, 1.55]
+            d_lin_coeffs = [4.5, 8.0, 2.7, 3.4, 4.6, 52.9]
+            d_nonlin_coeffs = [11.4, 20.0, 13.5, 34.4, 65.9, 132.3]
             tau_d = -d_lin_coeffs .* vel .+ -d_nonlin_coeffs .* vel .* abs.(vel)
             drag_wrench = Wrench(body_default_frame, tau_d[1:3], tau_d[4:6])  
             # println("Vehicle velocity is $(vel)")
@@ -88,7 +69,7 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
             # println("Wrench drag:")
             # println(drag_wrench)
         # ----- Drag on the links (quadratic only) ----
-        elseif i < num_bodies
+        else
             twist_world = twist_wrt_world(state, bod)
             root_transform = transform_to_root(state, bod)
             # COB_point = Point3D(body_default_frame, translation(inv(def_to_cob)))
@@ -112,7 +93,6 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
         # Transform the wrench to the root frame and assign it to the body
         hydro_wrenches[BodyID(bod)] = transform(state, wrench, root_frame(state.mechanism))
     end
-    
 end;
 
 

@@ -1,13 +1,15 @@
 % Load in the data
-load("data/full-sim-data-022223/FullData_50Hz.mat")
+load("data/full-sim-data-110822/FullData.mat")
 
 %%
-load('data/full-sim-data-022223/channel_dict.mat')
-pitch_idx = chan_idxs.act_pitch;
-chan_idxs = rmfield(chan_idxs, {'act_rpy', 'act_xyz', 'act_joint_pos', 'act_angular_vels', 'act_linear_vels', 'act_joint_vels', 'act_pitch'});
+load('data/channel_dict.mat')
+chan_idxs = rmfield(chan_idxs, 'pitch');
+chan_idxs = rmfield(chan_idxs, 'dt');
 
-% Make a list of all measured indices
-all_idxs = 21:1:44;
+
+% chan_idxs = rmfield(chan_idxs, {'xyz_poses', 'xyz_vels', 'ry_vels', 'manip_vels', 'manip_des_vels', 'goal_poses'});
+% Make a list of all channel indices
+all_idxs = 1:1:41;
 % Take out xyz_poses
 % all_idxs = all_idxs(~ismember(all_idxs, chan_idxs.('xyz_poses')))
 % chan_idxs = rmfield(chan_idxs, 'xyz_poses')
@@ -15,6 +17,7 @@ all_idxs = 21:1:44;
 % Initialize constants
 k = 25;
 numUnits = 128;
+pitch_idx = 23;
 
 % Set up vectors to store loss values
 all_losses = {};
@@ -60,7 +63,7 @@ feature_group_list = {};
             subgroup_losses = [subgroup_losses, info.FinalValidationLoss];
             subgroup_RMSEs = [subgroup_RMSEs, info.FinalValidationRMSE];
             %     
-            outputFile = strcat("data/networks/iros-nets/abl_rnd", string(level_num), '/baseline_take_', string(take_n), '.mat');
+            outputFile = strcat("data/networks/icra-redo-nets/abl_rnd", string(level_num), '/baseline_take_', string(take_n), '.mat');
             save(outputFile, 'net', 'info');
        end
     
