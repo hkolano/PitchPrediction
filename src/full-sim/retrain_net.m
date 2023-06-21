@@ -17,13 +17,15 @@ chan_idxs = rmfield(chan_idxs, {'act_rpy', 'act_xyz', 'act_joint_pos', 'act_angu
 
 % Make a list of all channel indices
 all_idxs = 21:1:44;
-elimd_gps = ["meas_linear_vels"];
+elimd_gps = ["meas_linear_vels", "meas_xyz", "meas_joint_vels"];
 all_idxs = get_remaining_idxs(elimd_gps, chan_idxs);
+input_idxs = all_idxs;
 
 %% Initialization
 
 % k = 5;     % Number of time steps to forecast (0.5s)
-ks = [5 10 20 30 40];
+% ks = [5 10 20 30 40];
+ks = [15 25 35];
 mbatch = 16;
 num_trajs_before_update = 16;
 val_freq = 50;
@@ -41,23 +43,20 @@ retrain_options = trainingOptions("adam", ...
     GradientThreshold=0.9,...
     ExecutionEnvironment="auto");
 
-[~,I] = sort(cellfun(@length,XTest));
-XTest = XTest(I);
-% XTest = XTest(3:end);
+sorted_XTest_10hz = sort_data_by_length(XTest);
+val_XTest = sorted_XTest_10hz(val_idxs);
 
-for i = 1:numel(XTest)
-    XTest{i} = XTest{i}(all_idxs, :);
-end
+sorted_XTrain_10hz = sort_data_by_length(XTrain);
 
-XTest = XTest(val_idxs);
+% for i = 1:numel(XTest)
+%     XTest{i} = XTest{i}(all_idxs, :);
+% end
 
 % disp(numel(XTrain_10hz))
-for i = 1:numel(XTrain)
-    XTrain{i} = XTrain{i}(all_idxs, :);
-end
+% for i = 1:numel(XTrain)
+%     XTrain{i} = XTrain{i}(all_idxs, :);
+% end
 
-[~,I] = sort(cellfun(@length,XTrain));
-XTrain = XTrain(I);
 % XTrain = XTrain(40:end);
 % disp(size(XTrain{40}, 2))
 % num_rec_vars = size(XTrain{1}, 1);
@@ -73,7 +72,7 @@ for k_val = 1:length(ks)
     load('data/networks/iros-nets/SingleStepNet_10Hz.mat')
     k = ks(k_val);
 %     validate = @(net) validate_net(net, XTest_subset, val_ns, k, p);
-    validate = @(net) validate_pitch_on_forecast_only(net, XTest, val_ns_10hz, k, p, pitch_idx);
+    validate = @(net) validate_pitch_on_forecast_only(net, val_XTest, val_ns_10hz, k, input_idxs, pitch_idx);
     first_error = validate(net)
     error_vec = [first_error]; % SWITCH THIS BACK
     error_vec_its = [1];      % SWITCH THIS BACK
@@ -98,7 +97,7 @@ for k_val = 1:length(ks)
             end
             
             parfor it_num = 1:num_trajs_before_update
-                data = trajs{it_num};
+                data = trajs{it_num}(input_idxs,:);
                 top_n_lim = size(data, 2) - k - 1;
                 if top_n_lim <= k + 1
                     n = top_n_lim;
@@ -107,10 +106,11 @@ for k_val = 1:length(ks)
                 end
                 
                 % Generate a prediction
-                pred = full_forecast_norecur(net, data, n, k, p);
+                pred = full_forecast_norecur(net, data, n, k);
         
                 preds{it_num} = pred;
                 g_truth{it_num} = data(:,2:n+k);
+                g_truth{it_num}(2,:) = data(pitch_idx,2:n+k)
             end
         
             nan_idxs = ID_nans(preds);
@@ -159,18 +159,18 @@ end
 % outputFile = fullfile("data/networks/full-nets/retrained_nets", 'test_net.mat');
 % save(outputFile, 'net', 'info', 'error_vec', 'training_rmse_vec');
 
-function error = validate_net(net, X_test, ns, k, p)
-    error = 0;
-    parfor i = 1:numel(X_test)
-        pred = full_forecast_norecur(net, X_test{i}, ns(i), k, p);
-%         size(pred)
-        pred = pred(:,end-k+1:end);
-        g_truth = X_test{i}(:,ns(i)+1:ns(i)+k);
-        rmse = sqrt(immse(pred, single(g_truth)));
-        error = error + rmse;
-    end
-    error = error/numel(X_test);
-end
+% function error = validate_net(net, X_test, ns, k, p)
+%     error = 0;
+%     parfor i = 1:numel(X_test)
+%         pred = full_forecast_norecur(net, X_test{i}, ns(i), k);
+% %         size(pred)
+%         pred = pred(:,end-k+1:end);
+%         g_truth = X_test{i}(:,ns(i)+1:ns(i)+k);
+%         rmse = sqrt(immse(pred, single(g_truth)));
+%         error = error + rmse;
+%     end
+%     error = error/numel(X_test);
+% end
 
 
 
