@@ -6,25 +6,36 @@ using StaticArrays, RigidBodyDynamics, Rotations
 # ----------------------------------------------------------
 #                         Definitions
 # ----------------------------------------------------------
-num_trajectory_dofs = num_velocities(mech_blue_alpha)-6
+num_its=50
+num_actuated_dofs = 5
+num_trajectory_dofs = 4
+max_duration = 20.
+θa = atan(145.3, 40)
+joint_lims = [[-175*pi/180, 175*pi/180], [0, 200*pi/180], [0, 200*pi/180], [-165*pi/180, 165*pi/180], [0.0, 0.022]]
+# Velocity limits: 30 degrees/s for Joints E, D, C, 50 degrees/s for Joint B (from Reach Alpha Integration Manual V1.15 p8)
+θb = deg2rad(30)
+θc = deg2rad(50)
+vel_lims = [[-θb, θb], [-θb, θb], [-θb, θb], [-θc, θc], [-.003, .003]]
 max_linear_vel = .15 # 15 cm/s
 
 equil_pose = zeros(num_actuated_dofs)
-# equil_pt = jointState(equil_pose, zeros(num_actuated_dofs))
-# extended_pt = jointState([0.01, 1.5, 2.6, 0.01, 0.], zeros(num_actuated_dofs))
+equil_pt = jointState(equil_pose, zeros(num_actuated_dofs))
+extended_pt = jointState([0.01, 1.5, 2.6, 0.01, 0.], zeros(num_actuated_dofs))
 
 # raise_wpts = Waypoints(equil_pt, extended_pt)
+
+mutable struct trajParams
+    a::Array        # Array of time scaling coefficients (quintic traj)
+    wp::Waypoints   # Waypoints the traj is going between
+    T::Float64      # Duration of the trajectory
+end
 
 mutable struct worldSpaceWaypoints
     start_pose
     end_pose
 end
 
-mutable struct trajParams
-    a::Array        # Array of time scaling coefficients (quintic traj)
-    wp::worldSpaceWaypoints   # Waypoints the traj is going between
-    T::Float64      # Duration of the trajectory
-end
+
 
 # ----------------------------------------------------------
 #             Waypoint Generation (World Space)
