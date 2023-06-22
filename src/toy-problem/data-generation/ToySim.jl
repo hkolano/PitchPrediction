@@ -9,14 +9,14 @@ using CoordinateTransformations
 using GeometryBasics
 using Revise
 using Plots, CSV, Tables, ProgressBars
-using PitchPrediction
 println("Libraries imported.")
 
-src_dir = dirname(pathof(PitchPrediction))
-urdf_file = joinpath(src_dir, "..", "urdf", "toy_vehicle.urdf")
-ctlr_file = joinpath(src_dir, "toy-problem", "data-generation", "PIDCtlr.jl")
-traj_file = joinpath(src_dir, "toy-problem", "data-generation", "TrajGen.jl")
-simulate_file = joinpath(src_dir, "toy-problem", "data-generation", "simulate_des_trajectory.jl")
+#%%
+include("TrajGen.jl")
+include("PIDCtlr.jl")
+include("simulate_des_trajectory.jl")
+
+urdf_file = joinpath("urdf", "toy_vehicle.urdf")
 
 # ----------------------------------------------------------
 #                 One-Time Mechanism Setup
@@ -48,14 +48,10 @@ function reset_to_equilibrium(state)
     set_velocity!(state, [0.0, 0.0, 0.0])
 end
 
-include(ctlr_file)
-include(traj_file)
-include(simulate_file)
-
 # ----------------------------------------------------------
 #                       Generate Data
 # ----------------------------------------------------------
-num_trajs = 5000
+num_trajs = 1
 
 # Create (num_trajs) different trajectories and save to csvs
 for n in ProgressBar(1:num_trajs)
@@ -63,7 +59,7 @@ for n in ProgressBar(1:num_trajs)
     reset_to_equilibrium(state)
 
     # Set up the controller 
-    ctlr_cache = PIDCtlr.CtlrCache(Δt, mechanism_toy)
+    ctlr_cache = CtlrCache(Δt, mechanism_toy)
 
     # Get a random waypoint set and see if there's a valid trajectory
     wp = TrajGen.gen_rand_waypoints_from_equil()
@@ -96,7 +92,7 @@ for n in ProgressBar(1:num_trajs)
     end
 
     # Run the simulation
-    ts, qs, vs = simulate_des_trajectory(state, duration, params, ctlr_cache, PIDCtlr.pid_control!; Δt);
+    ts, qs, vs = simulate_des_trajectory(state, duration, params, ctlr_cache, pid_control!; Δt);
 
     # Break out each variable (probably better way to do this)
     # downsample to 50 Hz
@@ -125,7 +121,7 @@ for n in ProgressBar(1:num_trajs)
     tab = Tables.table(data)
     CSV.write("data/toy-data-with-desv/toystates$(n).csv", tab, header=labels)
     
-    # MeshCatMechanisms.animate(mvis_toy, ts, qs; realtimerate = 2.5);
+    MeshCatMechanisms.animate(mvis_toy, ts, qs; realtimerate = 2.5);
 end
 
 # ----------------------------------------------------------

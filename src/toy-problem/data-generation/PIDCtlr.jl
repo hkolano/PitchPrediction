@@ -1,12 +1,5 @@
-module PIDCtlr 
-export CtlrCache, pid_control!
-
 using RigidBodyDynamics
-using PitchPrediction
-
-src_dir = dirname(pathof(PitchPrediction))
-traj_file = joinpath(src_dir, "toy-problem", "data-generation", "TrajGen.jl")
-include(traj_file)
+include("TrajGen.jl")
 
 # ------------------------------------------------------------------------
 #                              SETUP 
@@ -123,7 +116,4 @@ function PID_ctlr(torque, t, vel_act, j_idx, c)
     # c.vel_int_error = c.vel_int_error + vel_error
 
     return new_tau
-end
-
-
 end
