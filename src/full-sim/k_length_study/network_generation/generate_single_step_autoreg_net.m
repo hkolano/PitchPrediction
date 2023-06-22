@@ -1,3 +1,13 @@
+%{
+Generates a single-step network to be used as the base for an
+autoregressive network. Trains for 50 epochs on the 10Hz data set. Has an
+equal number of outputs as it has state data inputs. 
+
+In the future, we should run this 3 times to get 3 separate single step
+networks to train the autoregressive networks on.
+
+Last modified 3/8/2023
+%}
 %% Setup
 load("data/full-sim-data-110822/FullData_10Hz.mat")
 XTrain = XTrain_10hz;

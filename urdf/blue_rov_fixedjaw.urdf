@@ -1,0 +1,317 @@
+<robot name="bluerov">
+
+<!-- Materials -->
+    <material name="white">
+        <color rgba="0.8 0.8 0.8 0.8"/>
+    </material>
+    <material name="gray">
+        <color rgba="0.3 0.3 0.3 1"/>
+    </material>
+    <material name="lightgray">
+      <color rgba="0.6 0.6 0.6 1"/>
+    </material>
+    <material name="transparent" >
+        <color rgba="0.3 0.3 0.3 0.25" />
+    </material>
+    <material name="blue">
+        <color rgba="0.25 0.5 0.62 1"/>
+    </material>
+    <material name="black">
+        <color rgba=".1 .1 .1 1"/>
+    </material>
+
+<!-- Vehicle -->
+    <link name="vehicle_frame">
+        <visual>
+            <geometry>
+                <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\bluerov_black.obj"/>
+            </geometry>
+            <origin rpy="1.57075 0 1.57075" xyz="0 0 0"/>
+            <material name="gray"/>
+        </visual>
+        <inertial>
+            <!-- Actual = 10 kg (5.5 x, 12.7 y, 14.57 z (avg 10.9))-->
+            <mass value="20.9"/>
+            <origin xyz="0 0 -.02"/>
+            <inertia ixx="0.28" ixy="0" ixz="0" iyy="0.28" iyz="0" izz="0.28"/>
+        </inertial> 
+    </link>
+
+    <link name="vehicle_ballast">
+        <visual>
+            <geometry>
+                <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\bluerov_blue.obj"/>
+            </geometry>
+            <origin rpy="1.57075 0 1.57075" xyz="0 0 0"/>
+            <material name="blue"/>
+        </visual>
+    </link>
+
+    <joint name="frame_to_ballast" type="fixed">
+        <parent link = "vehicle_frame"/>
+        <child link = "vehicle_ballast"/>
+        <origin rpy="0 0 0"/>
+    </joint>
+
+    <link name="vehicle_cans">
+        <visual>
+            <geometry>
+                <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\bluerov_white.obj"/>
+            </geometry>
+           <origin rpy="1.57075 0 1.57075" xyz="0 0 0"/>
+            <material name="white"/>
+        </visual>
+    </link>
+
+    <joint name="frame_to_cans" type="fixed">
+        <parent link = "vehicle_frame"/>
+        <child link = "vehicle_cans"/>
+        <origin rpy="0 0 0"/>
+    </joint>
+
+<!-- ======================================= -->
+<!--               ALPHA LINKS               -->
+<!-- ======================================= -->
+  <joint name="arm_to_vehicle" type="fixed">
+    <origin rpy="3.1415 0 0" xyz=".15 0 -.15"/>
+    <parent link="vehicle_frame"/>
+    <child link="r5m_base_link"/>
+  </joint>
+
+  <link name="r5m_base_link">
+    <visual>
+      <geometry>
+        <!-- <mesh filename="/home/hkolano/Stuff/coupledDynamics/meshes/archived_meshes/Base3.obj"/> -->
+        <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\Base3.obj"/>
+      </geometry>
+      <origin rpy="1.57075 0 0" xyz="0 0 0"/>
+      <!-- <origin rpy="0 0 0" xyz="0 0 0"/> -->
+      <material name="lightgray"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.150" radius="0.020"/>
+      </geometry>
+      <origin rpy="0 1.57075 0" xyz="-0.075 0 0"/>
+    </collision>
+    <inertial>
+      <!-- Actual + added -->
+      <mass value="0.53"/> 
+      <origin xyz="-0.075 -0.006 -0.003"/>
+      <inertia ixx="0.000106" ixy="0.000139" ixz="0.000115" iyy="0.00433" iyz="0.000003" izz="0.004348"/>
+    </inertial>
+  </link>
+
+  <joint name="r5m_joint5" type="revolute">
+    <parent link="r5m_base_link"/>
+    <child link="r5m_shoulder_link"/>
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <!-- <origin rpy="0 0 3.141592" xyz="0 0 0"/> -->
+    <axis xyz="0 0 1"/>
+    <limit effort="9.0" lower="0.0" upper="6.2" velocity="0.5"/>
+  </joint>
+
+  <link name="r5m_shoulder_link">
+    <visual>
+      <geometry>
+        <!-- <mesh filename="/home/hkolano/Stuff/coupledDynamics/meshes/archived_meshes/ShoulderJoint3.obj"/> -->
+        <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\ShoulderJoint3.obj"/>
+      </geometry>
+      <material name="lightgray"/>
+      <!-- <origin rpy="0 3.1415 -1.57075" xyz="0 0 0"/> -->
+      <origin rpy="-1.57075 3.1415 1.57075" xyz="0 0 0"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.066" radius="0.020"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0.010"/>
+    </collision>
+    <inertial>
+      <!-- Actual + added -->
+      <mass value="0.226"/>
+      <origin xyz="0.005 -0.001 0.016"/>
+      <inertia ixx="0.000196" ixy="0.000005" ixz="0.000054" iyy="0.000220" iyz="0.000003" izz="0.000067"/>
+    </inertial>
+  </link>
+
+  <joint name="r5m_joint4" type="revolute">
+    <parent link="r5m_shoulder_link"/>
+    <child link="r5m_upper_arm_link"/>
+    <origin rpy="1.57075 1.3 0" xyz="0.020 0 0.046"/>
+    <!-- <origin rpy="1.57075 -0.27079 0" xyz="0.020 0 0.046"/> -->
+    <axis xyz="0 0 1"/>
+    <limit effort="9.0" lower="0.0" upper="3.5" velocity="0.5"/>
+  </joint>
+
+  <link name="r5m_upper_arm_link">
+    <visual>
+      <geometry>
+        <!-- <mesh filename="/home/hkolano/Stuff/coupledDynamics/meshes/archived_meshes/UpperArm3.obj"/> -->
+        <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\UpperArm3.obj"/>
+      </geometry>
+      <!-- <origin rpy="0 -1.57075 -0.2655555" xyz="0 0 -0.075"/> -->
+      <origin rpy="0 -1.57075 1.305240" xyz="0 0 -0.075"/>
+      <material name="lightgray"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.145" radius="0.020"/>
+      </geometry>
+      <origin rpy="0 1.57075 -0.27075" xyz="0.075 0 0"/>
+    </collision>
+    <collision>
+      <geometry>
+        <cylinder length="0.040" radius="0.020"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </collision>
+    <inertial>
+      <mass value="0.630"/>
+      <origin xyz="0.073 0.0 0.0"/>
+      <inertia ixx="0.000087" ixy="-0.000076" ixz="-0.000010" iyy="0.004906" iyz="0.000000" izz="0.004929"/>
+    </inertial>
+  </link>
+
+  <joint name="r5m_joint3" type="revolute">
+    <parent link="r5m_upper_arm_link"/>
+    <child link="r5m_forearm_link"/>
+    <origin rpy="3.1415 0 1.3" xyz="0.15 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="9.0" lower="0.0" upper="3.5" velocity="0.5"/>
+  </joint>
+
+  <link name="r5m_forearm_link">
+    <visual>
+      <geometry>
+        <!-- <mesh filename="/home/hkolano/Stuff/coupledDynamics/meshes/archived_meshes/ElbowJoint3.obj"/> -->
+        <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\ElbowJoint3.obj"/>
+      </geometry>
+      <origin rpy="1.57075 0 0" xyz="0 0 0"/>
+      <material name="lightgray"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.040" radius="0.020"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </collision>
+    <inertial>
+      <mass value="0.147"/>
+      <origin xyz="0.017 -0.026 -0.002"/>
+      <inertia ixx="0.000127" ixy="-0.000061" ixz="-0.000001" iyy="0.000062" iyz="0.000000" izz="0.000163"/>
+    </inertial>
+  </link>
+
+  <joint name="r5m_joint2" type="revolute">
+    <parent link="r5m_forearm_link"/>
+    <child link="r5m_wrist_link"/>
+    <!-- <origin rpy="-1.57075 -0.5 0" xyz="0.020 0 0"/> -->
+    <origin rpy="-1.57075 0.0 0" xyz="0.020 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="5.0" lower="0.0" upper="6.0" velocity="1.0"/>
+  </joint>
+
+  <link name="r5m_wrist_link">
+    <visual>
+      <geometry>
+        <!-- <mesh filename="/home/hkolano/Stuff/coupledDynamics/meshes/archived_meshes/Wrist3.obj"/> -->
+        <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\Wrist3.obj"/>
+      </geometry>
+      <origin rpy="1.57075 0 0" xyz="0 0 0"/>
+      <material name="lightgray"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.140" radius="0.020"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 -0.070"/>
+    </collision>
+    <inertial>
+      <mass value="0.559"/>
+      <origin xyz="0.0 0.003 -0.098"/>
+      <!-- <inertia ixx="0.006152" ixy="-0.000002" ixz="-0.000004" iyy="0.006177" iyz="0.000000" izz="0.000079"/> -->
+      <inertia ixx="0.006152" ixy="-0.000002" ixz="-0.000004" iyy="0.006177" iyz="0.000000" izz="0.000160"/>
+    </inertial>
+  </link>
+
+  <link name="r5m_jaw">
+    <inertial>
+      <mass value="0.01"/>
+      <origin xyz="0. 0. 0."/>
+      <inertia ixx="0.000010" ixy="0.0" ixz="0.0" iyy="0.000010" iyz="0.0" izz="0.000010"/>
+    </inertial>
+  </link>
+
+  <joint name="r5m_joint_jaw" type="fixed">
+    <parent link="r5m_wrist_link"/>
+    <child link="r5m_jaw"/>
+    <axis xyz="0 0 1"/>
+    <origin rpy="0 0 0" xyz="0 0 -0.190"/>
+  </joint>
+
+  <link name="r5m_jaw1">
+    <visual>
+      <geometry>
+        <!-- <mesh filename="/home/hkolano/Stuff/coupledDynamics/meshes/archived_meshes/Jaw1_v2.obj"/> -->
+        <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\Jaw1_v2.obj"/>
+      </geometry>
+      <origin rpy="1.57075 0 0" xyz="0 0 0"/>
+      <material name="lightgray"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.03 0.09 0.01"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="-0.01 -0.045 0"/>
+    </collision>
+    <!-- TODO: GET APPROPOATE MASSES (this is 50g ball at end) -->
+    <inertial>
+      <mass value="0.05"/>
+      <origin xyz="-.01 -0.045 0.0"/>
+      <inertia ixx="0.000010" ixy="0.0" ixz="0.0" iyy="0.000010" iyz="0.0" izz="0.000010"/>
+    </inertial>
+  </link>
+
+  <link name="r5m_jaw2">
+    <visual>
+      <geometry>
+        <!-- <mesh filename="/home/hkolano/Stuff/coupledDynamics/meshes/archived_meshes/Jaw2_v2.obj"/> -->
+        <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\Jaw2_v2.obj"/>
+      </geometry>
+      <origin rpy="1.57075 0 0" xyz="0 0 0"/>
+      <material name="lightgray"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.03 0.09 0.01"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0.01 -0.045 0"/>
+    </collision>
+    <!-- TODO: GET APPROPOATE MASSES -(this is 50g ball at end)  -->
+    <inertial>
+      <mass value="0.05"/>
+      <origin xyz="0.01 -0.045 0.0"/>
+      <inertia ixx="0.000010" ixy="0.0" ixz="0.0" iyy="0.000010" iyz="0.0" izz="0.000010"/>
+    </inertial>
+  </link>
+
+  <joint name="r5m_joint1_1" type="fixed">
+    <parent link="r5m_jaw"/>
+    <child link="r5m_jaw2"/>
+    <origin rpy="1.57075 0 0" xyz="-0.015 0 .05"/>
+    <axis xyz="0 0 -1"/>
+    <limit effort="5.0" lower="0.0" upper="0.5" velocity="0.5"/>
+  </joint>
+
+  <joint name="r5m_joint1_2" type="fixed">
+    <parent link="r5m_jaw"/>
+    <child link="r5m_jaw1"/>
+    <origin rpy="1.57075 0 0" xyz="0.015 0 .05"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="5.0" lower="0.0" upper="0.5" velocity="0.5"/>
+  </joint>  
+
+
+
+</robot>

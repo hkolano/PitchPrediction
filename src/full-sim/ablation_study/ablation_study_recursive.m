@@ -1,5 +1,5 @@
 % Load in the data
-load("data/full-sim-data-110822/FullData.mat")
+load("data/full-sim-data-022223/FullData_50Hz.mat")
 
 %%
 load('data/channel_dict.mat')
@@ -127,7 +127,7 @@ function init_options = define_new_opts(val_inputs, val_outputs)
         Shuffle='every-epoch', ...
         ValidationData={val_inputs, val_outputs}, ...
         ValidationFrequency = 60, ...
-        OutputNetwork='best-validation-loss');
+        OutputNetwork='best-validation-loss', ExecutionEnvironment='gpu');
 end
 
 

@@ -1,3 +1,12 @@
+%{
+Generates the pitch-only prediction networks. Requires that the data be 
+normalized and chan_idxs be defined in a file. Does 3 runs per level. 
+
+Make sure data input is the correct one, and that MaxEpochs is set to 100 in
+init_opts. Make sure it is saving results to a good folder. 
+
+Last modified 3/8/23
+%}
 %% Setup
 % Load data set
 load("data/full-sim-data-110822/FullData.mat")

@@ -1,18 +1,23 @@
-% Plot results from k_length study
+%{
+Plots the validation results from the simple stretch study and the
+autoregressive study (Figure 9 in the submitted IROS paper). 
+%}
 
 sfs = 1:7;
 lookahead_times = sfs*0.5;
 auto_times = [.5 1 2 3 4];
 
-load("data/networks/icra-redo-nets/k_study_results.mat")
+load("data/networks/iros-nets/k_study_results2.mat")
 stretch_forecast_avgs = mean(stretch_forecast_errors, 1);
 stretch_forecast_avgs = stretch_forecast_avgs(sfs)
 
-p = polyfit(lookahead_times, stretch_forecast_avgs, 3);
+load("data/networks/iros-nets/auto_study_results.mat")
+
+p = polyfit(lookahead_times, stretch_forecast_avgs, 2);
 y_fit = polyval(p, [0.5:.1:4.25]);
 
-% p2 = polyfit(auto_times, auto_forecast_errors, 2);
-% y_fit2 = polyval(p2, [0.5:.1:4.25]);
+p2 = polyfit(auto_times, auto_forecast_errors, 2);
+y_fit2 = polyval(p2, [0.5:.1:4.25]);
 
 close all
 
@@ -26,9 +31,9 @@ stretch_dots = plot(lookahead_times,stretch_forecast_avgs');
 % auto_dots = plot(auto_times, auto_forecast_errors)
 
 my_xlab = xlabel('Prediction Length (s)');
-my_ylab = ylabel('RMSE');
+my_ylab = ylabel('Validation RMSE');
 xlim([0.25, 4.5])
-ylim([-0.0, .12])
+ylim([-0.0, .25])
 
 % dark green #117733
 % light green #44AA99
@@ -77,9 +82,9 @@ set(gca, ...
   'XGrid'       , 'off'     , ...
   'XColor'      , [.3 .3 .3], ...
   'YColor'      , [.3 .3 .3], ...
-  'YTick'       , 0:.05:.3, ...
+  'YTick'       , 0:.05:.25, ...
   'LineWidth'   , 1         );
 
 set(gcf, ...
-'Position', [100 100 600 250]);
+'Position', [100 100 700 250]);
 leg = legend("Pitch-Only", "Autoregressive", 'Location', 'northwest');
