@@ -3,7 +3,7 @@
 elimd_gps = ["goal_poses", "manip_vels", "goal_vels", "xyz_poses", "manip_des_vels", "xyz_vels", "ry_vels", "manip_poses", "ry_poses"];
 
 ablation_rmses = zeros(9, 4);
-base_path = 'data\networks\full-nets\ablTake2_';
+base_path = 'data\networks\full-nets\iros_nets';
 
 this_level_rmses = zeros(1, 4);
 for take_n = 1:3
