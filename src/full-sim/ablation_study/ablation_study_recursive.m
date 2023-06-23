@@ -1,23 +1,27 @@
+%{
+Runs the ablation study. Requires that the data be normalized and chan_idxs
+be defined in a file. Does 3 runs per level. 
+
+Make sure data input is the correct one, and that MaxEpochs is set to 50 in
+define_new_opts. Make sure level_num reflects the number of data groups minus
+one. Make sure it is saving results to a good folder. 
+
+Last modified 3/8/23
+%}
 % Load in the data
 load("data/full-sim-data-022223/FullData_50Hz.mat")
 
 %%
-load('data/channel_dict.mat')
-chan_idxs = rmfield(chan_idxs, 'pitch');
-chan_idxs = rmfield(chan_idxs, 'dt');
+load('data/full-sim-data-022223/channel_dict.mat')
+pitch_idx = chan_idxs.act_pitch;
+chan_idxs = rmfield(chan_idxs, {'act_rpy', 'act_xyz', 'act_joint_pos', 'act_angular_vels', 'act_linear_vels', 'act_joint_vels', 'act_pitch'});
 
-
-% chan_idxs = rmfield(chan_idxs, {'xyz_poses', 'xyz_vels', 'ry_vels', 'manip_vels', 'manip_des_vels', 'goal_poses'});
 % Make a list of all channel indices
-all_idxs = 1:1:41;
-% Take out xyz_poses
-all_idxs = all_idxs(~ismember(all_idxs, chan_idxs.('xyz_poses')))
-chan_idxs = rmfield(chan_idxs, 'xyz_poses')
+all_idxs = 21:1:44;
 
 % Initialize constants
 k = 25;
 numUnits = 128;
-pitch_idx = 23;
 
 % Set up vectors to store loss values
 all_losses = {};
@@ -25,7 +29,7 @@ all_RMSEs = {};
 removed_features = {};
 feature_group_list = {};
 
-for level_num = 2:8
+for level_num = 1:6
     fn = fieldnames(chan_idxs)
     feature_group_list{level_num} = fn;
     level_losses = [];
@@ -62,7 +66,7 @@ for level_num = 2:8
             subgroup_losses = [subgroup_losses, info.FinalValidationLoss];
             subgroup_RMSEs = [subgroup_RMSEs, info.FinalValidationRMSE];
             %     
-            outputFile = strcat("data/networks/icra-redo-nets/abl_rnd", string(level_num), "/no_", feat_name, '_take_', string(take_n), '.mat');
+            outputFile = strcat("data/networks/iros-nets/abl_rnd", string(level_num), "/no_", feat_name, '_take_', string(take_n), '.mat');
             save(outputFile, 'net', 'info');
        end
     
@@ -86,7 +90,7 @@ for level_num = 2:8
     chan_idxs = rmfield(chan_idxs, smallest_impact_feat);
 end
 
-outputfile = strcat("data/networks/icra-redo-nets/ablationstudyresults.mat");
+outputfile = strcat("data/networks/iros-nets/ablationstudyresults.mat");
 save(outputfile, 'all_losses', 'all_RMSEs', 'feature_group_list', 'removed_features');
 % disp("Final Losses:")
 % disp(all_losses)

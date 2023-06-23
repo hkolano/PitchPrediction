@@ -15,13 +15,8 @@ load('data/full-sim-data-022223/channel_dict.mat')
 pitch_idx = chan_idxs.act_pitch;
 chan_idxs = rmfield(chan_idxs, {'act_rpy', 'act_xyz', 'act_joint_pos', 'act_angular_vels', 'act_linear_vels', 'act_joint_vels', 'act_pitch'});
 
-
-% chan_idxs = rmfield(chan_idxs, {'xyz_poses', 'xyz_vels', 'ry_vels', 'manip_vels', 'manip_des_vels', 'goal_poses'});
-% Make a list of all channel indices
-all_idxs = 1:1:41;
-% Take out xyz_poses
-% all_idxs = all_idxs(~ismember(all_idxs, chan_idxs.('xyz_poses')))
-% chan_idxs = rmfield(chan_idxs, 'xyz_poses')
+% Make a list of all measured indices
+all_idxs = 21:1:44;
 
 % Initialize constants
 k = 25;
@@ -33,50 +28,36 @@ all_RMSEs = {};
 removed_features = {};
 feature_group_list = {};
 
-% for level_num = 2:8
-%     fn = fieldnames(chan_idxs)
-%     feature_group_list{level_num} = fn;
-    level_losses = [];
-    level_RMSEs = [];
+level_losses = [];
+level_RMSEs = [];
 
-    % Iterate over all remaining features
-%     for feat_idx = 1:length(fn)
-        % What feature name are we removing?
-%         feat_name = fn{feat_idx}
-        % What channels does that feature group contain?
-%         feat_chan_idxs = chan_idxs.(feat_name);
+% Cut the group's data out of the dataset
+clear Resp_Train Inputs_Train Resp_Test Inputs_Test
+[Inputs_Train, Resp_Train] = split_data(XTrain, pitch_idx, k, all_idxs);
+[Inputs_Test, Resp_Test] = split_data(XTest, pitch_idx, k, all_idxs);
+
+% How many feature channels remain?
+numChannels = size(Inputs_Train{1}, 1)
+
+% Initialize the neural network
+layers = setup_lookahead_rnn(numChannels, k, numUnits);
+init_options = define_new_opts(Inputs_Test, Resp_Test);
+subgroup_losses = [];
+subgroup_RMSEs = [];
+
+level_num = 0;
+for take_n = 1:3
+    [net, info] = trainNetwork(Inputs_Train,Resp_Train,layers,init_options);
     
-        % Get the indices of the remaining channels, sans the feature group in
-        % question
-%         rem_idxs = all_idxs(~ismember(all_idxs, feat_chan_idxs));
-    
-        % Cut the group's data out of the dataset
-        clear Resp_Train Inputs_Train Resp_Test Inputs_Test
-        [Inputs_Train, Resp_Train] = split_data(XTrain, pitch_idx, k, all_idxs);
-        [Inputs_Test, Resp_Test] = split_data(XTest, pitch_idx, k, all_idxs);
-    
-        % How many feature channels remain?
-        numChannels = size(Inputs_Train{1}, 1)
-        
-        % Initialize the neural network
-        layers = setup_lookahead_rnn(numChannels, k, numUnits);
-        init_options = define_new_opts(Inputs_Test, Resp_Test);
-        subgroup_losses = [];
-        subgroup_RMSEs = [];
-    
-        level_num = 0;
-       for take_n = 1:3
-            [net, info] = trainNetwork(Inputs_Train,Resp_Train,layers,init_options);
-            
-            subgroup_losses = [subgroup_losses, info.FinalValidationLoss];
-            subgroup_RMSEs = [subgroup_RMSEs, info.FinalValidationRMSE];
-            %     
-            outputFile = strcat("data/networks/icra-redo-nets/abl_rnd", string(level_num), '/baseline_take_', string(take_n), '.mat');
-            save(outputFile, 'net', 'info');
-       end
-    
-       level_losses = [level_losses, mean(subgroup_losses)];
-       level_RMSEs = [level_RMSEs, mean(subgroup_RMSEs)];
+    subgroup_losses = [subgroup_losses, info.FinalValidationLoss];
+    subgroup_RMSEs = [subgroup_RMSEs, info.FinalValidationRMSE];
+    %     
+    outputFile = strcat("data/networks/iros-nets/abl_rnd", string(level_num), '/baseline_take_', string(take_n), '.mat');
+    save(outputFile, 'net', 'info');
+end
+
+level_losses = [level_losses, mean(subgroup_losses)];
+level_RMSEs = [level_RMSEs, mean(subgroup_RMSEs)];
 %     end
 
     % Record losses for this level
