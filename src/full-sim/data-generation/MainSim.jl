@@ -36,8 +36,10 @@ mvis = MechanismVisualizer(mech_blue_alpha, URDFVisuals(urdf_file), vis[:alpha])
 # render(mvis)
 
 # Name the joints and bodies of the mechanism
-vehicle_joint, base_joint, shoulder_joint, elbow_joint, wrist_joint, jaw_joint = joints(mech_blue_alpha)
-world, vehicle_body, shoulder_body, upper_arm_body, elbow_body, wrist_body, jaw_body = bodies(mech_blue_alpha)
+# vehicle_joint, base_joint, shoulder_joint, elbow_joint, wrist_joint, jaw_joint = joints(mech_blue_alpha)
+# world, vehicle_body, shoulder_body, upper_arm_body, elbow_body, wrist_body, jaw_body = bodies(mech_blue_alpha)
+vehicle_joint, base_joint, shoulder_joint, elbow_joint, wrist_joint = joints(mech_blue_alpha)
+world, vehicle_body, shoulder_body, upper_arm_body, elbow_body, wrist_body = bodies(mech_blue_alpha)
 
 body_frame = default_frame(vehicle_body)
 shoulder_frame = default_frame(shoulder_body)
@@ -123,7 +125,6 @@ duration_after_traj = 1.0   # How long to simulate after trajectory has ended
 #%%
 # (temporary adds while making changes to ctlr and traj generator)
 include("PIDCtlr.jl")
-include("TrajGenMain.jl")
 # include("HydroCalc.jl")
 # include("SimWExt.jl")
 
@@ -138,7 +139,7 @@ include("TrajGenMain.jl")
 
 
 
-p_arm = get_ee_path(mech_blue_alpha, jaw_body)
+# p_arm = get_ee_path(mech_blue_alpha, jaw_body)
 
 # ----------------------------------------------------------
 #                      Gather Sim Data
@@ -177,12 +178,12 @@ bool_plot_positions = false
         global traj = find_trajectory(wp)
     end
 
-    a, T, des_poses, des_vels = find_trajectory(wp)
-    goal_frame = wp.end_pose.from
-    add_frame!(world, wp.end_pose)
-    setelement!(mvis, goal_frame)
-    visualize_path(des_poses, mvis, world)
-    traj_pars = trajParams(a, wp, T)
+    # a, T, des_poses, des_vels = find_trajectory(wp)
+    # goal_frame = wp.end_pose.from
+    # add_frame!(world, wp.end_pose)
+    # setelement!(mvis, goal_frame)
+    # visualize_path(des_poses, mvis, world)
+    # traj_pars = trajParams(a, wp, T)
 
     # include("kinematicsandbox.jl")
 

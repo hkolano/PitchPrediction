@@ -107,8 +107,8 @@ In this case, also imposes damping to each joint.
 Requires the parameters of the trajectory to be followed (pars=trajParams), which consists of the quintic coefficients `a` and the two waypoints to travel between.
 Only happens every 4 steps because integration is done with Runge-Kutta.
 """
-# function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c)
-function pid_control!(torques::AbstractVector, t, state::MechanismState, traj, c)
+function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c)
+# function pid_control!(torques::AbstractVector, t, state::MechanismState, traj, c)
     # If it's the first time called in the Runge-Kutta, update the control torque
     # println("Made it inside the function! Ctr = $(time_step_ctr)")
     if rem(c.step_ctr, 4) == 0
