@@ -24,7 +24,7 @@
     <link name="vehicle_frame">
         <visual>
             <geometry>
-                <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\bluerov_black.obj"/>
+                <mesh filename="meshes\bluerov_black.obj"/>
             </geometry>
             <origin rpy="1.57075 0 1.57075" xyz="0 0 0"/>
             <material name="gray"/>
@@ -40,7 +40,7 @@
     <link name="vehicle_ballast">
         <visual>
             <geometry>
-                <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\bluerov_blue.obj"/>
+                <mesh filename="meshes\bluerov_blue.obj"/>
             </geometry>
             <origin rpy="1.57075 0 1.57075" xyz="0 0 0"/>
             <material name="blue"/>
@@ -56,7 +56,7 @@
     <link name="vehicle_cans">
         <visual>
             <geometry>
-                <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\bluerov_white.obj"/>
+                <mesh filename="meshes\bluerov_white.obj"/>
             </geometry>
            <origin rpy="1.57075 0 1.57075" xyz="0 0 0"/>
             <material name="white"/>
@@ -82,7 +82,7 @@
     <visual>
       <geometry>
         <!-- <mesh filename="/home/hkolano/Stuff/coupledDynamics/meshes/archived_meshes/Base3.obj"/> -->
-        <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\Base3.obj"/>
+        <mesh filename="meshes\Base3.obj"/>
       </geometry>
       <origin rpy="1.57075 0 0" xyz="0 0 0"/>
       <!-- <origin rpy="0 0 0" xyz="0 0 0"/> -->
@@ -115,7 +115,7 @@
     <visual>
       <geometry>
         <!-- <mesh filename="/home/hkolano/Stuff/coupledDynamics/meshes/archived_meshes/ShoulderJoint3.obj"/> -->
-        <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\ShoulderJoint3.obj"/>
+        <mesh filename="meshes\ShoulderJoint3.obj"/>
       </geometry>
       <material name="lightgray"/>
       <!-- <origin rpy="0 3.1415 -1.57075" xyz="0 0 0"/> -->
@@ -148,7 +148,7 @@
     <visual>
       <geometry>
         <!-- <mesh filename="/home/hkolano/Stuff/coupledDynamics/meshes/archived_meshes/UpperArm3.obj"/> -->
-        <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\UpperArm3.obj"/>
+        <mesh filename="meshes\UpperArm3.obj"/>
       </geometry>
       <!-- <origin rpy="0 -1.57075 -0.2655555" xyz="0 0 -0.075"/> -->
       <origin rpy="0 -1.57075 1.305240" xyz="0 0 -0.075"/>
@@ -185,7 +185,7 @@
     <visual>
       <geometry>
         <!-- <mesh filename="/home/hkolano/Stuff/coupledDynamics/meshes/archived_meshes/ElbowJoint3.obj"/> -->
-        <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\ElbowJoint3.obj"/>
+        <mesh filename="meshes\ElbowJoint3.obj"/>
       </geometry>
       <origin rpy="1.57075 0 0" xyz="0 0 0"/>
       <material name="lightgray"/>
@@ -216,7 +216,7 @@
     <visual>
       <geometry>
         <!-- <mesh filename="/home/hkolano/Stuff/coupledDynamics/meshes/archived_meshes/Wrist3.obj"/> -->
-        <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\Wrist3.obj"/>
+        <mesh filename="meshes\Wrist3.obj"/>
       </geometry>
       <origin rpy="1.57075 0 0" xyz="0 0 0"/>
       <material name="lightgray"/>
@@ -254,7 +254,7 @@
     <visual>
       <geometry>
         <!-- <mesh filename="/home/hkolano/Stuff/coupledDynamics/meshes/archived_meshes/Jaw1_v2.obj"/> -->
-        <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\Jaw1_v2.obj"/>
+        <mesh filename="meshes\Jaw1_v2.obj"/>
       </geometry>
       <origin rpy="1.57075 0 0" xyz="0 0 0"/>
       <material name="lightgray"/>
@@ -277,7 +277,7 @@
     <visual>
       <geometry>
         <!-- <mesh filename="/home/hkolano/Stuff/coupledDynamics/meshes/archived_meshes/Jaw2_v2.obj"/> -->
-        <mesh filename="C:\Users\hkola\Stuff\_ONR\RNNs for pitch prediction\PitchPrediction\meshes\Jaw2_v2.obj"/>
+        <mesh filename="meshes\Jaw2_v2.obj"/>
       </geometry>
       <origin rpy="1.57075 0 0" xyz="0 0 0"/>
       <material name="lightgray"/>
