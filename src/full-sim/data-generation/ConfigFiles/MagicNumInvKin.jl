@@ -3,7 +3,7 @@
 # ----------------------------------------------------------
 is_jaw_fixed = false
 body_names = ["vehicle", "shoulder", "upperarm", "elbow", "wrist", "jaw"]
-dof_names = ["roll", "pitch", "yaw", "x", "y", "z", "base", "shoulder", "elbow", "wrist"]
+dof_names = ["roll", "pitch", "yaw", "x", "y", "z", "base", "shoulder", "elbow", "wrist", "jaw"]
 include("../CtlrParFiles/IrosActuatorLimits.jl")
 
 # ----------------------------------------------------------
