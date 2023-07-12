@@ -41,16 +41,6 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
 
         # ----- Special calculaitons for the vehicle -----
         if body_name == "vehicle"
-            # ----- Grav/buoy for arm base link ----- 
-            def_to_armbase_cob = fixed_transform(bod, body_default_frame, cob_frame_dict["armbase"])
-            def_to_armbase_com = fixed_transform(bod, body_default_frame, com_frame_dict["armbase"])
-            buoy_force_trans_armbase = transform(state, buoyancy_force_dict["armbase"], body_default_frame)
-            grav_force_trans_armbase = transform(state, gravity_force_dict["armbase"], body_default_frame)
-            buoy_wrench_arm = Wrench(Point3D(body_default_frame, translation(inv(def_to_armbase_cob))), buoy_force_trans_armbase)
-            grav_wrench_arm = Wrench(Point3D(body_default_frame, translation(inv(def_to_armbase_com))), grav_force_trans_armbase)
-            wrench = wrench + buoy_wrench_arm + grav_wrench_arm
-            # @show buoy_wrench_arm
-            # @show grav_wrench_arm
             
             # Drag on the vehicle 
             vel = velocity(state, joint_dict["vehicle"])
