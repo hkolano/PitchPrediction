@@ -25,7 +25,6 @@ include("UVMSsetup.jl")
 include("ConfigFiles/MagicNumPitchPred.jl")
 include("ConfigFiles/ConstMagicNums.jl")
 include("ConfigFiles/MagicNumBlueROV.jl")
-include("ConfigFiles/MagicNumAlpha.jl")
 
 urdf_file = joinpath("urdf", "blue_rov_fixedjaw.urdf")
 
