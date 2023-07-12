@@ -32,7 +32,7 @@ function setup_frames(body_dict, body_name_list, cob_vec_dict, com_vec_dict)
             setelement!(mvis, frame_com, 0.2)
         end 
     end
-
+#=
     alphabase_com_wrt_linkframe = com_vec_dict["armbase"]
     # Arm base is rigidly attached to vehicle, so it has a transform in the vehicle's frame. It's the 5th body in the URDF attached to the vehicle. 
     linkframe_wrt_vehframe = translation(RigidBodyDynamics.frame_definitions(body_dict["vehicle"])[5])
@@ -51,7 +51,7 @@ function setup_frames(body_dict, body_name_list, cob_vec_dict, com_vec_dict)
     println(RigidBodyDynamics.frame_definitions(body_dict["vehicle"])[5].from)
     return cob_frame_dict, com_frame_dict
 end
-
+=#
 function mechanism_reference_setup(urdf_file)
     vis = Visualizer()
     mech_blue_alpha = parse_urdf(urdf_file; floating=true, gravity = [0.0, 0.0, 0.0])
