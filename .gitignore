@@ -11,6 +11,9 @@ data/networks/full-nets
 data/networks/iros-nets
 data/networks/icra-redo-nets
 
+src/full-sim/data-generation/combo_traj_yaml_files
+src/full-sim/data-generation/traj_yaml_files
+
 *.csv
 *.asv
 data/full-sim-data-022223/channel_dict.mat

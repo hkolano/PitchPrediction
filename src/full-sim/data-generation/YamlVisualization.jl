@@ -10,7 +10,10 @@ include("ConfigFiles/MagicNumInvKin.jl")
 urdf_file = joinpath("urdf", "blue_rov_hardware.urdf")
 mech_blue_alpha, mvis, joint_dict, body_dict = mechanism_reference_setup(urdf_file)
 
+set_configuration!(mvis, joint_dict["base"], deg2rad(298-175.0))
 include("TrajGenJoints.jl")
+
+render(mvis)
 
 #%%
 
@@ -27,8 +30,18 @@ for file_name in traj_file_names
     # get trajectory data from file
     println("Parsing data file ", file_name)
     data = YAML.load_file(file_path)
-    start_state = jointState(reverse(data["start_pos"]), reverse(data["start_vel"]))
-    end_state = jointState(reverse(data["end_pos"]), reverse(data["end_vel"]))
+    # center-adjust the start position
+    center_adjusted_start_pos = copy(reverse(data["start_pos"]))
+    center_adjusted_start_pos[1] = center_adjusted_start_pos[1] - 3.054
+    center_adjusted_start_pos[4] = center_adjusted_start_pos[4] - 1.61  
+
+    # center-adjust the end position
+    center_adjusted_end_pos = copy(reverse(data["end_pos"]))
+    center_adjusted_end_pos[1] = center_adjusted_end_pos[1] - 3.054 
+    center_adjusted_end_pos[4] = center_adjusted_end_pos[4] -1.61
+
+    start_state = jointState(center_adjusted_start_pos, reverse(data["start_vel"]))
+    end_state = jointState(center_adjusted_end_pos, reverse(data["end_vel"]))
     pts = Waypoints(start_state, end_state)
     duration = data["duration"]
 
