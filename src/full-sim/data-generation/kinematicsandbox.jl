@@ -95,6 +95,12 @@ function compose_jacobians(this_state, des_σdot)
     return ζ_i[2]
 end
 
+function tpik(this_state, des_σdot)
+    # Task σ1: end effector following
+    J1 = get_des_movement_jacobian(this_state)
+    des_ζ = get_mp_pinv(J1)*des_σdot
+end
+
 function iCAT_jacobians(this_state, des_σdot)
     ρ0 = zeros(11)
     Q0 = I
@@ -133,7 +139,7 @@ end
 # function simple_ik_iterator(state)
     # des_σdot = [1., 0., 0., 0., 0., 0.]
     # des_σdot = [0., 1., 0, 0., 0., 0.]
-    des_σdot = [0., 0., -0.5, 0, 0, 0.]
+    des_σdot = [0., 1., 0., 0., 0, 0.]
     simTime = 1 #2*pi
     viewRate=0.5
     Δt = 0.05
@@ -179,7 +185,8 @@ end
         # new_des_σdot = compensate_for_rotational_offset(new_state, des_σdot)
 
         # Do inverse kinematics
-        ζ = iCAT_jacobians(new_state, des_σdot)
+        # ζ = iCAT_jacobians(new_state, des_σdot)
+        ζ = tpik(new_state, des_σdot)
         println("Desired zeta:")
         println(ζ)
 
