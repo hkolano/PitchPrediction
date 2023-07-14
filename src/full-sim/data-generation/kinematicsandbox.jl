@@ -95,11 +95,134 @@ function compose_jacobians(this_state, des_σdot)
     return ζ_i[2]
 end
 
-function tpik(this_state, des_σdot)
-    # Task σ1: end effector following
-    J1 = get_des_movement_jacobian(this_state)
-    des_ζ = get_mp_pinv(J1)*des_σdot
+# mutable struct TaskDef 
+#     J
+#     σdot_i 
+#     type::Int
+# end
+
+function define_ee_task(this_state, des_σdot, dofs="all")
+    J = get_des_movement_jacobian(this_state)
+    σdot_i = des_σdot
+    type = 0 # equality task
+    if dofs == "pos"
+        return J[4:6,:], des_σdot[4:6], type
+    elseif dofs == "ori"
+        return J[1:3,:], des_σdot[1:3], type
+    else
+        return J, σdot_i, type
+    end
 end
+
+function define_zero_pitch_task()
+    J = zeros(1, 11)
+    J[2] = 1.
+    σdot_i = 0
+    type = 0 # equality task
+    return J, σdot_i, type
+end
+
+function define_zero_roll_task()
+    J = zeros(1, 11)
+    J[1] = 1.
+    σdot_i = 0
+    type = 0   # equality task
+    return J, σdot_i, type
+end
+
+function define_zero_unactuated_task()
+    J = zeros(2, 11)
+    J[1, 1] = 1.
+    J[2, 2] = 1.
+    σdot_i = [0., 0.]
+    type = 0 # equality task
+    return J, σdot_i, type
+end
+
+"""
+    tpik_single_layer(this_state, des_σdot)
+
+Task 1: end effector following (pos + ori)
+No closed loop term
+"""
+function tpik_single_layer(this_state, des_σdot)
+    # Just the end effector following task
+    J, σdot_i, ~ = define_ee_task(this_state, des_σdot)
+    ζ = get_mp_pinv(J)*σdot_i
+end
+
+"""
+    tpik_nopitch(this_state, des_σdot)
+
+Task 1: set pitch = 0
+Task 2: end effector following (pos + ori)
+No closed loop term
+"""
+function tpik_nopitch(this_state, des_σdot)
+    # Task α1: keep pitch at 0
+    J1, σdot_1, ~ = define_zero_pitch_task()
+    J1_pinv = get_mp_pinv(J1)
+    ζ1 = J1_pinv*σdot_1
+
+    N1 = I - J1_pinv*J1
+
+    # Task α2: end effector following
+    J2, σdot_2, ~ = define_ee_task(this_state, des_σdot)
+    # @show(get_mp_pinv(J2*N1))
+    ζ2 = get_mp_pinv(J2*N1)*(σdot_2 - J2*ζ1)
+    return ζ1 + ζ2
+end
+
+"""
+    tpik(this_state, des_σdot)
+
+Task 1: set pitch and roll = 0
+Task 2: end effector following (pos + ori)
+No closed loop term
+"""
+function tpik(this_state, des_σdot)
+    # Task α1: keep pitch and roll at 0
+    J1, σdot_1, ~ = define_zero_unactuated_task()
+    J1_pinv = get_mp_pinv(J1)
+    ζ1 = J1_pinv*σdot_1
+
+    N1 = I - J1_pinv*J1
+
+    # Task α2: end effector following
+    J2, σdot_2, ~ = define_ee_task(this_state, des_σdot)
+    ζ2 = get_mp_pinv(J2*N1)*(σdot_2 - J2*ζ1)
+    return ζ1 + ζ2
+end
+
+"""
+    tpik_sep_ori(this_state, des_σdot)
+
+Task 1: set pitch and roll = 0
+Task 2: end effector following (pos)
+Task 3: end effector following (ori)
+No closed loop term
+"""
+function tpik_sep_ori(this_state, des_σdot)
+    # Task α1: keep pitch and roll at 0
+    J1, σdot_1, ~ = define_zero_unactuated_task()
+    J1_pinv = get_mp_pinv(J1)
+    ζ1 = J1_pinv*σdot_1
+
+    N1 = I - J1_pinv*J1
+
+    # Task α2: end effector position following
+    J2, σdot_2, ~ = define_ee_task(this_state, des_σdot, "pos")
+    ζ2 = ζ1 + get_mp_pinv(J2*N1)*(σdot_2 - J2*ζ1)
+
+    JA_2 = [J1; J2]
+    N2 = I - get_mp_pinv(JA_2)*JA_2
+
+    # # Task α3: end effector orientation following
+    J3, σdot_3, ~ = define_ee_task(this_state, des_σdot, "ori")
+    ζ3 = ζ2 + get_mp_pinv(J3*N2)*(σdot_3 - J3*ζ2)
+    return ζ3
+end
+
 
 function iCAT_jacobians(this_state, des_σdot)
     ρ0 = zeros(11)
@@ -139,10 +262,10 @@ end
 # function simple_ik_iterator(state)
     # des_σdot = [1., 0., 0., 0., 0., 0.]
     # des_σdot = [0., 1., 0, 0., 0., 0.]
-    des_σdot = [0., 1., 0., 0., 0, 0.]
-    simTime = 1 #2*pi
+    des_σdot = [0., 0., 0.1, 0., 0., 0.]
+    simTime = 1. #2*pi
     viewRate=0.5
-    Δt = 0.05
+    Δt = 0.01
 
     mechanism = state.mechanism
     qs = typeof(configuration(state))[]
