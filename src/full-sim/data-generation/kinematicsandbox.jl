@@ -95,134 +95,117 @@ function compose_jacobians(this_state, des_σdot)
     return ζ_i[2]
 end
 
-# mutable struct TaskDef 
-#     J
-#     σdot_i 
-#     type::Int
-# end
-
 function define_ee_task(this_state, des_σdot, dofs="all")
+    task_dict = Dict{}()
     J = get_des_movement_jacobian(this_state)
     σdot_i = des_σdot
-    type = 0 # equality task
+    task_dict["name"] = "ee"
+    task_dict["type"] = 0 # equality task
+    task_dict["dofs"] = dofs
+    task_dict["is_static"] = false
+    task_dict["update_func"] = update_ee_task!
     if dofs == "pos"
-        return J[4:6,:], des_σdot[4:6], type
+        task_dict["J"] = J[4:6,:]
+        task_dict["σdot_i"] = des_σdot[4:6]
     elseif dofs == "ori"
-        return J[1:3,:], des_σdot[1:3], type
+        task_dict["J"] = J[1:3,:]
+        task_dict["σdot_i"] = des_σdot[1:3]
     else
-        return J, σdot_i, type
+        task_dict["J"] = J
+        task_dict["σdot_i"] = des_σdot
+    end
+    return task_dict
+end
+
+function update_ee_task!(task_dict::Dict, this_state, des_σdot)
+    J = get_des_movement_jacobian(this_state)
+    if task_dict["dofs"] == "pos"
+        task_dict["J"] = J[4:6,:]
+        task_dict["σdot_i"] = des_σdot[4:6]
+    elseif task_dict["dofs"] == "ori"
+        task_dict["J"] = J[1:3,:]
+        task_dict["σdot_i"] = des_σdot[1:3]
+    else
+        task_dict["J"] = J
+        task_dict["σdot_i"] = des_σdot
     end
 end
 
 function define_zero_pitch_task()
-    J = zeros(1, 11)
-    J[2] = 1.
-    σdot_i = 0
-    type = 0 # equality task
-    return J, σdot_i, type
+    task_dict = Dict{}()
+    task_dict["name"] = "nopitch"
+    task_dict["J"] = zeros(1, 11)
+    task_dict["J"][2] = 1.
+    task_dict["σdot_i"] = 0
+    task_dict["type"] = 0 # equality task
+    task_dict["is_static"] = true
+    return task_dict
 end
 
 function define_zero_roll_task()
-    J = zeros(1, 11)
-    J[1] = 1.
-    σdot_i = 0
-    type = 0   # equality task
-    return J, σdot_i, type
+    task_dict = Dict{}()
+    task_dict["name"] = "noroll"
+    task_dict["J"] = zeros(1, 11)
+    task_dict["J"][1] = 1.
+    task_dict["σdot_i"] = 0
+    task_dict["type"] = 0 # equality task
+    task_dict["is_static"] = true
+    return task_dict
 end
 
 function define_zero_unactuated_task()
-    J = zeros(2, 11)
-    J[1, 1] = 1.
-    J[2, 2] = 1.
-    σdot_i = [0., 0.]
-    type = 0 # equality task
-    return J, σdot_i, type
+    task_dict = Dict{}()
+    task_dict["name"] = "nopitchroll"
+    task_dict["J"] = zeros(2, 11)
+    task_dict["J"][1, 1] = 1.
+    task_dict["J"][2, 2] = 1.
+    task_dict["σdot_i"] = [0, 0.]
+    task_dict["type"] = 0 # equality task
+    task_dict["is_static"] = true
+    return task_dict
 end
 
 """
-    tpik_single_layer(this_state, des_σdot)
+    tpik(task_list, this_state, des_σdot)
 
-Task 1: end effector following (pos + ori)
+returns ζ for given task list.
 No closed loop term
 """
-function tpik_single_layer(this_state, des_σdot)
-    # Just the end effector following task
-    J, σdot_i, ~ = define_ee_task(this_state, des_σdot)
-    ζ = get_mp_pinv(J)*σdot_i
+function tpik(task_list, this_state, des_σdot)
+    # Special consideration for first task
+    task1 = task_list[1]
+    if task1["name"] == "ee" && task1["is_static"] == false
+        update_ee_task!(task1, this_state, des_σdot)
+    elseif task1["is_static"] == false
+        print("Need to update this task.")
+    end
+    J1_pinv = get_mp_pinv(task1["J"])
+    ζ_old = J1_pinv*task1["σdot_i"]
+
+    JA = task1["J"]
+    N = I - get_mp_pinv(JA)*JA
+
+    # Do the rest of the Tasks
+    if length(task_list) > 1
+        for task in task_list[2:end]
+            # update jacobian if necessary
+            if task["name"] == "ee" && task["is_static"] == false
+                update_ee_task!(task, this_state, des_σdot)
+            elseif task["is_static"] == false
+                print("Need to update this task.")
+            end
+
+            # calculate ζ_n
+            ζ_new = ζ_old + get_mp_pinv(task["J"]*N)*(task["σdot_i"] - task["J"]*ζ_old)
+            
+            # update augmented Jacobian and null space
+            JA = [JA; task["J"]]
+            N = I - get_mp_pinv(JA)*JA
+            ζ_old = ζ_new
+        end
+    end
+    return ζ_old
 end
-
-"""
-    tpik_nopitch(this_state, des_σdot)
-
-Task 1: set pitch = 0
-Task 2: end effector following (pos + ori)
-No closed loop term
-"""
-function tpik_nopitch(this_state, des_σdot)
-    # Task α1: keep pitch at 0
-    J1, σdot_1, ~ = define_zero_pitch_task()
-    J1_pinv = get_mp_pinv(J1)
-    ζ1 = J1_pinv*σdot_1
-
-    N1 = I - J1_pinv*J1
-
-    # Task α2: end effector following
-    J2, σdot_2, ~ = define_ee_task(this_state, des_σdot)
-    # @show(get_mp_pinv(J2*N1))
-    ζ2 = get_mp_pinv(J2*N1)*(σdot_2 - J2*ζ1)
-    return ζ1 + ζ2
-end
-
-"""
-    tpik(this_state, des_σdot)
-
-Task 1: set pitch and roll = 0
-Task 2: end effector following (pos + ori)
-No closed loop term
-"""
-function tpik(this_state, des_σdot)
-    # Task α1: keep pitch and roll at 0
-    J1, σdot_1, ~ = define_zero_unactuated_task()
-    J1_pinv = get_mp_pinv(J1)
-    ζ1 = J1_pinv*σdot_1
-
-    N1 = I - J1_pinv*J1
-
-    # Task α2: end effector following
-    J2, σdot_2, ~ = define_ee_task(this_state, des_σdot)
-    ζ2 = get_mp_pinv(J2*N1)*(σdot_2 - J2*ζ1)
-    return ζ1 + ζ2
-end
-
-"""
-    tpik_sep_ori(this_state, des_σdot)
-
-Task 1: set pitch and roll = 0
-Task 2: end effector following (pos)
-Task 3: end effector following (ori)
-No closed loop term
-"""
-function tpik_sep_ori(this_state, des_σdot)
-    # Task α1: keep pitch and roll at 0
-    J1, σdot_1, ~ = define_zero_unactuated_task()
-    J1_pinv = get_mp_pinv(J1)
-    ζ1 = J1_pinv*σdot_1
-
-    N1 = I - J1_pinv*J1
-
-    # Task α2: end effector position following
-    J2, σdot_2, ~ = define_ee_task(this_state, des_σdot, "pos")
-    ζ2 = ζ1 + get_mp_pinv(J2*N1)*(σdot_2 - J2*ζ1)
-
-    JA_2 = [J1; J2]
-    N2 = I - get_mp_pinv(JA_2)*JA_2
-
-    # # Task α3: end effector orientation following
-    J3, σdot_3, ~ = define_ee_task(this_state, des_σdot, "ori")
-    ζ3 = ζ2 + get_mp_pinv(J3*N2)*(σdot_3 - J3*ζ2)
-    return ζ3
-end
-
 
 function iCAT_jacobians(this_state, des_σdot)
     ρ0 = zeros(11)
@@ -258,11 +241,29 @@ function regd_inverse(X, A, Q)
     inv(B + F.Vt*P*F.V)*X'*A*A
 end
 
+"""as defined by Moe, 2016"""
+function in_T_RC(xdot, x, xmin, xmax)
+    if xmin < x < xmax
+        return true 
+    elseif x <= xmin && xdot >= 0
+        return true 
+    elseif x <= xmin && xdot < 0
+        return false 
+    elseif x >= xmax && xdot <= 0
+        return true 
+    else
+        return false
+    end
+end
+
 #%%
+
+print_intermediate_states = false
+
 # function simple_ik_iterator(state)
     # des_σdot = [1., 0., 0., 0., 0., 0.]
     # des_σdot = [0., 1., 0, 0., 0., 0.]
-    des_σdot = [0., 0., 0.1, 0., 0., 0.]
+    des_σdot = [0., -0.5, 0., 0., 0., 0.]
     simTime = 1. #2*pi
     viewRate=0.5
     Δt = 0.01
@@ -299,17 +300,24 @@ end
     ζ_i = Dict{Int, Array}()
     J_i_A = Dict{Int, Array}()
 
-    for t in range(0, stop=simTime, step=Δt)
-        println("----- new state-----")
-        println("Current State (ori, then pos/joints):")
-        println(convert_to_rpy(new_state.q[1:4]))
-        println(new_state.q[5:end])
+    # Define the task hierarchy
+    task_list = [
+        define_zero_pitch_task()
+        define_ee_task(new_state, des_σdot)
+    ]
 
+    for t in range(0, stop=simTime, step=Δt)
+        if print_intermediate_states == true
+            println("----- new state-----")
+            println("Current State (ori, then pos/joints):")
+            println(convert_to_rpy(new_state.q[1:4]))
+            println(new_state.q[5:end])
+        end
         # new_des_σdot = compensate_for_rotational_offset(new_state, des_σdot)
 
         # Do inverse kinematics
         # ζ = iCAT_jacobians(new_state, des_σdot)
-        ζ = tpik(new_state, des_σdot)
+        ζ = tpik(task_list, new_state, des_σdot)
         println("Desired zeta:")
         println(ζ)
 
