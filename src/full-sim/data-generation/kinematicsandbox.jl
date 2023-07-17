@@ -132,22 +132,22 @@ function update_ee_task!(task_dict::Dict, this_state, des_σdot)
 end
 
 function define_zero_pitch_task()
-    task_dict = Dict{}()
+    task_dict = Dict{String, Any}()
     task_dict["name"] = "nopitch"
     task_dict["J"] = zeros(1, 11)
     task_dict["J"][2] = 1.
-    task_dict["σdot_i"] = 0
+    task_dict["σdot_i"] = [0.]
     task_dict["type"] = 0 # equality task
     task_dict["is_static"] = true
     return task_dict
 end
 
 function define_zero_roll_task()
-    task_dict = Dict{}()
+    task_dict = Dict{String, Any}()
     task_dict["name"] = "noroll"
     task_dict["J"] = zeros(1, 11)
     task_dict["J"][1] = 1.
-    task_dict["σdot_i"] = 0
+    task_dict["σdot_i"] = [0.]
     task_dict["type"] = 0 # equality task
     task_dict["is_static"] = true
     return task_dict
@@ -263,7 +263,7 @@ print_intermediate_states = false
 # function simple_ik_iterator(state)
     # des_σdot = [1., 0., 0., 0., 0., 0.]
     # des_σdot = [0., 1., 0, 0., 0., 0.]
-    des_σdot = [0., -0.5, 0., 0., 0., 0.]
+    des_σdot = [0., -.5, 0., 0., 0., 0.]
     simTime = 1. #2*pi
     viewRate=0.5
     Δt = 0.01
@@ -303,6 +303,7 @@ print_intermediate_states = false
     # Define the task hierarchy
     task_list = [
         define_zero_pitch_task()
+        # define_zero_roll_task()
         define_ee_task(new_state, des_σdot)
     ]
 
