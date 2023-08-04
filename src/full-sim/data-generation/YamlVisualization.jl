@@ -17,7 +17,7 @@ render(mvis)
 
 #%%
 
-path_to_data = joinpath("src", "full-sim", "data-generation", "combo_traj_yaml_files")
+path_to_data = joinpath("src", "full-sim", "data-generation", "combo_traj_yaml_files_fullrange")
 traj_file_names = readdir(path_to_data)
 
 for file_name in traj_file_names
@@ -99,7 +99,7 @@ for file_name in traj_file_names
             end
         elseif key == "r"
             print("Rewatching the trajectory.")
-            MeshCatMechanisms.animate(mvis, ts, qs; realtimerate=2.)
+            MeshCatMechanisms.animate(mvis, ts, qs; realtimerate=2.5)
         else 
             print("Key not recognized. Please use 'k', 't', or 'r'.")
         end
