@@ -17,7 +17,7 @@ render(mvis)
 
 #%%
 
-path_to_data = joinpath("src", "full-sim", "data-generation", "combo_traj_yaml_files_fullrange")
+path_to_data = joinpath("src", "full-sim", "data-generation", "combo_traj_yaml_files_otherhome")
 traj_file_names = readdir(path_to_data)
 
 for file_name in traj_file_names
@@ -71,7 +71,7 @@ for file_name in traj_file_names
     end
 
     ts = collect(range(0, stop=duration, length=length(qs)))
-    MeshCatMechanisms.animate(mvis, ts, qs; realtimerate=4.)
+    MeshCatMechanisms.animate(mvis, ts, qs; realtimerate=5.)
 
     finished_with_traj = false
     println("Trajectory completed. ")
