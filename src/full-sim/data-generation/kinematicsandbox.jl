@@ -248,17 +248,31 @@ function get_all_task_combinations(task_list)
     is_equality_task = [task["type"] for task in task_list]
     num_set_based_tasks = count(x->x==0, is_equality_task)
     num_combos = 2^num_set_based_tasks
-    task_combos = Vector{Vector{Int64}}(undef, num_combos)
     seed_vec = Vector{Int64}(undef, num_set_based_tasks)
+    possible_task_lists =[]
     for n = 1:num_combos
-        @show n 
-        @show seed_vec
-        @show digits!(seed_vec, n, base=2)
-        task_combos[n] = digits!(seed_vec, n, base=2)
-        @show task_combos
-    end
+        this_task_combo = copy(digits!(seed_vec, n, base=2))
 
+        this_task_mask = [Bool(x) for x in is_equality_task]
+        for (index, value) in enumerate(this_task_mask)
+            if value == false
+                this_task_mask[index] = Bool(popfirst!(this_task_combo))
+            end 
+        end
+        mod_task_list = task_list[this_task_mask]
+        println("Adding possible hierarchy to list:")
+        show_task_list(mod_task_list)
+        push!(possible_task_lists, mod_task_list)
+    end
+    return possible_task_lists
 end
+
+function show_task_list(task_list)
+    for task in task_list
+        println(task["name"])
+    end
+end
+
 
 function iCAT_jacobians(this_state, des_σdot)
     ρ0 = zeros(11)
@@ -356,6 +370,7 @@ print_intermediate_states = false
     # Define the task hierarchy
     task_list = [
         define_joint_limit_task("shoulder")
+        define_joint_limit_task("elbow")
         define_ee_task(new_state, des_σdot)
         define_zero_pitch_task()
     ]
