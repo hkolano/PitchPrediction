@@ -35,7 +35,7 @@ function funky_ik_transpose(this_state, des_σdot)
     JA = inv(TA)*J
     # JA = calc_jacobian_from_scratch(this_state)
     ζ = get_mp_pinv(J)*des_σdot
-    @show ζ
+    # @show ζ
     # ζ = get_mp_pinv(J)*des_σdot
     return ζ
 end
@@ -100,7 +100,7 @@ function define_ee_task(this_state, des_σdot, dofs="all")
     J = get_des_movement_jacobian(this_state)
     σdot_i = des_σdot
     task_dict["name"] = "ee"
-    task_dict["type"] = 0 # equality task
+    task_dict["type"] = 1 # equality task
     task_dict["dofs"] = dofs
     task_dict["is_static"] = false
     task_dict["update_func"] = update_ee_task!
@@ -137,7 +137,7 @@ function define_zero_pitch_task()
     task_dict["J"] = zeros(1, 11)
     task_dict["J"][2] = 1.
     task_dict["σdot_i"] = [0.]
-    task_dict["type"] = 0 # equality task
+    task_dict["type"] = 1 # equality task
     task_dict["is_static"] = true
     return task_dict
 end
@@ -148,9 +148,46 @@ function define_zero_roll_task()
     task_dict["J"] = zeros(1, 11)
     task_dict["J"][1] = 1.
     task_dict["σdot_i"] = [0.]
-    task_dict["type"] = 0 # equality task
+    task_dict["type"] = 1 # equality task
     task_dict["is_static"] = true
     return task_dict
+end
+
+function define_joint_limit_task(jointlab="shoulder", ϵ_safety=0.1, ϵ_activation=0.1)
+    task_dict = Dict{String, Any}()
+    task_dict["name"] = "jointlim_"*jointlab
+
+    # Generate the Jacobian
+    task_dict["J"] = zeros(1, 11)
+    jt_idx = findfirst(isequal(jointlab), dof_names)
+    task_dict["jt_idx"] = jt_idx
+    task_dict["J"][jt_idx] = 1.
+
+    # Define thresholds for this task
+    task_dict["min"] = joint_lim_dict[jointlab][1]
+    task_dict["max"] = joint_lim_dict[jointlab][2]
+    task_dict["sl"] = task_dict["min"] + ϵ_safety # lower safety limit
+    task_dict["al"] = task_dict["sl"] + ϵ_activation # lower activation limit
+    task_dict["su"] = task_dict["max"] - ϵ_safety # upper safety limit 
+    task_dict["au"] = task_dict["su"] - ϵ_activation # upper activation limit
+
+    task_dict["type"] = 0 # set-based task
+    task_dict["is_static"] = false
+
+    # task_dict["is_active"] = true
+    return task_dict
+end
+
+function update_joint_lim_task!(task, this_state)
+    task_value = this_state[task["jt_idx"]]
+    if task_value >= task_dict["au"]
+        task_dict["σdot_i"] = task_dict["su"]
+    elseif task_value <= task_dict["al"]
+        task_dict["σdot_i"] = task_dict["sl"]
+    else
+        task_dict["σdot_i"] = []
+        println("Task has not exceeded activation threshold values.")
+    end
 end
 
 function define_zero_unactuated_task()
@@ -160,7 +197,7 @@ function define_zero_unactuated_task()
     task_dict["J"][1, 1] = 1.
     task_dict["J"][2, 2] = 1.
     task_dict["σdot_i"] = [0, 0.]
-    task_dict["type"] = 0 # equality task
+    task_dict["type"] = 1 # equality task
     task_dict["is_static"] = true
     return task_dict
 end
@@ -205,6 +242,22 @@ function tpik(task_list, this_state, des_σdot)
         end
     end
     return ζ_old
+end
+
+function get_all_task_combinations(task_list)
+    is_equality_task = [task["type"] for task in task_list]
+    num_set_based_tasks = count(x->x==0, is_equality_task)
+    num_combos = 2^num_set_based_tasks
+    task_combos = Vector{Vector{Int64}}(undef, num_combos)
+    seed_vec = Vector{Int64}(undef, num_set_based_tasks)
+    for n = 1:num_combos
+        @show n 
+        @show seed_vec
+        @show digits!(seed_vec, n, base=2)
+        task_combos[n] = digits!(seed_vec, n, base=2)
+        @show task_combos
+    end
+
 end
 
 function iCAT_jacobians(this_state, des_σdot)
@@ -302,9 +355,9 @@ print_intermediate_states = false
 
     # Define the task hierarchy
     task_list = [
-        define_zero_pitch_task()
-        # define_zero_roll_task()
+        define_joint_limit_task("shoulder")
         define_ee_task(new_state, des_σdot)
+        define_zero_pitch_task()
     ]
 
     for t in range(0, stop=simTime, step=Δt)
@@ -317,10 +370,10 @@ print_intermediate_states = false
         # new_des_σdot = compensate_for_rotational_offset(new_state, des_σdot)
 
         # Do inverse kinematics
-        # ζ = iCAT_jacobians(new_state, des_σdot)
-        ζ = tpik(task_list, new_state, des_σdot)
-        println("Desired zeta:")
-        println(ζ)
+        ζ = iCAT_jacobians(new_state, des_σdot)
+        # ζ = tpik(task_list, new_state, des_σdot)
+        # println("Desired zeta:")
+        # println(ζ)
 
         des_veh_twist_body = RigidBodyDynamics.Twist(body_frame, root_frame(mechanism), body_frame, SVector{3}(ζ[1:3]), SVector{3}(ζ[4:6])) 
         des_veh_twist_space = transform(des_veh_twist_body, transform_to_root(new_state, body_dict["vehicle"]))
