@@ -1,4 +1,4 @@
-path_to_data = joinpath("src", "full-sim", "data-generation", "combo_traj_yaml_files_fullrange")
+path_to_data = joinpath("src", "full-sim", "data-generation", "combo_traj_yaml_files_otherhome")
 traj_file_names = readdir(path_to_data)
 traj_file_prefixes = [name[1:7] for name in traj_file_names]
 
