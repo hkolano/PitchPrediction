@@ -24,10 +24,16 @@ all_traj_codes = ["003-0", "003-1",
 "030-0", "030-1", 
 "_alt_001-0", "_alt_001-1", "_alt_001-2", 
 "_alt_002-0", "_alt_002-1", 
-"_alt_008-0", "_alt_008-1", "_alt_008-2", 
+"_alt_008-0", 
+"_alt_008-1", "_alt_008-2", 
 "_alt_009-0", "_alt_009-1", 
 "_alt_011-0", "_alt_011-1", "_alt_011-2"]
 
+
+# ----------------------------------------------------------------------------
+#                  Trim start and end of rosbag data
+# ----------------------------------------------------------------------------
+perform_trimming = false
 
 function trim_start(df, cutoff_time)
     for i in reverse(1:nrow(df))
@@ -47,76 +53,83 @@ function trim_end(df, cutoff_time)
     throw(BoundsError())
 end          
 
-#%%
+if perform_trimming == true
+    for trial_code in all_traj_codes
 
-# trial_code = "016-1"
-for trial_code in all_traj_codes
+        println(trial_code)
 
-    mocap_datapath = joinpath("data", "hinsdale-data-2023", "traj"*trial_code*"_mocap.csv")
-    mocap_df = CSV.read(mocap_datapath, DataFrame)
-    dropmissing!(mocap_df)
+        mocap_datapath = joinpath("data", "hinsdale-data-2023", "traj"*trial_code*"_mocap.csv")
+        mocap_df = CSV.read(mocap_datapath, DataFrame)
+        dropmissing!(mocap_df)
 
-    js_filepath = joinpath("data", "hinsdale-data-2023", "traj"*trial_code*"_joint_states.csv")
-    js_df = CSV.read(js_filepath, DataFrame)
-    dropmissing!(js_df)
+        js_filepath = joinpath("data", "hinsdale-data-2023", "traj"*trial_code*"_joint_states.csv")
+        js_df = CSV.read(js_filepath, DataFrame)
+        dropmissing!(js_df)
 
-    imu_datapath = joinpath("data", "hinsdale-data-2023", "traj"*trial_code*"_imu.csv")
-    imu_df = CSV.read(imu_datapath, DataFrame)
-
-    p = plot_data(js_df, mocap_df)
-    display(p)
-    sleep(1)
-
-    println("Please enter a cutoff time for this trajectory.")
-    local user_cutoff
-    try
-        user_cutoff = parse(Float64, readline())
-    catch e
-        println(e)
-    else
-        mocap_df = trim_end(mocap_df, user_cutoff)
-        js_df = trim_end(js_df, user_cutoff)
-        imu_df = trim_end(imu_df, user_cutoff)
+        imu_datapath = joinpath("data", "hinsdale-data-2023", "traj"*trial_code*"_imu.csv")
+        imu_df = CSV.read(imu_datapath, DataFrame)
 
         p = plot_data(js_df, mocap_df)
         display(p)
-        sleep(0.5)
+        sleep(1)
+
+        println("Please enter a cutoff time for this trajectory.")
+        local user_cutoff
+        try
+            user_cutoff = parse(Float64, readline())
+        catch e
+            println(e)
+        else
+            mocap_df = trim_end(mocap_df, user_cutoff)
+            js_df = trim_end(js_df, user_cutoff)
+            imu_df = trim_end(imu_df, user_cutoff)
+
+            p = plot_data(js_df, mocap_df)
+            display(p)
+            sleep(0.5)
+        end
+
+        println("Please enter a start time for this trajectory.")
+        local user_cutoff2
+        try 
+            user_cutoff2 = parse(Float64, readline())
+        catch e
+            println(e) 
+        else 
+            mocap_df = trim_start(mocap_df, user_cutoff2)
+            js_df = trim_start(js_df, user_cutoff2)
+            imu_df = trim_start(imu_df, user_cutoff2)
+
+            mocap_df[:,1] = mocap_df[:,1] .- user_cutoff2
+            js_df[:,1] = js_df[:,1] .- user_cutoff2
+            imu_df[:,1] = imu_df[:,1] .- user_cutoff2
+
+            p = plot_data(js_df, mocap_df)
+            display(p)
+            sleep(0.5)   
+        end
+
+        # CSV.write(mocap_datapath, mocap_df)
+        # CSV.write(js_filepath, js_df)
+        # CSV.write(imu_datapath, imu_df)
+
     end
-
-    println("Please enter a start time for this trajectory.")
-    local user_cutoff2
-    try 
-        user_cutoff2 = parse(Float64, readline())
-    catch e
-        println(e) 
-    else 
-        mocap_df = trim_start(mocap_df, user_cutoff2)
-        js_df = trim_start(js_df, user_cutoff2)
-        imu_df = trim_start(imu_df, user_cutoff2)
-
-        mocap_df[:,1] = mocap_df[:,1] .- user_cutoff2
-        js_df[:,1] = js_df[:,1] .- user_cutoff2
-        imu_df[:,1] = imu_df[:,1] .- user_cutoff2
-
-        p = plot_data(js_df, mocap_df)
-        display(p)
-        sleep(0.5)   
-    end
-
-    # CSV.write(mocap_datapath, mocap_df)
-    # CSV.write(js_filepath, js_df)
-    # CSV.write(imu_datapath, imu_df)
-
 end
 
 #%%
-# Add roll-pitch-yaw data to all dataframes
-for trial_code in all_traj_codes
-    mocap_datapath = joinpath("data", "hinsdale-data-2023", "traj"*trial_code*"_mocap.csv")
-    mocap_df = CSV.read(mocap_datapath, DataFrame)
-    dropmissing!(mocap_df)
-    new_df = calc_rpy(mocap_df)
-    CSV.write(mocap_datapath, new_df)
+# ----------------------------------------------------------------------------
+#                   Add roll-pitch-yaw data to all dataframes
+# ----------------------------------------------------------------------------
+translate_to_rpy = false
+
+if translate_to_rpy == true
+    for trial_code in all_traj_codes
+        mocap_datapath = joinpath("data", "hinsdale-data-2023", "traj"*trial_code*"_mocap.csv")
+        mocap_df = CSV.read(mocap_datapath, DataFrame)
+        dropmissing!(mocap_df)
+        new_df = calc_rpy(mocap_df)
+        CSV.write(mocap_datapath, new_df)
+    end
 end
 
 function calc_rpy(mocap_df)
