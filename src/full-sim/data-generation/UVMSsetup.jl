@@ -31,6 +31,36 @@ function setup_frames(body_dict, body_name_list, cob_vec_dict, com_vec_dict)
             setelement!(mvis, frame_cob, 0.3)
             setelement!(mvis, frame_com, 0.2)
         end 
+
+    end
+
+    # Add buoyancy or gravity to each extra element added to the BlueROV
+    if @isdefined(vehicle_extras_list)
+        vehicle_body = body_dict["vehicle"]
+
+        for (j, item_name) in enumerate(vehicle_extras_list)
+            println("Parsing item "*item_name)
+            frame_center = CartesianFrame3D(item_name*"_centerframe")
+            if haskey(com_vec_dict, item_name)
+                println("Has mass")
+                center_transform = Transform3D(frame_center, default_frame(vehicle_body), com_vec_dict[item_name])
+                com_frame_dict[item_name] = frame_center
+            elseif haskey(cob_vec_dict, item_name)
+                println("has buoyancy")
+                center_transform = Transform3D(frame_center, default_frame(vehicle_body), cob_vec_dict[item_name])
+                cob_frame_dict[item_name] = frame_center
+            end
+
+            if !(RigidBodyDynamics.is_fixed_to_body(vehicle_body, frame_center))
+                add_frame!(vehicle_body, center_transform)
+            end
+
+            if item_name == "dvl" || item_name == "dvlbracket"
+                println("Trying to show com")
+                setelement!(mvis, frame_center, 0.25)
+            end
+
+        end
     end
 
     alphabase_com_wrt_linkframe = com_vec_dict["armbase"]
