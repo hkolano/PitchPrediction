@@ -56,6 +56,25 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
             wrench = wrench + buoy_wrench_arm + grav_wrench_arm
             # @show buoy_wrench_arm
             # @show grav_wrench_arm
+
+            # ----- Grav/buoy for extra components -----
+            if @isdefined(vehicle_extras_list)
+                for item_name in vehicle_extras_list
+                    println("Applying forces to vehicle from "*item_name)
+                    if haskey(com_vec_dict, item_name)
+                        def_to_center = fixed_transform(bod, body_default_frame, com_frame_dict[item_name])
+                        force_trans = transform(state, gravity_force_dict[item_name], body_default_frame)
+                        
+                    elseif haskey(cob_vec_dict, item_name)
+                        def_to_center = fixed_transform(bod, body_default_frame, cob_frame_dict[item_name])
+                        force_trans = transform(state, buoyancy_force_dict[item_name], body_default_frame)
+                    end
+                    add_wrench = Wrench(Point3D(body_default_frame, translation(inv(def_to_center))), force_trans)
+                    @show transform(state, add_wrench, root_frame(state.mechanism))
+                    wrench = wrench + add_wrench
+                end
+            end
+
             
             # Drag on the vehicle 
             vel = velocity(state, joint_dict["vehicle"])
@@ -64,6 +83,8 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
             drag_wrench = Wrench(body_default_frame, tau_d[1:3], tau_d[4:6])
             # @show drag_wrench
             wrench = wrench + drag_wrench 
+            # @show transform(state, wrench, root_frame(state.mechanism))
+            # @show wrench
             # println("Wrench drag:")
             # println(drag_wrench)
         # ----- Drag on the links (quadratic only) ----

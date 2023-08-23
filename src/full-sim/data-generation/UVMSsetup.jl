@@ -39,14 +39,14 @@ function setup_frames(body_dict, body_name_list, cob_vec_dict, com_vec_dict)
         vehicle_body = body_dict["vehicle"]
 
         for (j, item_name) in enumerate(vehicle_extras_list)
-            println("Parsing item "*item_name)
+            # println("Parsing item "*item_name)
             frame_center = CartesianFrame3D(item_name*"_centerframe")
             if haskey(com_vec_dict, item_name)
-                println("Has mass")
+                # println("Has mass")
                 center_transform = Transform3D(frame_center, default_frame(vehicle_body), com_vec_dict[item_name])
                 com_frame_dict[item_name] = frame_center
             elseif haskey(cob_vec_dict, item_name)
-                println("has buoyancy")
+                # println("has buoyancy")
                 center_transform = Transform3D(frame_center, default_frame(vehicle_body), cob_vec_dict[item_name])
                 cob_frame_dict[item_name] = frame_center
             end
@@ -55,10 +55,10 @@ function setup_frames(body_dict, body_name_list, cob_vec_dict, com_vec_dict)
                 add_frame!(vehicle_body, center_transform)
             end
 
-            if item_name == "dvl" || item_name == "dvlbracket"
-                println("Trying to show com")
-                setelement!(mvis, frame_center, 0.25)
-            end
+            # if item_name == "dvl" || item_name == "dvlbracket"
+            #     println("Trying to show com")
+            #     setelement!(mvis, frame_center, 0.25)
+            # end
 
         end
     end

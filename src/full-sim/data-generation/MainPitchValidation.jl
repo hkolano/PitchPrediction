@@ -22,7 +22,7 @@ include("HelperFuncs.jl")
 include("Noiser.jl")
 
 include("UVMSsetup.jl")
-include("ConfigFiles/MagicNumPitchPred.jl")
+include("ConfigFiles/MagicNumPitchVal.jl")
 include("ConfigFiles/ConstMagicNums.jl")
 include("ConfigFiles/MagicNumBlueROVHardware.jl")
 include("ConfigFiles/MagicNumAlpha.jl")
@@ -40,15 +40,7 @@ end
 mech_blue_alpha, mvis, joint_dict, body_dict = mechanism_reference_setup(urdf_file)
 include("TrajGenJoints.jl")
 
-#%%
-include("UVMSsetup.jl")
-include("ConfigFiles/MagicNumPitchPred.jl")
-include("ConfigFiles/ConstMagicNums.jl")
-include("ConfigFiles/MagicNumBlueROVHardware.jl")
-include("ConfigFiles/MagicNumAlpha.jl")
 cob_frame_dict, com_frame_dict = setup_frames(body_dict, body_names, cob_vec_dict, com_vec_dict)
-
-#%%
 buoyancy_force_dict, gravity_force_dict = setup_buoyancy_and_gravity(buoyancy_mag_dict, grav_mag_dict)
 
 state = MechanismState(mech_blue_alpha)
@@ -94,7 +86,7 @@ bool_plot_positions = false
     # ----------------------------------------------------------
     include("PIDCtlr.jl")
     # Reset the sim to the equilibrium position
-    reset_to_equilibrium!(state)
+    reset_to_equilibrium_hardware!(state)
     # Start up the controller
     noise_cache = NoiseCache(state)
     filter_cache = FilterCache(state)
@@ -103,8 +95,8 @@ bool_plot_positions = false
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
     # ts, qs, vs = simulate_with_ext_forces(state, swap_times[end], params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    # ts, qs, vs = simulate_with_ext_forces(state, 5, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    ts, qs, vs = simulate_with_ext_forces(state, 5, params, ctlr_cache, hydro_calc!, simple_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, .1, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    # ts, qs, vs = simulate_with_ext_forces(state, 5, params, ctlr_cache, hydro_calc!, simple_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
     @show vs[end]'
@@ -113,32 +105,32 @@ bool_plot_positions = false
     #                      Prepare Plots
     # ----------------------------------------------------------
     # Downsample the time steps to goal_freq
-    ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
-    ts_down_no_zero = ts_down[2:end]
+    # ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
+    # ts_down_no_zero = ts_down[2:end]
 
-    include("UVMSPlotting.jl")
+    # include("UVMSPlotting.jl")
 
-    # Set up data collection dicts
-    paths = prep_actual_vels_and_qs_for_plotting()
-    des_paths = prep_desired_vels_and_qs_for_plotting(ts_down_no_zero)
-    meas_paths = prep_measured_vels_and_qs_for_plotting()
-    filt_paths = prep_filtered_vels_for_plotting()
+    # # Set up data collection dicts
+    # paths = prep_actual_vels_and_qs_for_plotting()
+    # des_paths = prep_desired_vels_and_qs_for_plotting(ts_down_no_zero)
+    # meas_paths = prep_measured_vels_and_qs_for_plotting()
+    # filt_paths = prep_filtered_vels_for_plotting()
     
-    if bool_plot_velocities == true
-        plot_des_vs_act_velocities(ts_down_no_zero, 
-            paths, des_paths, meas_paths, filt_paths, 
-            plot_veh=false, plot_arm=true)
-    end
+    # if bool_plot_velocities == true
+    #     plot_des_vs_act_velocities(ts_down_no_zero, 
+    #         paths, des_paths, meas_paths, filt_paths, 
+    #         plot_veh=false, plot_arm=true)
+    # end
 
-    if bool_plot_positions == true
-        plot_des_vs_act_positions(ts_down_no_zero, des_ts, 
-            paths, des_paths, meas_paths, 
-            plot_veh = true, plot_arm=true)
-    end
+    # if bool_plot_positions == true
+    #     plot_des_vs_act_positions(ts_down_no_zero, des_ts, 
+    #         paths, des_paths, meas_paths, 
+    #         plot_veh = true, plot_arm=true)
+    # end
 
-    if bool_plot_taus == true
-        plot_control_taus(ctlr_cache, ts_down)
-    end 
+    # if bool_plot_taus == true
+    #     plot_control_taus(ctlr_cache, ts_down)
+    # end 
 
     # ----------------------------------------------------------
     #                  Animate the Trajectory
@@ -148,7 +140,7 @@ bool_plot_positions = false
     if show_animation == true
         print("Animating... ")
         # MeshCatMechanisms.animate(mvis, ts[1:stop_step], qs[1:stop_step]; realtimerate = 5.0)
-        MeshCatMechanisms.animate(mvis, ts, qs; realtimerate=.01)
+        MeshCatMechanisms.animate(mvis, ts, qs; realtimerate=1.)
         println("done.")
     end
 
