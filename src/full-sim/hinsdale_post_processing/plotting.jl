@@ -4,16 +4,20 @@ using DataFrames, StatsPlots
 #%%
 gr(size=(800,600)) 
 
-trial_code = "016-1"
+trial_code = "030-0"
+# trial_code = "baseline1"
 
 js_filepath = joinpath("data", "hinsdale-data-2023", "traj"*trial_code*"_joint_states.csv")
+# js_filepath = joinpath("data", "hinsdale-data-2023", trial_code*"_joint_states.csv")
 js_df = CSV.read(js_filepath, DataFrame)
 dropmissing!(js_df)
 
 imu_datapath = joinpath("data", "hinsdale-data-2023", "traj"*trial_code*"_imu.csv")
+# imu_datapath = joinpath("data", "hinsdale-data-2023", trial_code*"_imu.csv")
 imu_df = CSV.read(imu_datapath, DataFrame)
 
 mocap_datapath = joinpath("data", "hinsdale-data-2023", "traj"*trial_code*"_mocap.csv")
+# mocap_datapath = joinpath("data", "hinsdale-data-2023", trial_code*"_mocap.csv")
 mocap_df = CSV.read(mocap_datapath, DataFrame)
 dropmissing!(mocap_df)
 

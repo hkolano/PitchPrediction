@@ -34,8 +34,10 @@
             <material name="gray"/>
         </visual>
         <inertial>
+            <!-- old sum added + actual = 20.9-->
+            <!-- measured hardware mass minus alpha mass = 14.24kg-->
             <!-- Actual = 10 kg (5.5 x, 12.7 y, 14.57 z (avg 10.9))-->
-            <mass value="20.9"/>
+            <mass value="25.14"/>
             <origin xyz="0 0 -.02"/>
             <inertia ixx="0.28" ixy="0" ixz="0" iyy="0.28" iyz="0" izz="0.28"/>
         </inertial> 
@@ -79,7 +81,8 @@
 <!--               ALPHA LINKS               -->
 <!-- ======================================= -->
   <joint name="arm_to_vehicle" type="fixed">
-    <origin rpy="0 0 0" xyz=".255 -.10965 0.005"/>
+    <!-- <origin rpy="0 0 0" xyz=".255 -.10965 0.005"/> -->
+    <origin rpy="0 0 0" xyz=".25 -.10965 0.005"/>
     <parent link="vehicle_frame"/>
     <child link="r5m_base_link"/>
   </joint>

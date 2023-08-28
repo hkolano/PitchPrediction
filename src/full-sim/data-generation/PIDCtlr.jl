@@ -105,6 +105,8 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         if rem(c.step_ctr, ctrl_steps) == 0 && c.step_ctr != 0
 
             manip_des_vels = get_desv_at_t(t, pars)
+            # TAKE THIS OUT IF YOU WANT THE ARM TO MOVE
+            fill!(manip_des_vels, 0.0)
             for (idx, dof_name) in enumerate(dof_names[7:end])
                 c.des_vel[dof_name] = manip_des_vels[idx]
             end
@@ -126,6 +128,13 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
                 c_taus[dir_idx] = ctlr_tau
                 torques[dir_idx] = ctlr_tau
             end
+
+            # unactuate the jaw 
+            torques[end] = 0
+            torques[3] = 0.
+            torques[4] = 0.
+            torques[5] = 0.
+            torques[6] = 0.
 
             #TODO switch to push! ?
             c.taus = cat(c.taus, c_taus, dims=2)

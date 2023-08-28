@@ -10,6 +10,15 @@ using RigidBodyDynamics
 function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::MechanismState)
     buoy_wrenches = []
     grav_wrenches = []
+
+    print_now = false
+
+    if abs(rem(t, 2)) <= .0005
+        println("=====================================")
+        @show t
+        print_now = true
+    end
+
     # Iterate through each body 
     for body_name in body_names
         # Get the body
@@ -37,10 +46,20 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
         # Make the wrench: the buoyancy force through a point, the center of buoyancy.
         # COM = Point3D(body_default_frame, translation(inv(def_to_com)))
         grav_wrench = Wrench(Point3D(body_default_frame, translation(inv(def_to_com))), grav_force_trans)
-        # setelement!(mvis, COM)
+        # setelement!(mvis, COM, .01)
         # Add wrench to buoy_wrenches
         push!(grav_wrenches, grav_wrench)
+        # @show transform(state, grav_wrench, root_frame(state.mechanism))
         # @show grav_wrench
+
+        if print_now == true
+            println("-----")
+            @show bod 
+            # @show transform(state, buoy_wrench, root_frame(state.mechanism))
+            # @show transform(state, grav_wrench, root_frame(state.mechanism))
+            @show transform(state, buoy_wrench, default_frame(body_dict["vehicle"]))
+            @show transform(state, grav_wrench, default_frame(body_dict["vehicle"]))
+        end
 
         wrench = buoy_wrench + grav_wrench
 
@@ -54,13 +73,18 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
             buoy_wrench_arm = Wrench(Point3D(body_default_frame, translation(inv(def_to_armbase_cob))), buoy_force_trans_armbase)
             grav_wrench_arm = Wrench(Point3D(body_default_frame, translation(inv(def_to_armbase_com))), grav_force_trans_armbase)
             wrench = wrench + buoy_wrench_arm + grav_wrench_arm
-            # @show buoy_wrench_arm
-            # @show grav_wrench_arm
+
+            if print_now == true
+                # @show transform(state, buoy_wrench_arm, root_frame(state.mechanism))
+                # @show transform(state, grav_wrench_arm, root_frame(state.mechanism))
+                @show transform(state, buoy_wrench_arm, body_default_frame)
+                @show transform(state, grav_wrench_arm, body_default_frame)
+            end
 
             # ----- Grav/buoy for extra components -----
             if @isdefined(vehicle_extras_list)
                 for item_name in vehicle_extras_list
-                    println("Applying forces to vehicle from "*item_name)
+                    # println("Applying forces to vehicle from "*item_name)
                     if haskey(com_vec_dict, item_name)
                         def_to_center = fixed_transform(bod, body_default_frame, com_frame_dict[item_name])
                         force_trans = transform(state, gravity_force_dict[item_name], body_default_frame)
@@ -69,8 +93,18 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
                         def_to_center = fixed_transform(bod, body_default_frame, cob_frame_dict[item_name])
                         force_trans = transform(state, buoyancy_force_dict[item_name], body_default_frame)
                     end
+                    app_pt = Point3D(body_default_frame, translation(inv(def_to_center)))
+                    if item_name == "foamL"
+                        setelement!(mvis, app_pt, .02)
+                    end
                     add_wrench = Wrench(Point3D(body_default_frame, translation(inv(def_to_center))), force_trans)
-                    @show transform(state, add_wrench, root_frame(state.mechanism))
+                    
+                    if print_now == true 
+                        println("-----")
+                        @show item_name
+                        @show transform(state, add_wrench, root_frame(state.mechanism))
+                        # @show transform(state, add_wrench, body_default_frame)
+                    end
                     wrench = wrench + add_wrench
                 end
             end
@@ -101,7 +135,12 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
 
             wrench = wrench + drag_wrench_at_default
         end
+
+        
         hydro_wrenches[BodyID(bod)] = transform(state, wrench, root_frame(state.mechanism))
+        if print_now == true
+            @show hydro_wrenches[BodyID(bod)]
+        end
     end
     
 end;

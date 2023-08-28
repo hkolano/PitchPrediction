@@ -51,7 +51,7 @@ function simple_control!(torques::AbstractVector, t, state::MechanismState, pars
     torques = fill!(torques, 0.0)
 end
 
-#%%
+
 # ----------------------------------------------------------
 #                   Start: Gather Sim Data
 # ----------------------------------------------------------
@@ -80,13 +80,14 @@ bool_plot_positions = false
     # plot(t_test_list, des_paths["vs10"])
 
 #%%
-
+    include("HydroCalc.jl")
     # ----------------------------------------------------------
     #                  Setup and Run Simulation
     # ----------------------------------------------------------
     include("PIDCtlr.jl")
     # Reset the sim to the equilibrium position
     reset_to_equilibrium_hardware!(state)
+    # set_configuration!(state, joint_dict["vehicle"], [.9239, 0, 0, 0.382, 0.5, 0., 0.])
     # Start up the controller
     noise_cache = NoiseCache(state)
     filter_cache = FilterCache(state)
@@ -95,7 +96,7 @@ bool_plot_positions = false
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
     # ts, qs, vs = simulate_with_ext_forces(state, swap_times[end], params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    ts, qs, vs = simulate_with_ext_forces(state, .1, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, 10, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     # ts, qs, vs = simulate_with_ext_forces(state, 5, params, ctlr_cache, hydro_calc!, simple_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
