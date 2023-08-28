@@ -35,6 +35,7 @@ end
 
 function reset_to_equilibrium_hardware!(state)
     zero!(state)
+    set_configuration!(state, joint_dict["vehicle"], [0.9995, 0.02034, 0.02448, .00019, 0., 0., 0.])
 end
 
 # FF torques to station keep at equilibrium

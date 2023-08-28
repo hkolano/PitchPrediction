@@ -13,11 +13,11 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
 
     print_now = false
 
-    if abs(rem(t, 2)) <= .0005
-        println("=====================================")
-        @show t
-        print_now = true
-    end
+    # if abs(rem(t, 2)) <= .0005
+    #     println("=====================================")
+    #     @show t
+    #     print_now = true
+    # end
 
     # Iterate through each body 
     for body_name in body_names
