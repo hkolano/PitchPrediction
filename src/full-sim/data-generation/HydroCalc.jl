@@ -33,7 +33,7 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
         # TODO: don't use fixed_transform because it's bad for computation time
         def_to_cob = fixed_transform(bod, body_default_frame, cob_frame_dict[body_name])
         # Transform buoyancy force vector to the body's default frame (rotation only)
-        buoy_force_trans = transform(state, buoyancy_force_dict[body_name], body_default_frame)
+        buoy_force_trans = RigidBodyDynamics.transform(state, buoyancy_force_dict[body_name], body_default_frame)
         # Make the wrench: the buoyancy force through a point, the center of buoyancy.
         buoy_wrench = Wrench(Point3D(body_default_frame, translation(inv(def_to_cob))), buoy_force_trans)
         push!(buoy_wrenches, buoy_wrench) 
@@ -41,7 +41,7 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
         
         # -------- Calculate Gravity Wrench -------
         def_to_com = fixed_transform(bod, body_default_frame, com_frame_dict[body_name])
-        grav_force_trans = transform(state, gravity_force_dict[body_name], body_default_frame)
+        grav_force_trans = RigidBodyDynamics.transform(state, gravity_force_dict[body_name], body_default_frame)
         # println(grav_force_trans)
         # Make the wrench: the buoyancy force through a point, the center of buoyancy.
         # COM = Point3D(body_default_frame, translation(inv(def_to_com)))
@@ -57,8 +57,8 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
             @show bod 
             # @show transform(state, buoy_wrench, root_frame(state.mechanism))
             # @show transform(state, grav_wrench, root_frame(state.mechanism))
-            @show transform(state, buoy_wrench, default_frame(body_dict["vehicle"]))
-            @show transform(state, grav_wrench, default_frame(body_dict["vehicle"]))
+            @show RigidBodyDynamics.transform(state, buoy_wrench, default_frame(body_dict["vehicle"]))
+            @show RigidBodyDynamics.transform(state, grav_wrench, default_frame(body_dict["vehicle"]))
         end
 
         wrench = buoy_wrench + grav_wrench
@@ -68,8 +68,8 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
             # ----- Grav/buoy for arm base link ----- 
             def_to_armbase_cob = fixed_transform(bod, body_default_frame, cob_frame_dict["armbase"])
             def_to_armbase_com = fixed_transform(bod, body_default_frame, com_frame_dict["armbase"])
-            buoy_force_trans_armbase = transform(state, buoyancy_force_dict["armbase"], body_default_frame)
-            grav_force_trans_armbase = transform(state, gravity_force_dict["armbase"], body_default_frame)
+            buoy_force_trans_armbase = RigidBodyDynamics.transform(state, buoyancy_force_dict["armbase"], body_default_frame)
+            grav_force_trans_armbase = RigidBodyDynamics.transform(state, gravity_force_dict["armbase"], body_default_frame)
             buoy_wrench_arm = Wrench(Point3D(body_default_frame, translation(inv(def_to_armbase_cob))), buoy_force_trans_armbase)
             grav_wrench_arm = Wrench(Point3D(body_default_frame, translation(inv(def_to_armbase_com))), grav_force_trans_armbase)
             wrench = wrench + buoy_wrench_arm + grav_wrench_arm
@@ -77,8 +77,8 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
             if print_now == true
                 # @show transform(state, buoy_wrench_arm, root_frame(state.mechanism))
                 # @show transform(state, grav_wrench_arm, root_frame(state.mechanism))
-                @show transform(state, buoy_wrench_arm, body_default_frame)
-                @show transform(state, grav_wrench_arm, body_default_frame)
+                @show RigidBodyDynamics.transform(state, buoy_wrench_arm, body_default_frame)
+                @show RigidBodyDynamics.transform(state, grav_wrench_arm, body_default_frame)
             end
 
             # ----- Grav/buoy for extra components -----
@@ -87,11 +87,11 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
                     # println("Applying forces to vehicle from "*item_name)
                     if haskey(com_vec_dict, item_name)
                         def_to_center = fixed_transform(bod, body_default_frame, com_frame_dict[item_name])
-                        force_trans = transform(state, gravity_force_dict[item_name], body_default_frame)
+                        force_trans = RigidBodyDynamics.transform(state, gravity_force_dict[item_name], body_default_frame)
                         
                     elseif haskey(cob_vec_dict, item_name)
                         def_to_center = fixed_transform(bod, body_default_frame, cob_frame_dict[item_name])
-                        force_trans = transform(state, buoyancy_force_dict[item_name], body_default_frame)
+                        force_trans = RigidBodyDynamics.transform(state, buoyancy_force_dict[item_name], body_default_frame)
                     end
                     app_pt = Point3D(body_default_frame, translation(inv(def_to_center)))
                     if item_name == "foamL"
@@ -102,7 +102,7 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
                     if print_now == true 
                         println("-----")
                         @show item_name
-                        @show transform(state, add_wrench, root_frame(state.mechanism))
+                        @show RigidBodyDynamics.transform(state, add_wrench, root_frame(state.mechanism))
                         # @show transform(state, add_wrench, body_default_frame)
                     end
                     wrench = wrench + add_wrench
@@ -126,18 +126,18 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
             twist_world = twist_wrt_world(state, bod)
             root_transform = transform_to_root(state, bod)
             # COB_point = Point3D(body_default_frame, translation(inv(def_to_cob)))
-            twist_body = transform(twist_world, inv(root_transform))
+            twist_body = RigidBodyDynamics.transform(twist_world, inv(root_transform))
             cob_vel = point_velocity(twist_body, Point3D(body_default_frame, translation(inv(def_to_cob))))
             F_d = transpose(-link_drags[body_name]) .* abs.(cob_vel.v) .* cob_vel.v
             drag_wrench_at_cob = Wrench(cob_frame_dict[body_name], [0.0, 0.0, 0.0], [F_d[1], F_d[2], F_d[3]])
-            drag_wrench_at_default = transform(drag_wrench_at_cob, inv(def_to_cob))
+            drag_wrench_at_default = RigidBodyDynamics.transform(drag_wrench_at_cob, inv(def_to_cob))
             # @show drag_wrench_at_default
 
             wrench = wrench + drag_wrench_at_default
         end
 
         
-        hydro_wrenches[BodyID(bod)] = transform(state, wrench, root_frame(state.mechanism))
+        hydro_wrenches[BodyID(bod)] = RigidBodyDynamics.transform(state, wrench, root_frame(state.mechanism))
         if print_now == true
             @show hydro_wrenches[BodyID(bod)]
         end

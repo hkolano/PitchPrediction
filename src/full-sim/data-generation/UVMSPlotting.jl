@@ -316,9 +316,9 @@ function prep_desired_vels_and_qs_for_plotting(t_list)
 
     des_vs_same_ts = []
     des_qs_same_ts = []
-    for t in t_list
-        this_des_vs = get_desv_at_t(t, params)  
-        this_des_qs = get_desq_at_t(t, params)
+    for time in t_list
+        this_des_vs = get_desv_at_t(time, params)  
+        this_des_qs = get_desq_at_t(time, params)
         des_qs_same_ts = cat(des_qs_same_ts, this_des_qs', dims=1)          
         des_vs_same_ts = cat(des_vs_same_ts, this_des_vs', dims=1)
     end
@@ -329,6 +329,7 @@ function prep_desired_vels_and_qs_for_plotting(t_list)
     for idx = 7:num_dofs
         des_paths[string("vs",idx)] = des_vs_same_ts[:,idx-6]
     end
+    des_paths["time_secs"] = t_list
     return des_paths
 end
 
@@ -338,10 +339,15 @@ function prep_actual_vels_and_qs_for_plotting()
     qs_down = Array{Float64}(undef, length(ts_down_no_zero), num_dofs)
     vs_down = zeros(length(ts_down_no_zero), num_dofs)
 
+    rhf_to_ned = des_r = RotMatrix(SMatrix{3,3}([1. 0 0; 0 -1 0; 0 0 -1]))
+
     ct = 1
     i = 1
     while ct <= length(ts_down_no_zero)
-        qs_down[ct, 1:3] = convert_to_rpy(qs[i][1:4])
+        quatR = QuatRotation(qs[i][1:4])
+        transformed_rot = RotXYZ(rhf_to_ned*quatR)
+        qs_down[ct, 1:3] = [transformed_rot.theta1 - 3.14, transformed_rot.theta2, transformed_rot.theta3]
+        
         qs_down[ct,4:end] = qs[i][5:end]
         vs_down[ct,:] = vs[i]
         ct += 1
@@ -387,3 +393,7 @@ function prep_filtered_vels_for_plotting()
 
     return filt_paths
 end
+
+function new_plot()
+    plot(xlabel = "Time (s)")
+end 

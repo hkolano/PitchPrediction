@@ -14,7 +14,7 @@ using GeometryBasics
 using Printf, Plots, CSV, Tables, ProgressBars, Revise
 using Random
 
-using DataFrames, StatsPlots
+using DataFrames, StatsPlots, Interpolations
 
 include("HydroCalc.jl")
 include("SimWExt.jl")
@@ -46,15 +46,20 @@ state = MechanismState(mech_blue_alpha)
 num_dofs = num_velocities(mech_blue_alpha)
 num_actuated_dofs = num_dofs-2
 
-function simple_control!(torques::AbstractVector, t, state::MechanismState, pars, c, result, h_wrenches)
-    torques = fill!(torques, 0.0)
-end
-
 # ----------------------------------------------------------
 #                 Get Data for Comparison
 # ----------------------------------------------------------
-trial_code = "015-0"
-params, des_df, sim_offset = gettrajparamsfromyaml(trial_code, "fullrange2")
+# trial_code = "015-0"
+trial_code = "baseline3"
+
+sim_offset = 0
+# params, des_df, sim_offset = gettrajparamsfromyaml(trial_code, "fullrange2")
+
+mocap_df = get_vehicle_response_from_csv(trial_code, "fullrange2")
+avg_qs_at_offset, init_vs = get_initial_conditions(sim_offset, mocap_df)
+init_vs_vector = FreeVector3D(root_frame(mech_blue_alpha), init_vs)
+body_frame_init_vs = RigidBodyDynamics.transform(state, init_vs_vector, default_frame(body_dict["vehicle"]))
+
 
 # ----------------------------------------------------------
 #                   Start: Gather Sim Data
@@ -73,11 +78,11 @@ bool_plot_positions = false
     # ----------------------------------------------------------
     #                   Define a Trajectory
     # ----------------------------------------------------------
-    # include("TrajGenJoints.jl")
-    # params = quinticTrajParams[]
-    # swap_times = Vector{Float64}()
-    # define_multiple_waypoints!(params, swap_times, 2)
-    # println("Scaled trajectory duration: $(swap_times[end]) seconds")
+    include("TrajGenJoints.jl")
+    params = quinticTrajParams[]
+    swap_times = Vector{Float64}()
+    define_multiple_waypoints!(params, swap_times, 4)
+    println("Scaled trajectory duration: $(swap_times[end]) seconds")
 
     # t_test_list = 0:.1:swap_times[end]
     # des_paths = prep_desired_vels_and_qs_for_plotting(t_test_list)
@@ -89,8 +94,11 @@ bool_plot_positions = false
     #                  Setup and Run Simulation
     # ----------------------------------------------------------
     include("PIDCtlr.jl")
-    # Reset the sim to the equilibrium position
-    reset_to_equilibrium_hardware!(state)
+    # Give the vehicle initial conditions from the mocap
+    zero!(state)
+    set_configuration!(state, joint_dict["vehicle"], avg_qs_at_offset)
+    set_velocity!(state, joint_dict["vehicle"], [0., 0., 0., body_frame_init_vs.v...])
+
     # set_configuration!(state, joint_dict["vehicle"], [.9239, 0, 0, 0.382, 0.5, 0., 0.])
     # Start up the controller
     noise_cache = NoiseCache(state)
@@ -110,14 +118,13 @@ bool_plot_positions = false
     #                      Prepare Plots
     # ----------------------------------------------------------
     include("UVMSPlotting.jl")
-    gr(size=(1200,1200)) 
+    gr(size=(800, 800)) 
     @show sim_offset
 
     sim_palette = palette([:deepskyblue2, :magenta], 4)
     actual_palette = palette([:goldenrod1, :springgreen3], 4)
 
-    js_df = get_js_data_from_csv(trial_code)
-    mocap_df = get_vehicle_response_from_csv(trial_code, "fullrange2")
+    # js_df = get_js_data_from_csv(trial_code)
 
     # Downsample the time steps to goal_freq
     ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
@@ -130,6 +137,24 @@ bool_plot_positions = false
     # meas_paths = prep_measured_vels_and_qs_for_plotting()
     # filt_paths = prep_filtered_vels_for_plotting()
 
+    p_zed = new_plot()
+    @df mocap_df plot!(p_zed, :time_secs, [:z_pose, :y_pose, :x_pose]; :goldenrod1, linewidth=2, label=["mocap z" "mocap_y" "mocap_x"])
+    @df sim_df plot!(p_zed, :time_secs, [:qs6, :qs5, :qs4]; :deepskyblue2, linewidth=2, linestyle=:dash, label=["sim z" "sim y" "sim x"])
+    title!(p_zed, "Vehicle Position")
+    ylabel!(p_zed, "Position (m)")
+
+
+    p_vehrp = new_plot()
+    @df mocap_df plot!(p_vehrp, :time_secs[1:3000], [:roll[1:3000], :pitch[1:3000]], palette=actual_palette, linewidth=2, label=["actual roll" "actual pitch"])
+    xaxis!(p_vehrp, grid = (:x, :solid, .75, .9), minorgrid = (:x, :dot, .5, .5))
+    @df sim_df plot!(p_vehrp, :time_secs.+sim_offset, [:qs1, :qs2], 
+        palette=sim_palette, linewidth=2, linestyle=:dash, 
+        label=["sim roll" "sim pitch"])
+    plot!(p_vehrp, legend=:outerbottomright)
+    ylabel!("Vehicle Orientation (rad)")
+    title!("BlueROV Orientation")
+
+#%%
     p_js = new_plot()
     @df js_df plot!(p_js, :time_secs, cols(3:6); palette=actual_palette, linewidth=2)
     xaxis!(p_js, grid = (:x, :solid, .75, .9), minorgrid = (:x, :dot, .5, .5))
@@ -141,16 +166,6 @@ bool_plot_positions = false
     plot!(p_js, legend=:outerbottomright)
     ylabel!("Joint position (rad)")
     title!("Alpha Arm Joint Positions")
-
-    p_vehrp = new_plot()
-    @df mocap_df plot!(p_vehrp, :time_secs, [:roll, :pitch], palette=actual_palette, linewidth=2, label=["actual roll" "actual pitch"])
-    xaxis!(p_vehrp, grid = (:x, :solid, .75, .9), minorgrid = (:x, :dot, .5, .5))
-    @df sim_df plot!(p_vehrp, :time_secs.+sim_offset.-1.5, [:qs1, -:qs2], 
-        palette=sim_palette, linewidth=2, linestyle=:dash, 
-        label=["sim roll" "sim pitch"])
-    plot!(p_vehrp, legend=:outerbottomright)
-    ylabel!("Vehicle Orientation (rad)")
-    title!("BlueROV Orientation")
     # if bool_plot_velocities == true
     #     plot_des_vs_act_velocities(ts_down_no_zero, 
     #         paths, des_paths, meas_paths, filt_paths, 
