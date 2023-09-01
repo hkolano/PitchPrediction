@@ -29,7 +29,10 @@ include("ConfigFiles/ConstMagicNums.jl")
 include("ConfigFiles/MagicNumBlueROVHardware.jl")
 include("ConfigFiles/MagicNumAlpha.jl")
 trajparsingfile = joinpath("..", "hinsdale_post_processing", "gettrajparamsfromyaml.jl")
+interpolationfile = joinpath("..", "hinsdale_post_processing", "mocap_interpolation.jl")
 include(trajparsingfile)
+include(interpolationfile)
+
 
 urdf_file = joinpath("urdf", "blue_rov_hardware.urdf")
 
@@ -50,13 +53,15 @@ num_actuated_dofs = num_dofs-2
 #                 Get Data for Comparison
 # ----------------------------------------------------------
 # trial_code = "015-0"
-trial_code = "baseline3"
+trial_code = "baseline1"
 
-sim_offset = 0
+sim_offset = 1
 # params, des_df, sim_offset = gettrajparamsfromyaml(trial_code, "fullrange2")
 
+# Get mocap data 
 mocap_df = get_vehicle_response_from_csv(trial_code, "fullrange2")
-avg_qs_at_offset, init_vs = get_initial_conditions(sim_offset, mocap_df)
+# 
+avg_qs_at_offset, init_vs, init_ωs = get_initial_conditions(sim_offset, mocap_df)
 init_vs_vector = FreeVector3D(root_frame(mech_blue_alpha), init_vs)
 body_frame_init_vs = RigidBodyDynamics.transform(state, init_vs_vector, default_frame(body_dict["vehicle"]))
 
@@ -97,7 +102,7 @@ bool_plot_positions = false
     # Give the vehicle initial conditions from the mocap
     zero!(state)
     set_configuration!(state, joint_dict["vehicle"], avg_qs_at_offset)
-    set_velocity!(state, joint_dict["vehicle"], [0., 0., 0., body_frame_init_vs.v...])
+    # set_velocity!(state, joint_dict["vehicle"], [init_ωs..., body_frame_init_vs.v...])
 
     # set_configuration!(state, joint_dict["vehicle"], [.9239, 0, 0, 0.382, 0.5, 0., 0.])
     # Start up the controller
@@ -108,7 +113,7 @@ bool_plot_positions = false
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
     # ts, qs, vs = simulate_with_ext_forces(state, swap_times[end], params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    ts, qs, vs = simulate_with_ext_forces(state, 20, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, 10, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     # ts, qs, vs = simulate_with_ext_forces(state, 5, params, ctlr_cache, hydro_calc!, simple_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
@@ -137,22 +142,37 @@ bool_plot_positions = false
     # meas_paths = prep_measured_vels_and_qs_for_plotting()
     # filt_paths = prep_filtered_vels_for_plotting()
 
-    p_zed = new_plot()
-    @df mocap_df plot!(p_zed, :time_secs, [:z_pose, :y_pose, :x_pose]; :goldenrod1, linewidth=2, label=["mocap z" "mocap_y" "mocap_x"])
-    @df sim_df plot!(p_zed, :time_secs, [:qs6, :qs5, :qs4]; :deepskyblue2, linewidth=2, linestyle=:dash, label=["sim z" "sim y" "sim x"])
-    title!(p_zed, "Vehicle Position")
-    ylabel!(p_zed, "Position (m)")
+    # p_zed = new_plot()
+    # @df mocap_df plot!(p_zed, :time_secs, [:z_pose, :y_pose, :x_pose]; :goldenrod1, linewidth=2, label=["mocap z" "mocap_y" "mocap_x"])
+    # @df sim_df plot!(p_zed, :time_secs.+sim_offset, [:qs6, :qs5, :qs4]; :deepskyblue2, linewidth=2, linestyle=:dash, label=["sim z" "sim y" "sim x"])
+    # title!(p_zed, "Vehicle Position")
+    # ylabel!(p_zed, "Position (m)")
 
+    p_quats = new_plot()
+    @df mocap_df plot!(p_quats, :time_secs[1:2500], 
+        [:x_ori[1:2500], :y_ori[1:2500], :z_ori[1:2500], :w_ori[1:2500]], 
+        palette=actual_palette, linewidth=2, 
+        label=["actual x_ori" "actual y_ori" "actual z_ori" "actual w_ori"])
+    xaxis!(p_quats, grid = (:x, :solid, .75, .9), minorgrid = (:x, :dot, .5, .5))
+    @df sim_df plot!(p_quats, :time_secs.+sim_offset, 
+        [:x_ori, :y_ori, :z_ori, :w_ori], 
+        palette=sim_palette, linewidth=2, linestyle=:dash, 
+        label=label=["sim x_ori" "sim y_ori" "sim z_ori" "sim w_ori"])
+    plot!(p_quats, legend=:outerbottomright)
+    title!("BlueROV Quaternion")
+    ylabel!("Quaternion value")
 
     p_vehrp = new_plot()
-    @df mocap_df plot!(p_vehrp, :time_secs[1:3000], [:roll[1:3000], :pitch[1:3000]], palette=actual_palette, linewidth=2, label=["actual roll" "actual pitch"])
+    @df mocap_df plot!(p_vehrp, :time_secs[1:2500], [:roll[1:2500], :pitch[1:2500]], palette=actual_palette, linewidth=2, label=["actual roll" "actual pitch"])
     xaxis!(p_vehrp, grid = (:x, :solid, .75, .9), minorgrid = (:x, :dot, .5, .5))
-    @df sim_df plot!(p_vehrp, :time_secs.+sim_offset, [:qs1, :qs2], 
+    @df sim_df plot!(p_vehrp, :time_secs.+sim_offset, [:qs3, :qs2], 
         palette=sim_palette, linewidth=2, linestyle=:dash, 
         label=["sim roll" "sim pitch"])
     plot!(p_vehrp, legend=:outerbottomright)
     ylabel!("Vehicle Orientation (rad)")
     title!("BlueROV Orientation")
+
+    super_ori_plot = plot(p_quats, p_vehrp, layout=(2,1))
 
 #%%
     p_js = new_plot()

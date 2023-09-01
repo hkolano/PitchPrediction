@@ -1,7 +1,7 @@
 function setup_frames(body_dict, body_name_list, cob_vec_dict, com_vec_dict)
     cob_frame_dict = Dict{String, CartesianFrame3D}()
     com_frame_dict = Dict{String, CartesianFrame3D}()
-    vis_element = 6
+    vis_element = 1
 
     for (i, body_name) in enumerate(body_name_list)
         # Get the body of interest
@@ -27,9 +27,9 @@ function setup_frames(body_dict, body_name_list, cob_vec_dict, com_vec_dict)
 
         # if desired, visualize the new frames on the body
         if i == vis_element
-            setelement!(mvis, default_frame(bod))
-            setelement!(mvis, frame_cob, 0.3)
-            setelement!(mvis, frame_com, 0.2)
+            # setelement!(mvis, default_frame(bod))
+            setelement!(mvis, frame_cob, 0.35)
+            setelement!(mvis, frame_com, 0.25)
         end 
 
     end

@@ -1,21 +1,25 @@
-using Interpolations, DataFrames
+using DataFrames, DataInterpolations, Smoothers
 #TODO look into DataInterpolations (Akima interpolation?)
 
 function get_initial_conditions(interp_start_time, df; dt=.01)
     # Set up evenly spaced time intervals
-    IC_times = interp_start_time:dt:interp_start_time+.05
+    IC_times = interp_start_time-.03:dt:interp_start_time+.03
     even_ts = interp_start_time:dt:df[end-1, :time_secs]
-
-    init_xyz = mean(Array(trimmed_mocap_df[1:5, 2:4]), dims=1)
 
     itp_dict = Dict()
     init_qs = Vector{Float64}(undef, 7)
     init_vs = Vector{Float64}(undef, 3)
     q_names = ["w_ori", "x_ori", "y_ori", "z_ori", "x_pose", "y_pose", "z_pose"]
+    smoothed_mocap_df = DataFrame()
     qs_window = Dict()
 
+    for meas_name in q_names 
+        smoothed_mocap_df[!,meas_name] = sma(df[!,meas_name], 100)
+    end
+
     for (idx, meas_name) in enumerate(q_names)
-        itp_dict[meas_name] = interpolate((Array(df[!, :time_secs]),), Array(df[!, meas_name]), Gridded(Linear()))
+        itp_dict[meas_name] = DataInterpolations.AkimaInterpolation(Array(df[!, meas_name]), Array(df[!, :time_secs]))
+        # itp_dict[meas_name] = interpolate((Array(df[!, :time_secs]),), Array(df[!, meas_name]), Gridded(Linear()))
         qs_window[meas_name] = itp_dict[meas_name](IC_times)
         init_qs[idx] = mean(qs_window[meas_name])
     end
@@ -30,7 +34,23 @@ function get_initial_conditions(interp_start_time, df; dt=.01)
         init_vs[idx] = mean(interped_vels)
     end
 
+    num_interped_ang_vels = length(qs_window["w_ori"])-1
+    ang_vel_list = Array{Float64}(undef, num_interped_ang_vels, 3)
+    for i in 1:num_interped_ang_vels
+        quat1 = QuatRotation(qs_window["w_ori"][i], qs_window["x_ori"][i], qs_window["y_ori"][i], qs_window["z_ori"][i])
+        quat2 = QuatRotation(qs_window["w_ori"][i+1], qs_window["x_ori"][i+1], qs_window["y_ori"][i+1], qs_window["z_ori"][i+1])
+        ang_vel_list[i,:] = ang_vel_from_quaternions(quat1, quat2, dt)
+    end
+    ang_vels = mean(ang_vel_list, dims=1)
 
-    return init_qs, init_vs
 
+    return init_qs, init_vs, ang_vels
+
+end
+
+function ang_vel_from_quaternions(q1::QuatRotation, q2::QuatRotation, dt)
+    ωx = (2/dt)*(q1.w*q2.x - q1.x*q2.w - q1.y*q2.z + q1.z*q2.y)
+    ωy = (2/dt)*(q1.w*q2.y + q1.x*q2.z - q1.y*q2.w - q1.z*q2.x)
+    ωz = (2/dt)*(q1.w*q2.z - q1.x*q2.y + q1.y*q2.x - q1.z*q2.w)
+    return [ωx, ωy, ωz]
 end

@@ -338,18 +338,24 @@ function prep_actual_vels_and_qs_for_plotting()
 
     qs_down = Array{Float64}(undef, length(ts_down_no_zero), num_dofs)
     vs_down = zeros(length(ts_down_no_zero), num_dofs)
+    quats_down = Array{Float64}(undef, length(ts_down_no_zero), 4)
 
     rhf_to_ned = des_r = RotMatrix(SMatrix{3,3}([1. 0 0; 0 -1 0; 0 0 -1]))
+    rhf_to_backwards = RotMatrix(SMatrix{3,3}([-1. 0 0; 0 -1 0; 0 0 1]))
+    opp_direction = RotMatrix(SMatrix{3,3}([-1. 0 0; 0 -1 0; 0 0 -1]))
 
     ct = 1
     i = 1
     while ct <= length(ts_down_no_zero)
         quatR = QuatRotation(qs[i][1:4])
-        transformed_rot = RotXYZ(rhf_to_ned*quatR)
-        qs_down[ct, 1:3] = [transformed_rot.theta1 - 3.14, transformed_rot.theta2, transformed_rot.theta3]
+        # transformed_rot = RotXYZ(rhf_to_backwards*quatR)
+        # transformed_rot = RotXYZ(opp_direction*inv(quatR))
+        transformed_rot = RotZYX(quatR)
+        qs_down[ct, 1:3] = [transformed_rot.theta1, transformed_rot.theta2, transformed_rot.theta3]
         
         qs_down[ct,4:end] = qs[i][5:end]
         vs_down[ct,:] = vs[i]
+        quats_down[ct,:] = qs[i][1:4]
         ct += 1
         i += sample_rate
     end
@@ -360,6 +366,9 @@ function prep_actual_vels_and_qs_for_plotting()
     end
     for idx = 1:num_dofs
         paths[string("vs", idx)] = vs_down[:,idx]
+    end
+    for (idx, name) in enumerate(["w_ori", "x_ori", "y_ori", "z_ori"])
+        paths[name] = quats_down[:,idx]
     end
 
     return paths
