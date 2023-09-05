@@ -2,8 +2,8 @@ using Rotations
 
 function convert_to_rpy(quat_vals)
     quat_rot = QuatRotation(quat_vals...)
-    euler = RotXYZ(quat_rot)
-    vals = [euler.theta1, euler.theta2, euler.theta3] 
+    euler = RotZYX(quat_rot)
+    vals = [euler.theta3, euler.theta2, euler.theta1] 
 end
 
 function save_traj_to_csv(num_rows::Int)

@@ -53,7 +53,7 @@ num_actuated_dofs = num_dofs-2
 #                 Get Data for Comparison
 # ----------------------------------------------------------
 # trial_code = "015-0"
-trial_code = "baseline1"
+trial_code = "baseline3"
 
 sim_offset = 1
 # params, des_df, sim_offset = gettrajparamsfromyaml(trial_code, "fullrange2")
@@ -142,37 +142,42 @@ bool_plot_positions = false
     # meas_paths = prep_measured_vels_and_qs_for_plotting()
     # filt_paths = prep_filtered_vels_for_plotting()
 
-    # p_zed = new_plot()
-    # @df mocap_df plot!(p_zed, :time_secs, [:z_pose, :y_pose, :x_pose]; :goldenrod1, linewidth=2, label=["mocap z" "mocap_y" "mocap_x"])
-    # @df sim_df plot!(p_zed, :time_secs.+sim_offset, [:qs6, :qs5, :qs4]; :deepskyblue2, linewidth=2, linestyle=:dash, label=["sim z" "sim y" "sim x"])
-    # title!(p_zed, "Vehicle Position")
-    # ylabel!(p_zed, "Position (m)")
+    p_zed = new_plot()
+    @df mocap_df plot!(p_zed, :time_secs, [:z_pose, :y_pose, :x_pose]; :goldenrod1, linewidth=2, label=["mocap z" "mocap_y" "mocap_x"])
+    # @df mocap_df plot!(p_zed, :time_secs[1:2500], [:z_pose[1:2500], :y_pose[1:2500], :x_pose[1:2500]]; :goldenrod1, linewidth=2, label=["mocap z" "mocap_y" "mocap_x"])
+    @df sim_df plot!(p_zed, :time_secs.+sim_offset, [:qs6, :qs5, :qs4]; :deepskyblue2, linewidth=2, linestyle=:dash, label=["sim z" "sim y" "sim x"])
+    title!(p_zed, "Vehicle Position for trial "*trial_code)
+    ylabel!(p_zed, "Position (m)")
+    plot!(p_zed, legend=:outerbottomright)
+    label=["actual x_ori" "actual y_ori" "actual z_ori" "actual w_ori"]
+    xaxis!(p_zed, grid = (:x, :solid, .75, .9), minorgrid = (:x, :dot, .5, .5))
 
-    p_quats = new_plot()
-    @df mocap_df plot!(p_quats, :time_secs[1:2500], 
-        [:x_ori[1:2500], :y_ori[1:2500], :z_ori[1:2500], :w_ori[1:2500]], 
-        palette=actual_palette, linewidth=2, 
-        label=["actual x_ori" "actual y_ori" "actual z_ori" "actual w_ori"])
-    xaxis!(p_quats, grid = (:x, :solid, .75, .9), minorgrid = (:x, :dot, .5, .5))
-    @df sim_df plot!(p_quats, :time_secs.+sim_offset, 
-        [:x_ori, :y_ori, :z_ori, :w_ori], 
-        palette=sim_palette, linewidth=2, linestyle=:dash, 
-        label=label=["sim x_ori" "sim y_ori" "sim z_ori" "sim w_ori"])
-    plot!(p_quats, legend=:outerbottomright)
-    title!("BlueROV Quaternion")
-    ylabel!("Quaternion value")
+    # p_quats = new_plot()
+    # @df mocap_df plot!(p_quats, :time_secs[1:2500], 
+    #     [:x_ori[1:2500], :y_ori[1:2500], :z_ori[1:2500], :w_ori[1:2500]], 
+    #     palette=actual_palette, linewidth=2, 
+    #     label=["actual x_ori" "actual y_ori" "actual z_ori" "actual w_ori"])
+    # xaxis!(p_quats, grid = (:x, :solid, .75, .9), minorgrid = (:x, :dot, .5, .5))
+    # @df sim_df plot!(p_quats, :time_secs.+sim_offset, 
+    #     [:x_ori, :y_ori, :z_ori, :w_ori], 
+    #     palette=sim_palette, linewidth=2, linestyle=:dash, 
+    #     label=label=["sim x_ori" "sim y_ori" "sim z_ori" "sim w_ori"])
+    # plot!(p_quats, legend=:outerbottomright)
+    # title!("BlueROV Quaternion")
+    # ylabel!("Quaternion value")
 
     p_vehrp = new_plot()
-    @df mocap_df plot!(p_vehrp, :time_secs[1:2500], [:roll[1:2500], :pitch[1:2500]], palette=actual_palette, linewidth=2, label=["actual roll" "actual pitch"])
+    # @df mocap_df plot!(p_vehrp, :time_secs[1:3200], [:roll[1:3200], :pitch[1:3200]], palette=actual_palette, linewidth=2, label=["actual roll" "actual pitch"])
+    @df mocap_df plot!(p_vehrp, :time_secs, [:roll, :pitch], palette=actual_palette, linewidth=2, label=["actual roll" "actual pitch"])
     xaxis!(p_vehrp, grid = (:x, :solid, .75, .9), minorgrid = (:x, :dot, .5, .5))
-    @df sim_df plot!(p_vehrp, :time_secs.+sim_offset, [:qs3, :qs2], 
+    @df sim_df plot!(p_vehrp, :time_secs.+sim_offset, [:qs1, :qs2], 
         palette=sim_palette, linewidth=2, linestyle=:dash, 
         label=["sim roll" "sim pitch"])
     plot!(p_vehrp, legend=:outerbottomright)
     ylabel!("Vehicle Orientation (rad)")
     title!("BlueROV Orientation")
 
-    super_ori_plot = plot(p_quats, p_vehrp, layout=(2,1))
+    super_ori_plot = plot(p_zed, p_vehrp, layout=(2,1), plot_title="Comparison for "*trial_code)
 
 #%%
     p_js = new_plot()

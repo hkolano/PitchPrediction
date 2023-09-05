@@ -340,18 +340,16 @@ function prep_actual_vels_and_qs_for_plotting()
     vs_down = zeros(length(ts_down_no_zero), num_dofs)
     quats_down = Array{Float64}(undef, length(ts_down_no_zero), 4)
 
-    rhf_to_ned = des_r = RotMatrix(SMatrix{3,3}([1. 0 0; 0 -1 0; 0 0 -1]))
-    rhf_to_backwards = RotMatrix(SMatrix{3,3}([-1. 0 0; 0 -1 0; 0 0 1]))
-    opp_direction = RotMatrix(SMatrix{3,3}([-1. 0 0; 0 -1 0; 0 0 -1]))
+    # rhf_to_ned = des_r = RotMatrix(SMatrix{3,3}([1. 0 0; 0 -1 0; 0 0 -1]))
+    # rhf_to_backwards = RotMatrix(SMatrix{3,3}([-1. 0 0; 0 -1 0; 0 0 1]))
+    # opp_direction = RotMatrix(SMatrix{3,3}([-1. 0 0; 0 -1 0; 0 0 -1]))
 
     ct = 1
     i = 1
     while ct <= length(ts_down_no_zero)
         quatR = QuatRotation(qs[i][1:4])
-        # transformed_rot = RotXYZ(rhf_to_backwards*quatR)
-        # transformed_rot = RotXYZ(opp_direction*inv(quatR))
         transformed_rot = RotZYX(quatR)
-        qs_down[ct, 1:3] = [transformed_rot.theta1, transformed_rot.theta2, transformed_rot.theta3]
+        qs_down[ct, 1:3] = [transformed_rot.theta3, transformed_rot.theta2, transformed_rot.theta1]
         
         qs_down[ct,4:end] = qs[i][5:end]
         vs_down[ct,:] = vs[i]

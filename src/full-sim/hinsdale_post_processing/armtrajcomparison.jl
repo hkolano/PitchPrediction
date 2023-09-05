@@ -5,7 +5,7 @@ using RigidBodyDynamics
 import YAML 
 
 include("../data-generation/UVMSsetup.jl")
-include("../data-generation/ConfigFiles/MagicNumInvKin.jl")
+include("../data-generation/ConfigFiles/MagicNumBlueROVHardware.jl")
 
 urdf_file = joinpath("urdf", "blue_rov_hardware.urdf")
 mech_blue_alpha, mvis, joint_dict, body_dict = mechanism_reference_setup(urdf_file)
@@ -81,6 +81,8 @@ for i in 1:num_trajectory_dofs-1
     a[i,:] = get_coeffs(pts, duration, i)
     (poses[:,i], vels[:,i]) = get_path!(poses[:,i], vels[:,i], pts.start.θs[i], pts.goal.θs[i], duration, a[i,:], num_its)
 end
+
+this_traj_params = quinticTrajParams(a, pts, duration)
 
 for i in 1:num_its
     new_state_qs = copy(configuration(state))
