@@ -40,5 +40,7 @@ cob_vec_dict["foamL"] = SVector{3, Float64}([0.00, .11, 0.027]) # guess
 cob_vec_dict["foamR"] = SVector{3, Float64}([0.00, -.11, 0.027]) #guess
 
 # Drag coefficients for the vehicle
-d_lin_coeffs = [4.03, 6.22, 5.18, .07, .07, .07]
-d_nonlin_coeffs = [18.18, 21.66, 36.99, 1.55, 1.55, 1.55]
+d_lin_angular = .07 
+d_nonlin_angular = 1.55
+d_lin_coeffs = [4.03, 6.22, 5.18, d_lin_angular, d_lin_angular, d_lin_angular]
+d_nonlin_coeffs = [18.18, 21.66, 36.99, d_nonlin_angular, d_nonlin_angular, d_nonlin_angular]

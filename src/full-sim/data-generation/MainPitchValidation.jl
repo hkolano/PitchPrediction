@@ -30,8 +30,10 @@ include("ConfigFiles/MagicNumBlueROVHardware.jl")
 include("ConfigFiles/MagicNumAlpha.jl")
 trajparsingfile = joinpath("..", "hinsdale_post_processing", "gettrajparamsfromyaml.jl")
 interpolationfile = joinpath("..", "hinsdale_post_processing", "mocap_interpolation.jl")
+simhelperfuncsfile = joinpath("..", "hinsdale_post_processing", "simcomparisonfuncs.jl")
 include(trajparsingfile)
 include(interpolationfile)
+include(simhelperfuncsfile)
 
 
 urdf_file = joinpath("urdf", "blue_rov_hardware.urdf")
@@ -52,16 +54,16 @@ num_actuated_dofs = num_dofs-2
 # ----------------------------------------------------------
 #                 Get Data for Comparison
 # ----------------------------------------------------------
-# trial_code = "015-0"
-trial_code = "baseline3"
+trial_code = "003-0"
+# trial_code = "baseline3"
 
-sim_offset = 1
-# params, des_df, sim_offset = gettrajparamsfromyaml(trial_code, "fullrange2")
+# sim_offset = 1
+params, des_df, sim_offset = gettrajparamsfromyaml(trial_code, "fullrange2")
 
 # Get mocap data 
 mocap_df = get_vehicle_response_from_csv(trial_code, "fullrange2")
 # 
-avg_qs_at_offset, init_vs, init_ωs = get_initial_conditions(sim_offset, mocap_df)
+avg_qs_at_offset, init_vs, init_ωs = get_initial_conditions(0, mocap_df)
 init_vs_vector = FreeVector3D(root_frame(mech_blue_alpha), init_vs)
 body_frame_init_vs = RigidBodyDynamics.transform(state, init_vs_vector, default_frame(body_dict["vehicle"]))
 
@@ -83,11 +85,11 @@ bool_plot_positions = false
     # ----------------------------------------------------------
     #                   Define a Trajectory
     # ----------------------------------------------------------
-    include("TrajGenJoints.jl")
-    params = quinticTrajParams[]
-    swap_times = Vector{Float64}()
-    define_multiple_waypoints!(params, swap_times, 4)
-    println("Scaled trajectory duration: $(swap_times[end]) seconds")
+    # include("TrajGenJoints.jl")
+    # params = quinticTrajParams[]
+    # swap_times = Vector{Float64}()
+    # define_multiple_waypoints!(params, swap_times, 4)
+    # println("Scaled trajectory duration: $(swap_times[end]) seconds")
 
     # t_test_list = 0:.1:swap_times[end]
     # des_paths = prep_desired_vels_and_qs_for_plotting(t_test_list)
@@ -110,11 +112,15 @@ bool_plot_positions = false
     filter_cache = FilterCache(state)
     ctlr_cache = CtlrCache(state, noise_cache, filter_cache)
 
+    start_buffer = sim_offset
+    end_buffer = 7.5
+    delayed_params = delayedQuinticTrajParams(params,start_buffer, params.T+start_buffer)
+
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
-    # ts, qs, vs = simulate_with_ext_forces(state, swap_times[end], params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    ts, qs, vs = simulate_with_ext_forces(state, 10, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    # ts, qs, vs = simulate_with_ext_forces(state, 5, params, ctlr_cache, hydro_calc!, simple_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, params.T+start_buffer+end_buffer, delayed_params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    # ts, qs, vs = simulate_with_ext_forces(state, 10, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    # ts, qs, vs = simulate_with_ext_forces(state, .5, delayed_params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
     @show vs[end]'
@@ -129,7 +135,7 @@ bool_plot_positions = false
     sim_palette = palette([:deepskyblue2, :magenta], 4)
     actual_palette = palette([:goldenrod1, :springgreen3], 4)
 
-    # js_df = get_js_data_from_csv(trial_code)
+    js_df = get_js_data_from_csv(trial_code)
 
     # Downsample the time steps to goal_freq
     ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
@@ -145,7 +151,7 @@ bool_plot_positions = false
     p_zed = new_plot()
     @df mocap_df plot!(p_zed, :time_secs, [:z_pose, :y_pose, :x_pose]; :goldenrod1, linewidth=2, label=["mocap z" "mocap_y" "mocap_x"])
     # @df mocap_df plot!(p_zed, :time_secs[1:2500], [:z_pose[1:2500], :y_pose[1:2500], :x_pose[1:2500]]; :goldenrod1, linewidth=2, label=["mocap z" "mocap_y" "mocap_x"])
-    @df sim_df plot!(p_zed, :time_secs.+sim_offset, [:qs6, :qs5, :qs4]; :deepskyblue2, linewidth=2, linestyle=:dash, label=["sim z" "sim y" "sim x"])
+    @df sim_df plot!(p_zed, :time_secs, [:qs6, :qs5, :qs4]; :deepskyblue2, linewidth=2, linestyle=:dash, label=["sim z" "sim y" "sim x"])
     title!(p_zed, "Vehicle Position for trial "*trial_code)
     ylabel!(p_zed, "Position (m)")
     plot!(p_zed, legend=:outerbottomright)
@@ -170,27 +176,27 @@ bool_plot_positions = false
     # @df mocap_df plot!(p_vehrp, :time_secs[1:3200], [:roll[1:3200], :pitch[1:3200]], palette=actual_palette, linewidth=2, label=["actual roll" "actual pitch"])
     @df mocap_df plot!(p_vehrp, :time_secs, [:roll, :pitch], palette=actual_palette, linewidth=2, label=["actual roll" "actual pitch"])
     xaxis!(p_vehrp, grid = (:x, :solid, .75, .9), minorgrid = (:x, :dot, .5, .5))
-    @df sim_df plot!(p_vehrp, :time_secs.+sim_offset, [:qs1, :qs2], 
+    @df sim_df plot!(p_vehrp, :time_secs, [:qs1, :qs2], 
         palette=sim_palette, linewidth=2, linestyle=:dash, 
         label=["sim roll" "sim pitch"])
     plot!(p_vehrp, legend=:outerbottomright)
     ylabel!("Vehicle Orientation (rad)")
     title!("BlueROV Orientation")
 
-    super_ori_plot = plot(p_zed, p_vehrp, layout=(2,1), plot_title="Comparison for "*trial_code)
+    # super_ori_plot = plot(p_zed, p_vehrp, layout=(2,1), plot_title="Comparison for "*trial_code)
 
-#%%
     p_js = new_plot()
     @df js_df plot!(p_js, :time_secs, cols(3:6); palette=actual_palette, linewidth=2)
     xaxis!(p_js, grid = (:x, :solid, .75, .9), minorgrid = (:x, :dot, .5, .5))
     # @df des_df plot!(p_js, :time_secs, cols(2:5); palette=:grayC, linewidth=2, linestyle=:dash)
-    @df sim_df plot!(p_js, :time_secs.+sim_offset, 
-        [cols(7).+3.07, cols(8), cols(9), cols(10).+1.57]; 
+    @df sim_df plot!(p_js, :time_secs, 
+        [cols(7).+3.07, cols(8), cols(9), cols(10).+1.57, cols(11)]; 
         palette=sim_palette, linewidth=2, linestyle=:dash, 
         label=["sim axis e" "sim axis d" "sim axis c" "sim axis b"])
     plot!(p_js, legend=:outerbottomright)
     ylabel!("Joint position (rad)")
     title!("Alpha Arm Joint Positions")
+    plot!(p_js, ylims=(-3, 6))
     # if bool_plot_velocities == true
     #     plot_des_vs_act_velocities(ts_down_no_zero, 
     #         paths, des_paths, meas_paths, filt_paths, 
@@ -207,7 +213,7 @@ bool_plot_positions = false
     #     plot_control_taus(ctlr_cache, ts_down)
     # end 
 
-    super_plot = plot(p_js, p_vehrp, layout=(2, 1))
+    super_plot = plot(p_js, p_vehrp, p_zed, layout=(3, 1))
 #%%
     # ----------------------------------------------------------
     #                  Animate the Trajectory

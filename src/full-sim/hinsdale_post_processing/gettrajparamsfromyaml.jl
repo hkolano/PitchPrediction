@@ -51,7 +51,7 @@ end
 
 
 function get_vehicle_response_from_csv(trial_code, dataset="fullrange2")
-    if trial_code[1] == "0"
+    if trial_code[1] == '0'
         mocap_datapath = joinpath("data", "hinsdale-data-2023", "traj"*trial_code*"_mocap.csv")
     else 
         mocap_datapath = joinpath("data", "hinsdale-data-2023", trial_code*"_mocap.csv")

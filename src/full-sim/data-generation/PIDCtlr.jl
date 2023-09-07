@@ -85,7 +85,10 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
 
         # Set torques to appropriate values for equilibrium position
         if c.step_ctr == 0
-            set_equilibrium_torques!(torques)
+            torques[7] = -.002      # ff joint E value
+            torques[8] = -.32255    # ff Joint D value 
+            torques[9] = -.0335     # ff Joint C value
+            torques[10] = 0         #.5e-5
             println("At time... ")
         end
         
@@ -102,11 +105,12 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         # #     @show wrist_wrench_wrist_frame
         # end
 
-        if rem(c.step_ctr, ctrl_steps) == 0 && c.step_ctr != 0
+        if rem(c.step_ctr, ctrl_steps) == 0 # && c.step_ctr != 0
 
             manip_des_vels = get_desv_at_t(t, pars)
+            # @show manip_des_vels
             # TAKE THIS OUT IF YOU WANT THE ARM TO MOVE
-            fill!(manip_des_vels, 0.0)
+            # fill!(manip_des_vels, 0.0)
             for (idx, dof_name) in enumerate(dof_names[7:end])
                 c.des_vel[dof_name] = manip_des_vels[idx]
             end
@@ -177,7 +181,16 @@ function joint_controller(torque, vel_act, dof_name, c, ff)
     i_term = - Ki_dict[dof_name]*c.vel_int_error_cache[dof_name]
 
     d_tau = p_term + d_term + i_term
-    # println("Feedback tau: $(d_tau)")
+    # if rem(c.step_ctr, 500) == 0
+    #     if dof_name == "wrist"
+    #         @show vel_act 
+    #         @show c.des_vel[dof_name]
+    #         @show p_term 
+    #         @show d_term 
+    #         @show i_term
+    #         println("Feedback tau: $(d_tau)")
+    #     end
+    # end
 
     # Can only change torque a small amount per time step 
     tau_diff_prev_to_inv_dyn = .25ff - .25torque
