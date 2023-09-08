@@ -40,11 +40,18 @@ for (k,v) in link_masses
 end
 
 # Drag forces on arm
-link_drags = Dict("shoulder" => [0.26 0.26 0.3]*rho, 
-                    "upperarm" => [0.3 1.6 1.6]*rho,
-                    "elbow" => [0.26 0.3 0.26]*rho,
-                    "wrist" => [1.8 1.8 0.3]*rho, 
-                    "jaw" => [.05, .05, .05]*rho)
+# link_drags = Dict("shoulder" => [0.26 0.26 0.3]*rho, 
+#                     "upperarm" => [0.3 1.6 1.6]*rho,
+#                     "elbow" => [0.26 0.3 0.26]*rho,
+#                     "wrist" => [1.8 1.8 0.3]*rho, 
+#                     "jaw" => [.05, .05, .05]*rho)
+
+link_drags = Dict("shoulder" => [0.26 0.26 0.3], 
+                    "upperarm" => [0.3 1.6 1.6],
+                    "elbow" => [0.26 0.3 0.26],
+                    "wrist" => [1.8 1.8 0.3], 
+                    "jaw" => [.05, .05, .05])
+
 
 # Arm position joint limits
 joint_lim_dict = Dict("base" => [-175*pi/180, 175*pi/180], 
