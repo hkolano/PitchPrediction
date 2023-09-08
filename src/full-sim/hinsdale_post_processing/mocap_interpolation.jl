@@ -1,5 +1,31 @@
-using DataFrames, DataInterpolations, Smoothers
+using DataFrames, DataInterpolations, Smoothers, StatsBase
 #TODO look into DataInterpolations (Akima interpolation?)
+
+function interp_at_timsteps(timestamps, df, col_names)
+    itp_dict = Dict()
+    interped_mocap_qs = DataFrame()
+    interped_mocap_qs[!,:time_secs] = timestamps
+    for (idx, meas_name) in enumerate(col_names)
+        itp_dict[meas_name] = DataInterpolations.AkimaInterpolation(Array(df[!, meas_name]), Array(df[!, :time_secs]))
+        # itp_dict[meas_name] = interpolate((Array(df[!, :time_secs]),), Array(df[!, meas_name]), Gridded(Linear()))
+        interped_mocap_qs[!, meas_name] = itp_dict[meas_name](timestamps)
+    end
+
+    return interped_mocap_qs
+end
+
+function get_pitch_rmse(mocap_df, sim_df, with_offset=false)  
+    col_names = ["w_ori", "x_ori", "y_ori", "z_ori"]
+    interped_mocap_df = interp_at_timsteps(sim_df[!,:time_secs], mocap_df, col_names)
+    interped_mocap_df = calc_rpy(interped_mocap_df)
+
+    if with_offset == false
+        rmse = rmsd(interped_mocap_df[!,:pitch], sim_df[!,:qs2])
+    else
+        rmse = rmsd(interped_mocap_df[!,:pitch][1:end-80], sim_df[!,:qs2][81:end])
+    end
+    return rmse
+end
 
 function get_initial_conditions(interp_start_time, df; dt=.01)
     # Set up evenly spaced time intervals

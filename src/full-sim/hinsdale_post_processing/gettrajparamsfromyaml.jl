@@ -50,20 +50,20 @@ function gettrajparamsfromyaml(trial_code, dataset="fullrange2")
 end
 
 
-function get_vehicle_response_from_csv(trial_code, dataset="fullrange2")
+function get_vehicle_response_from_csv(trial_code, foldername="hinsdale-data-2023", dataset="fullrange2")
     if trial_code[1] == '0'
-        mocap_datapath = joinpath("data", "hinsdale-data-2023", "traj"*trial_code*"_mocap.csv")
+        mocap_datapath = joinpath("data", foldername, "traj"*trial_code*"_mocap.csv")
     else 
-        mocap_datapath = joinpath("data", "hinsdale-data-2023", trial_code*"_mocap.csv")
+        mocap_datapath = joinpath("data", foldername, trial_code*"_mocap.csv")
     end
-        # mocap_datapath = joinpath("data", "hinsdale-data-2023", trial_code*"_mocap.csv")
+        # mocap_datapath = joinpath("data", foldername, trial_code*"_mocap.csv")
     mocap_df = CSV.read(mocap_datapath, DataFrame)
     dropmissing!(mocap_df)
     return mocap_df
 end
 
-function get_js_data_from_csv(trial_code, dataset="fullrange2")
-    js_filepath = joinpath("data", "hinsdale-data-2023", "traj"*trial_code*"_joint_states.csv")
+function get_js_data_from_csv(trial_code, foldername="hinsdale-data-2023", dataset="fullrange2")
+    js_filepath = joinpath("data", foldername, "traj"*trial_code*"_joint_states.csv")
     # js_filepath = joinpath("data", "hinsdale-data-2023", trial_code*"_joint_states.csv")
     js_df = CSV.read(js_filepath, DataFrame)
     dropmissing!(js_df)

@@ -123,10 +123,11 @@ end
 translate_to_rpy = true
 
 # all_traj_codes = ["baseline1", "baseline2", "baseline3"]
+all_traj_codes = ["003-0"]
 
 if translate_to_rpy == true
     for trial_code in all_traj_codes
-        mocap_datapath = joinpath("data", "hinsdale-data-2023", "traj"*trial_code*"_mocap.csv")
+        mocap_datapath = joinpath("data", "hinsdale-data-notimetrim", "traj"*trial_code*"_mocap.csv")
         # mocap_datapath = joinpath("data", "hinsdale-data-2023", trial_code*"_mocap.csv")
         mocap_df = CSV.read(mocap_datapath, DataFrame)
         dropmissing!(mocap_df)

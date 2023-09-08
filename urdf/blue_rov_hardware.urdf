@@ -109,10 +109,12 @@
       <origin rpy="0 1.57075 0" xyz="-0.075 0 0"/>
     </collision>
     <inertial>
+      <!-- Actual -->
+      <!-- <mass value="0.341"/>  -->
       <!-- Actual + added -->
       <mass value="0.53"/> 
       <origin xyz="-0.075 -0.006 -0.003"/>
-      <inertia ixx="0.000106" ixy="0.000139" ixz="0.000115" iyy="0.00433" iyz="0.000003" izz="0.004348"/>
+      <inertia ixx="0.000099" ixy="0.000139" ixz="0.000115" iyy="0.004334" iyz="0.000003" izz="0.004348"/>
     </inertial>
   </link>
 
@@ -143,6 +145,8 @@
       <origin rpy="0 0 0" xyz="0 0 0.010"/>
     </collision>
     <inertial>
+      <!-- Actual -->
+      <!-- <mass value="0.194"/>  -->
       <!-- Actual + added -->
       <mass value="0.226"/>
       <origin xyz="0.005 -0.001 0.016"/>
@@ -183,6 +187,8 @@
       <origin rpy="0 0 0" xyz="0 0 0"/>
     </collision>
     <inertial>
+      <!-- Actual -->
+      <!-- <mass value="0.429"/>  -->
       <mass value="0.630"/>
       <origin xyz="0.073 0.0 0.0"/>
       <inertia ixx="0.000087" ixy="-0.000076" ixz="-0.000010" iyy="0.004906" iyz="0.000000" izz="0.004929"/>
@@ -214,6 +220,8 @@
       <origin rpy="0 0 0" xyz="0 0 0"/>
     </collision>
     <inertial>
+      <!-- Actual -->
+      <!-- <mass value="0.115"/>  -->
       <mass value="0.147"/>
       <origin xyz="0.017 -0.026 -0.002"/>
       <inertia ixx="0.000127" ixy="-0.000061" ixz="-0.000001" iyy="0.000062" iyz="0.000000" izz="0.000163"/>
@@ -246,10 +254,12 @@
       <origin rpy="0 0 0" xyz="0 0 -0.070"/>
     </collision>
     <inertial>
+      <!-- Actual -->
+      <!-- <mass value="0.333"/>  -->
       <mass value="0.559"/>
       <origin xyz="0.0 0.003 -0.098"/>
       <!-- <inertia ixx="0.006152" ixy="-0.000002" ixz="-0.000004" iyy="0.006177" iyz="0.000000" izz="0.000079"/> -->
-      <inertia ixx="0.006152" ixy="-0.000002" ixz="-0.000004" iyy="0.006177" iyz="0.000000" izz="0.000160"/>
+      <inertia ixx="0.006152" ixy="-0.000002" ixz="-0.000004" iyy="0.006177" iyz="0.000000" izz="0.000079"/>
     </inertial>
   </link>
 

@@ -30,7 +30,8 @@ Kd_dict = Dict("yaw" => 0.1,
                 "base" => 1.74e-3,
                 "shoulder" => 3.82e-3,
                 "elbow" => 1.27e-3,
-                "wrist" => 2.03e-5, 
+                # "wrist" => 2.03e-5,
+                "wrist" => 4.03e-5, 
                 "jaw" => 2.03e-5)
 
 do_feedforward = true
