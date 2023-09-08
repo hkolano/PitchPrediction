@@ -14,15 +14,21 @@ function interp_at_timsteps(timestamps, df, col_names)
     return interped_mocap_qs
 end
 
-function get_pitch_rmse(mocap_df, sim_df, with_offset=false)  
+function get_pitch_rmse(mocap_df, sim_df, with_offset=false, a_offset=0)  
     col_names = ["w_ori", "x_ori", "y_ori", "z_ori"]
-    interped_mocap_df = interp_at_timsteps(sim_df[!,:time_secs], mocap_df, col_names)
+    mocap_end_time = mocap_df[end,:time_secs]
+    sim_time_steps = sim_df[!,:time_secs]
+    trimmed_sim_time_steps = filter(x->x<mocap_end_time, sim_time_steps)
+    num_timesteps = length(trimmed_sim_time_steps)
+
+    interped_mocap_df = interp_at_timsteps(trimmed_sim_time_steps, mocap_df, col_names)
     interped_mocap_df = calc_rpy(interped_mocap_df)
 
     if with_offset == false
-        rmse = rmsd(interped_mocap_df[!,:pitch], sim_df[!,:qs2])
+        rmse = rmsd(interped_mocap_df[!,:pitch], sim_df[1:num_timesteps,:qs2])
     else
-        rmse = rmsd(interped_mocap_df[!,:pitch][1:end-80], sim_df[!,:qs2][81:end])
+        num_offset_steps = -Int(a_offset/.02)
+        rmse = rmsd(interped_mocap_df[!,:pitch][1:end-num_offset_steps], sim_df[1:num_timesteps,:qs2][num_offset_steps+1:end])
     end
     return rmse
 end

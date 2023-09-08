@@ -55,11 +55,11 @@ num_actuated_dofs = num_dofs-2
 # ----------------------------------------------------------
 #                 Get Data for Comparison
 # ----------------------------------------------------------
-# trial_code = "007-0"
-trial_code = "baseline3"
+trial_code = "006-0"
+# trial_code = "baseline1"
 
 # sim_offset = 1
-# params, des_df, sim_offset = gettrajparamsfromyaml(trial_code, "fullrange2")
+params, des_df, sim_offset = gettrajparamsfromyaml(trial_code, "fullrange2")
 
 # Get mocap data 
 mocap_df = get_vehicle_response_from_csv(trial_code, "hinsdale-data-2023", "fullrange2")
@@ -86,11 +86,11 @@ bool_plot_positions = false
     # ----------------------------------------------------------
     #                   Define a Trajectory
     # ----------------------------------------------------------
-    include("TrajGenJoints.jl")
-    params = quinticTrajParams[]
-    swap_times = Vector{Float64}()
-    define_multiple_waypoints!(params, swap_times, 4)
-    println("Scaled trajectory duration: $(swap_times[end]) seconds")
+    # include("TrajGenJoints.jl")
+    # params = quinticTrajParams[]
+    # swap_times = Vector{Float64}()
+    # define_multiple_waypoints!(params, swap_times, 4)
+    # println("Scaled trajectory duration: $(swap_times[end]) seconds")
 
     # t_test_list = 0:.1:swap_times[end]
     # des_paths = prep_desired_vels_and_qs_for_plotting(t_test_list)
@@ -105,7 +105,7 @@ bool_plot_positions = false
     # Give the vehicle initial conditions from the mocap
     zero!(state)
     set_configuration!(state, joint_dict["vehicle"], avg_qs_at_offset)
-    # set_velocity!(state, joint_dict["vehicle"], [init_ωs..., body_frame_init_vs.v...])
+    set_velocity!(state, joint_dict["vehicle"], [0, 0, 0, body_frame_init_vs.v...])
 
     # set_configuration!(state, joint_dict["vehicle"], [.9239, 0, 0, 0.382, 0.5, 0., 0.])
     # Start up the controller
@@ -115,12 +115,12 @@ bool_plot_positions = false
 
     start_buffer = sim_offset
     end_buffer = 7.5
-    # delayed_params = delayedQuinticTrajParams(params,start_buffer, params.T+start_buffer)
+    delayed_params = delayedQuinticTrajParams(params,start_buffer, params.T+start_buffer)
 
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
-    # ts, qs, vs = simulate_with_ext_forces(state, params.T+start_buffer+end_buffer, delayed_params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    ts, qs, vs = simulate_with_ext_forces(state, 10, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, params.T+start_buffer+end_buffer, delayed_params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    # ts, qs, vs = simulate_with_ext_forces(state, 10, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     # ts, qs, vs = simulate_with_ext_forces(state, .5, delayed_params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
@@ -131,7 +131,7 @@ bool_plot_positions = false
     # ----------------------------------------------------------
     include("UVMSPlotting.jl")
     gr(size=(800, 800)) 
-    # @show sim_offset
+    @show sim_offset
 
     sim_palette = palette([:deepskyblue2, :magenta], 4)
     actual_palette = palette([:goldenrod1, :springgreen3], 4)
@@ -156,9 +156,6 @@ bool_plot_positions = false
     # meas_paths = prep_measured_vels_and_qs_for_plotting()
     # filt_paths = prep_filtered_vels_for_plotting()
 
-    @show rad2deg(get_pitch_rmse(mocap_df, sim_df))
-    @show rad2deg(get_pitch_rmse(mocap_df, sim_df, true))
-
     p_zed = new_plot()
     @df mocap_df plot!(p_zed, :time_secs, [:z_pose, :y_pose, :x_pose]; :goldenrod1, linewidth=2, label=["mocap z" "mocap_y" "mocap_x"])
     # @df mocap_df plot!(p_zed, :time_secs[1:2500], [:z_pose[1:2500], :y_pose[1:2500], :x_pose[1:2500]]; :goldenrod1, linewidth=2, label=["mocap z" "mocap_y" "mocap_x"])
@@ -168,6 +165,7 @@ bool_plot_positions = false
     plot!(p_zed, legend=:outerbottomright)
     label=["actual x_ori" "actual y_ori" "actual z_ori" "actual w_ori"]
     xaxis!(p_zed, grid = (:x, :solid, .75, .9), minorgrid = (:x, :dot, .5, .5))
+
 
     # p_quats = new_plot()
     # @df mocap_df plot!(p_quats, :time_secs[1:2500], 
@@ -183,8 +181,8 @@ bool_plot_positions = false
     # title!("BlueROV Quaternion")
     # ylabel!("Quaternion value")
 
-    # artificial_offset = -1.6
-    artificial_offset = 0
+    artificial_offset = -1.
+    # artificial_offset = 0
 
     p_vehrp = new_plot()
     # @df mocap_df plot!(p_vehrp, :time_secs[1:3200], [:roll[1:3200], :pitch[1:3200]], palette=actual_palette, linewidth=2, label=["actual roll" "actual pitch"])
@@ -196,6 +194,9 @@ bool_plot_positions = false
     plot!(p_vehrp, legend=:outerbottomright)
     ylabel!("Vehicle Orientation (rad)")
     title!("BlueROV Orientation")
+
+    @show rad2deg(get_pitch_rmse(mocap_df, sim_df))
+    @show rad2deg(get_pitch_rmse(mocap_df, sim_df, true, artificial_offset))
 
     # super_ori_plot = plot(p_zed, p_vehrp, layout=(2,1), plot_title="Comparison for "*trial_code)
 

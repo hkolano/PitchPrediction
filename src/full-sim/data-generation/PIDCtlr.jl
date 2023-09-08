@@ -110,7 +110,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             manip_des_vels = get_desv_at_t(t, pars)
             # @show manip_des_vels
             # TAKE THIS OUT IF YOU WANT THE ARM TO MOVE
-            fill!(manip_des_vels, 0.0)
+            # fill!(manip_des_vels, 0.0)
             for (idx, dof_name) in enumerate(dof_names[7:end])
                 c.des_vel[dof_name] = manip_des_vels[idx]
             end
