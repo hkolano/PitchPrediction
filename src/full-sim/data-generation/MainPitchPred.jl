@@ -14,6 +14,8 @@ using GeometryBasics
 using Printf, Plots, CSV, Tables, ProgressBars, Revise
 using Random
 
+using DataFrames, StatsPlots, Interpolations
+
 include("HydroCalc.jl")
 include("SimWExt.jl")
 include("PIDCtlr.jl")
@@ -22,14 +24,14 @@ include("HelperFuncs.jl")
 include("Noiser.jl")
 
 include("UVMSsetup.jl")
-include("ConfigFiles/MagicNumPitchPred.jl")
+include("ConfigFiles/MagicNumPitchVal.jl")
 include("ConfigFiles/ConstMagicNums.jl")
-include("ConfigFiles/MagicNumBlueROV.jl")
+include("ConfigFiles/MagicNumBlueROVHardware.jl")
 include("ConfigFiles/MagicNumAlpha.jl")
 
-urdf_file = joinpath("urdf", "blue_rov_fixedjaw.urdf")
+urdf_file = joinpath("urdf", "blue_rov_hardware.urdf")
 
-#%%
+
 # ----------------------------------------------------------
 #                 One-Time Mechanism Setup
 # ----------------------------------------------------------
@@ -61,24 +63,17 @@ bool_plot_positions = false
     # ----------------------------------------------------------
     #                   Define a Trajectory
     # ----------------------------------------------------------
-    include("TrajGenJoints.jl")
     params = quinticTrajParams[]
     swap_times = Vector{Float64}()
-    define_multiple_waypoints!(params, swap_times, 2)
+    define_multiple_waypoints!(params, swap_times, 3)
     println("Scaled trajectory duration: $(swap_times[end]) seconds")
-
-    # t_test_list = 0:.1:swap_times[end]
-    # des_paths = prep_desired_vels_and_qs_for_plotting(t_test_list)
-    # plot(t_test_list, des_paths["vs10"])
-
-#%%
 
     # ----------------------------------------------------------
     #                  Setup and Run Simulation
     # ----------------------------------------------------------
-    include("PIDCtlr.jl")
     # Reset the sim to the equilibrium position
-    reset_to_equilibrium!(state)
+    zero!(state)
+    set_configuration!(state, joint_dict["vehicle"], [.9993, .0339, .0124, -.004, 0., 0., 0.])
     # Start up the controller
     noise_cache = NoiseCache(state)
     filter_cache = FilterCache(state)
@@ -86,12 +81,12 @@ bool_plot_positions = false
 
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
-    # ts, qs, vs = simulate_with_ext_forces(state, swap_times[end], params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    ts, qs, vs = simulate_with_ext_forces(state, 5, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, swap_times[end], params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    # ts, qs, vs = simulate_with_ext_forces(state, 5, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
     @show vs[end]'
-#%%
+
     # ----------------------------------------------------------
     #                      Prepare Plots
     # ----------------------------------------------------------
@@ -101,27 +96,48 @@ bool_plot_positions = false
 
     include("UVMSPlotting.jl")
 
+    sim_palette = palette([:deepskyblue2, :magenta], 4)
+    actual_palette = palette([:goldenrod1, :springgreen3], 4)
+
     # Set up data collection dicts
     paths = prep_actual_vels_and_qs_for_plotting()
-    des_paths = prep_desired_vels_and_qs_for_plotting(ts_down_no_zero)
-    meas_paths = prep_measured_vels_and_qs_for_plotting()
-    filt_paths = prep_filtered_vels_for_plotting()
+    sim_df = DataFrame(paths)
+    sim_df[!,:time_secs] = ts_down_no_zero
+    des_paths = prep_desired_vels_and_qs_for_plotting(ts_down_no_zero, params)
+    des_df = DataFrame(des_paths)
+    # meas_paths = prep_measured_vels_and_qs_for_plotting()
+    # filt_paths = prep_filtered_vels_for_plotting()
     
-    if bool_plot_velocities == true
-        plot_des_vs_act_velocities(ts_down_no_zero, 
-            paths, des_paths, meas_paths, filt_paths, 
-            plot_veh=false, plot_arm=true)
-    end
+    p_ori = new_plot()
+    xaxis!(p_ori, grid = (:x, :solid, .75, .9), minorgrid = (:x, :dot, .5, .5))
+    @df sim_df plot!(p_ori, :time_secs.+artificial_offset, [:qs1, :qs2], 
+        palette=sim_palette, linewidth=2, linestyle=:dash, 
+        label=["sim roll" "sim pitch"])
+    plot!(p_ori, legend=:outerbottomright)
+    ylabel!("Vehicle Orientation (rad)")
+    title!("BlueROV Orientation")
 
-    if bool_plot_positions == true
-        plot_des_vs_act_positions(ts_down_no_zero, des_ts, 
-            paths, des_paths, meas_paths, 
-            plot_veh = true, plot_arm=true)
-    end
 
-    if bool_plot_taus == true
-        plot_control_taus(ctlr_cache, ts_down)
-    end 
+    p_js = new_plot()
+    xaxis!(p_js, grid = (:x, :solid, .75, .9), minorgrid = (:x, :dot, .5, .5))
+    @df des_df plot!(p_js, :time_secs, 
+        [:qs7.+3.07, :qs8, :qs9, :qs10.+1.57]; 
+        palette=:atlantic, linewidth=2, linestyle=:solid, 
+        label=["des axis e" "des axis d" "des axis c" "des axis b"])
+    @df sim_df plot!(p_js, :time_secs, 
+        [cols(7).+3.07, cols(8), cols(9), cols(10).+1.57]; #, cols(11)]; 
+        palette=sim_palette, linewidth=2, linestyle=:dash, 
+        label=["sim axis e" "sim axis d" "sim axis c" "sim axis b"])
+    plot!(p_js, legend=:outerbottomright)
+    ylabel!("Joint position (rad)")
+    title!("Alpha Arm Joint Positions")
+    plot!(p_js, ylims=(-.5, 6))
+
+    super_plot = plot(p_js, p_ori, layout=(2, 1), plot_title="Sim vs Hinsdale, traj "*trial_code*" (artificial offset "*string(artificial_offset)*"s)")
+
+    # if bool_plot_taus == true
+    #     plot_control_taus(ctlr_cache, ts_down)
+    # end 
 
     # ----------------------------------------------------------
     #                  Animate the Trajectory

@@ -41,9 +41,11 @@
             <origin xyz="0 0 -.02"/>
             <!-- <inertia ixx="0.28" ixy="0" ixz="0" iyy="0.28" iyz="0" izz="0.28"/> -->
             <!-- Proportionally increasing inertia by 1.2 -->
-            <inertia ixx="0.337" ixy="0" ixz="0" iyy=".337" iyz="0" izz="0.337"/>
+            <!-- <inertia ixx="0.337" ixy="0" ixz="0" iyy=".337" iyz="0" izz="0.337"/> -->
             <!-- This one is just hannah messing around -->
-            <!-- <inertia ixx="0.337" ixy="0" ixz="0" iyy="1." iyz="0" izz="0.337"/> -->
+            <!-- <inertia ixx="0.295" ixy="0" ixz="0" iyy=".382" iyz="0" izz="0.6003"/> -->
+            <!-- This one is even more insane -->
+            <inertia ixx="0.228" ixy="0" ixz="0" iyy=".381" iyz="0" izz="0.4185"/>
         </inertial> 
     </link>
 

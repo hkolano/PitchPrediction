@@ -233,7 +233,7 @@ function get_desq_at_t(t, p::quinticTrajParams)
 end
 
 function get_desq_at_t(t, p_array::Array{quinticTrajParams})
-    des_qs = zeros(8)
+    des_qs = zeros(num_trajectory_dofs+4)
     traj_num = 1
     for i in 1:length(params)
         if t > swap_times[i]

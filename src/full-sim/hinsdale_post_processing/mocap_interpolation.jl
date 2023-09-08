@@ -33,15 +33,37 @@ function get_pitch_rmse(mocap_df, sim_df, with_offset=false, a_offset=0)
     return rmse
 end
 
+function get_initial_vehicle_velocities(interp_start_time, df; dt=.01) 
+    init_vs = Vector{Float64}(undef, 3)
+    init_qs = Vector{Float64}(undef, 3)
+    lin_vel_names = ["x_pose", "y_pose", "z_pose"]
+    IC_times = interp_start_time:dt:interp_start_time+.1
+
+    for (idx, meas_name) in enumerate(lin_vel_names)
+        # create interpolation object for this measurement
+        itp = DataInterpolations.AkimaInterpolation(Array(df[!, meas_name]), Array(df[!, :time_secs]))
+        # interpolate on several time points close to the start time
+        qs_window = itp(IC_times)
+        num_interped_vels = length(qs_window)-2
+        interped_vels = Vector{Float64}(undef, num_interped_vels)
+        # Do finite differencing between poses to get velocities
+        for i in 1:num_interped_vels
+            interped_vels[i] = (qs_window[i+2] - qs_window[i])/2dt
+        end
+        init_qs[idx] = mean(qs_window)
+        init_vs[idx] = mean(interped_vels)
+    end
+    return init_vs, init_qs
+end
+
 function get_initial_conditions(interp_start_time, df; dt=.01)
     # Set up evenly spaced time intervals
     IC_times = interp_start_time-.03:dt:interp_start_time+.03
-    even_ts = interp_start_time:dt:df[end-1, :time_secs]
 
     itp_dict = Dict()
-    init_qs = Vector{Float64}(undef, 7)
-    init_vs = Vector{Float64}(undef, 3)
-    q_names = ["w_ori", "x_ori", "y_ori", "z_ori", "x_pose", "y_pose", "z_pose"]
+    init_qs = Vector{Float64}(undef, 4)
+
+    q_names = ["w_ori", "x_ori", "y_ori", "z_ori"]
     smoothed_mocap_df = DataFrame()
     qs_window = Dict()
 
@@ -56,16 +78,6 @@ function get_initial_conditions(interp_start_time, df; dt=.01)
         init_qs[idx] = mean(qs_window[meas_name])
     end
 
-    lin_vel_names = q_names[5:7]
-    for (idx, meas_name) in enumerate(lin_vel_names)
-        num_interped_vels = length(qs_window[meas_name])-2
-        interped_vels = Vector{Float64}(undef, num_interped_vels)
-        for i in 1:num_interped_vels
-            interped_vels[i] = (qs_window[meas_name][i+2] - qs_window[meas_name][i])/2dt
-        end
-        init_vs[idx] = mean(interped_vels)
-    end
-
     num_interped_ang_vels = length(qs_window["w_ori"])-1
     ang_vel_list = Array{Float64}(undef, num_interped_ang_vels, 3)
     for i in 1:num_interped_ang_vels
@@ -74,10 +86,7 @@ function get_initial_conditions(interp_start_time, df; dt=.01)
         ang_vel_list[i,:] = ang_vel_from_quaternions(quat1, quat2, dt)
     end
     ang_vels = mean(ang_vel_list, dims=1)
-
-
-    return init_qs, init_vs, ang_vels
-
+    return init_qs, ang_vels
 end
 
 function ang_vel_from_quaternions(q1::QuatRotation, q2::QuatRotation, dt)

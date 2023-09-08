@@ -64,24 +64,23 @@ params, des_df, sim_offset = gettrajparamsfromyaml(trial_code, "fullrange2")
 # Get mocap data 
 mocap_df = get_vehicle_response_from_csv(trial_code, "hinsdale-data-2023", "fullrange2")
 imu_df = get_imu_data_from_csv(trial_code, "hinsdale-data-2023")
+imu_df = calc_rpy(imu_df)
 # 
-avg_qs_at_offset, init_vs, init_ωs = get_initial_conditions(0, mocap_df)
-init_vs_vector = FreeVector3D(root_frame(mech_blue_alpha), init_vs)
-body_frame_init_vs = RigidBodyDynamics.transform(state, init_vs_vector, default_frame(body_dict["vehicle"]))
-
+init_vs, init_vehpose = get_initial_vehicle_velocities(0, mocap_df)
+init_quat, init_ωs = get_initial_conditions(0, imu_df)
 
 # ----------------------------------------------------------
 #                         Simulate
 # ----------------------------------------------------------
 #%%
     include("HydroCalc.jl")
-    # ----------------------------------------------------------
-    #                  Setup and Run Simulation
-    # ----------------------------------------------------------
     include("PIDCtlr.jl")
+
     # Give the vehicle initial conditions from the mocap
     zero!(state)
-    set_configuration!(state, joint_dict["vehicle"], avg_qs_at_offset)
+    set_configuration!(state, joint_dict["vehicle"], [init_quat..., init_vehpose...])
+    init_vs_vector = FreeVector3D(root_frame(mech_blue_alpha), init_vs)
+    body_frame_init_vs = RigidBodyDynamics.transform(state, init_vs_vector, default_frame(body_dict["vehicle"]))
     set_velocity!(state, joint_dict["vehicle"], [0, 0, 0, body_frame_init_vs.v...])
 
     # set_configuration!(state, joint_dict["vehicle"], [.9239, 0, 0, 0.382, 0.5, 0., 0.])
@@ -95,11 +94,9 @@ body_frame_init_vs = RigidBodyDynamics.transform(state, init_vs_vector, default_
     delayed_params = delayedQuinticTrajParams(params,start_buffer, params.T+start_buffer)
 
     # Simulate the trajectory
-    if save_to_csv != true; println("Simulating... ") end
     ts, qs, vs = simulate_with_ext_forces(state, params.T+start_buffer+end_buffer, delayed_params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     # ts, qs, vs = simulate_with_ext_forces(state, 10, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     # ts, qs, vs = simulate_with_ext_forces(state, .5, delayed_params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    if save_to_csv != true; println("done.") end
 
     @show vs[end]'
 #%%
@@ -115,7 +112,7 @@ body_frame_init_vs = RigidBodyDynamics.transform(state, init_vs_vector, default_
 
     js_df = get_js_data_from_csv(trial_code, "hinsdale-data-2023")
     
-    imu_df = calc_rpy(imu_df)
+    
     # mocap_df = get_vehicle_response_from_csv(trial_code, "hinsdale-data-notimetrim", "fullrange2")
     # real_start_time = minimum([mocap_df[1,1], js_df[1,1]])
     # mocap_df[!,:time_secs] = mocap_
@@ -215,12 +212,10 @@ body_frame_init_vs = RigidBodyDynamics.transform(state, init_vs_vector, default_
     # ----------------------------------------------------------
     # Use stop_step to visualize specific points in the trajectory
     # stop_step = 29*1000
-    if show_animation == true
         print("Animating... ")
         # MeshCatMechanisms.animate(mvis, ts[1:stop_step], qs[1:stop_step]; realtimerate = 5.0)
         MeshCatMechanisms.animate(mvis, ts, qs; realtimerate=1.)
         println("done.")
-    end
 
     # ----------------------------------------------------------
     #                 Save Trajectory to CSV
