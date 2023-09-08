@@ -55,7 +55,7 @@ num_actuated_dofs = num_dofs-2
 # ----------------------------------------------------------
 #                 Get Data for Comparison
 # ----------------------------------------------------------
-trial_code = "006-0"
+trial_code = "004-0"
 # trial_code = "baseline1"
 
 # sim_offset = 1
@@ -63,6 +63,7 @@ params, des_df, sim_offset = gettrajparamsfromyaml(trial_code, "fullrange2")
 
 # Get mocap data 
 mocap_df = get_vehicle_response_from_csv(trial_code, "hinsdale-data-2023", "fullrange2")
+imu_df = get_imu_data_from_csv(trial_code, "hinsdale-data-2023")
 # 
 avg_qs_at_offset, init_vs, init_ωs = get_initial_conditions(0, mocap_df)
 init_vs_vector = FreeVector3D(root_frame(mech_blue_alpha), init_vs)
@@ -70,32 +71,8 @@ body_frame_init_vs = RigidBodyDynamics.transform(state, init_vs_vector, default_
 
 
 # ----------------------------------------------------------
-#                   Start: Gather Sim Data
+#                         Simulate
 # ----------------------------------------------------------
-# Control variables
-num_trajs = 1
-save_to_csv = false
-show_animation = true
-bool_plot_velocities = false
-bool_plot_taus = false
-bool_plot_positions = false
-
-# Create (num_trajs) different trajectories and save to csvs 
-# for n in ProgressBar(1:num_trajs)
-
-    # ----------------------------------------------------------
-    #                   Define a Trajectory
-    # ----------------------------------------------------------
-    # include("TrajGenJoints.jl")
-    # params = quinticTrajParams[]
-    # swap_times = Vector{Float64}()
-    # define_multiple_waypoints!(params, swap_times, 4)
-    # println("Scaled trajectory duration: $(swap_times[end]) seconds")
-
-    # t_test_list = 0:.1:swap_times[end]
-    # des_paths = prep_desired_vels_and_qs_for_plotting(t_test_list)
-    # plot(t_test_list, des_paths["vs10"])
-
 #%%
     include("HydroCalc.jl")
     # ----------------------------------------------------------
@@ -137,6 +114,8 @@ bool_plot_positions = false
     actual_palette = palette([:goldenrod1, :springgreen3], 4)
 
     js_df = get_js_data_from_csv(trial_code, "hinsdale-data-2023")
+    
+    imu_df = calc_rpy(imu_df)
     # mocap_df = get_vehicle_response_from_csv(trial_code, "hinsdale-data-notimetrim", "fullrange2")
     # real_start_time = minimum([mocap_df[1,1], js_df[1,1]])
     # mocap_df[!,:time_secs] = mocap_
@@ -181,22 +160,23 @@ bool_plot_positions = false
     # title!("BlueROV Quaternion")
     # ylabel!("Quaternion value")
 
-    artificial_offset = -1.
-    # artificial_offset = 0
+    # artificial_offset = -1.
+    artificial_offset = 0
 
     p_vehrp = new_plot()
     # @df mocap_df plot!(p_vehrp, :time_secs[1:3200], [:roll[1:3200], :pitch[1:3200]], palette=actual_palette, linewidth=2, label=["actual roll" "actual pitch"])
-    @df mocap_df plot!(p_vehrp, :time_secs, [:roll, :pitch], palette=actual_palette, linewidth=2, label=["actual roll" "actual pitch"])
+    @df mocap_df plot!(p_vehrp, :time_secs, [:roll, :pitch], palette=actual_palette, linewidth=2, label=["mocap roll" "mocap pitch"])
     xaxis!(p_vehrp, grid = (:x, :solid, .75, .9), minorgrid = (:x, :dot, .5, .5))
     @df sim_df plot!(p_vehrp, :time_secs.+artificial_offset, [:qs1, :qs2], 
         palette=sim_palette, linewidth=2, linestyle=:dash, 
         label=["sim roll" "sim pitch"])
-    plot!(p_vehrp, legend=:outerbottomright)
+        plot!(p_vehrp, legend=:outerbottomright)
+    @df imu_df plot!(p_vehrp, :time_secs, [:roll, :pitch], linewidth=2, label=["imu roll" "imu pitch"])
     ylabel!("Vehicle Orientation (rad)")
     title!("BlueROV Orientation")
 
-    @show rad2deg(get_pitch_rmse(mocap_df, sim_df))
-    @show rad2deg(get_pitch_rmse(mocap_df, sim_df, true, artificial_offset))
+    @show rad2deg(get_pitch_rmse(imu_df, sim_df))
+    @show rad2deg(get_pitch_rmse(imu_df, sim_df, true, -1.))
 
     # super_ori_plot = plot(p_zed, p_vehrp, layout=(2,1), plot_title="Comparison for "*trial_code)
 

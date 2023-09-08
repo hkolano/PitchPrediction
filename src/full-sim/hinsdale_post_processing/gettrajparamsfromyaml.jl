@@ -69,3 +69,10 @@ function get_js_data_from_csv(trial_code, foldername="hinsdale-data-2023", datas
     dropmissing!(js_df)
     return js_df
 end
+
+function get_imu_data_from_csv(trial_code, foldername="hinsdale-data-2023")
+    imu_filepath = joinpath("data", foldername, "traj"*trial_code*"_imu.csv")
+    imu_df = CSV.read(imu_filepath, DataFrame)
+    dropmissing!(imu_df)
+    return imu_df
+end
