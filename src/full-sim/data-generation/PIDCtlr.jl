@@ -108,6 +108,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         if rem(c.step_ctr, ctrl_steps) == 0 # && c.step_ctr != 0
 
             manip_des_vels = get_desv_at_t(t, pars)
+            # manip_des_vels[1:3] = [0.0, 0.0, 0.0]
             # @show manip_des_vels
             # TAKE THIS OUT IF YOU WANT THE ARM TO MOVE
             # fill!(manip_des_vels, 0.0)

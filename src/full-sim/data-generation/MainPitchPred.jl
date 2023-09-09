@@ -28,15 +28,17 @@ include("ConfigFiles/MagicNumPitchVal.jl")
 include("ConfigFiles/ConstMagicNums.jl")
 include("ConfigFiles/MagicNumBlueROVHardware.jl")
 include("ConfigFiles/MagicNumAlpha.jl")
+simhelperfuncsfile = joinpath("..", "hinsdale_post_processing", "simcomparisonfuncs.jl")
 
-urdf_file = joinpath("urdf", "blue_rov_hardware.urdf")
+urdf_file = joinpath("urdf", "blue_rov_hardware_fixedjaw.urdf")
 
-
+#%%
 # ----------------------------------------------------------
 #                 One-Time Mechanism Setup
 # ----------------------------------------------------------
 mech_blue_alpha, mvis, joint_dict, body_dict = mechanism_reference_setup(urdf_file)
 include("TrajGenJoints.jl")
+include(simhelperfuncsfile)
 
 cob_frame_dict, com_frame_dict = setup_frames(body_dict, body_names, cob_vec_dict, com_vec_dict)
 buoyancy_force_dict, gravity_force_dict = setup_buoyancy_and_gravity(buoyancy_mag_dict, grav_mag_dict)
@@ -53,9 +55,6 @@ num_actuated_dofs = num_dofs-2
 num_trajs = 1
 save_to_csv = false
 show_animation = false
-bool_plot_velocities = true
-bool_plot_taus = true
-bool_plot_positions = false
 
 # Create (num_trajs) different trajectories and save to csvs 
 # for n in ProgressBar(1:num_trajs)
@@ -63,33 +62,42 @@ bool_plot_positions = false
     # ----------------------------------------------------------
     #                   Define a Trajectory
     # ----------------------------------------------------------
-    params = quinticTrajParams[]
-    swap_times = Vector{Float64}()
-    define_multiple_waypoints!(params, swap_times, 3)
-    println("Scaled trajectory duration: $(swap_times[end]) seconds")
-
+    params, _, _ = define_random_trajectory()
+    println("Scaled trajectory duration: $(params.T) seconds")
+#%%
+include("ConfigFiles/MagicNumPitchVal.jl")
     # ----------------------------------------------------------
     #                  Setup and Run Simulation
     # ----------------------------------------------------------
     # Reset the sim to the equilibrium position
     zero!(state)
     set_configuration!(state, joint_dict["vehicle"], [.9993, .0339, .0124, -.004, 0., 0., 0.])
+    set_configuration!(state, joint_dict["base"], params.wp.start.θs[1])
+    set_configuration!(state, joint_dict["shoulder"], params.wp.start.θs[2])
+    set_configuration!(state, joint_dict["elbow"], params.wp.start.θs[3])
+    set_configuration!(state, joint_dict["wrist"], params.wp.start.θs[4])
+
     # Start up the controller
     noise_cache = NoiseCache(state)
     filter_cache = FilterCache(state)
     ctlr_cache = CtlrCache(state, noise_cache, filter_cache)
 
+    start_buffer = rand(10:.01:20)
+    end_buffer = rand(1:.01:10)
+    delayed_params = delayedQuinticTrajParams(params,start_buffer, params.T+start_buffer)
+
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
-    ts, qs, vs = simulate_with_ext_forces(state, swap_times[end], params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    ts, qs, vs = simulate_with_ext_forces(state, delayed_params.endbuffer+end_buffer, delayed_params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     # ts, qs, vs = simulate_with_ext_forces(state, 5, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
     @show vs[end]'
-
+#%%
     # ----------------------------------------------------------
     #                      Prepare Plots
     # ----------------------------------------------------------
+    gr(size=(800, 600)) 
     # Downsample the time steps to goal_freq
     ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
     ts_down_no_zero = ts_down[2:end]
@@ -103,14 +111,17 @@ bool_plot_positions = false
     paths = prep_actual_vels_and_qs_for_plotting()
     sim_df = DataFrame(paths)
     sim_df[!,:time_secs] = ts_down_no_zero
-    des_paths = prep_desired_vels_and_qs_for_plotting(ts_down_no_zero, params)
+    des_paths = prep_desired_vels_and_qs_for_plotting(ts_down_no_zero, delayed_params)
     des_df = DataFrame(des_paths)
     # meas_paths = prep_measured_vels_and_qs_for_plotting()
     # filt_paths = prep_filtered_vels_for_plotting()
+
+    # deleteat!(des_df, findall(<(10), des_df[!,:time_secs]))
+    # deleteat!(sim_df, findall(<(10), sim_df[!,:time_secs]))
     
     p_ori = new_plot()
     xaxis!(p_ori, grid = (:x, :solid, .75, .9), minorgrid = (:x, :dot, .5, .5))
-    @df sim_df plot!(p_ori, :time_secs.+artificial_offset, [:qs1, :qs2], 
+    @df sim_df plot!(p_ori, :time_secs, [:qs1, :qs2], 
         palette=sim_palette, linewidth=2, linestyle=:dash, 
         label=["sim roll" "sim pitch"])
     plot!(p_ori, legend=:outerbottomright)
@@ -121,11 +132,11 @@ bool_plot_positions = false
     p_js = new_plot()
     xaxis!(p_js, grid = (:x, :solid, .75, .9), minorgrid = (:x, :dot, .5, .5))
     @df des_df plot!(p_js, :time_secs, 
-        [:qs7.+3.07, :qs8, :qs9, :qs10.+1.57]; 
+        [:qs7.+3.07, :qs8, :qs9, :qs10.+2.879]; 
         palette=:atlantic, linewidth=2, linestyle=:solid, 
         label=["des axis e" "des axis d" "des axis c" "des axis b"])
     @df sim_df plot!(p_js, :time_secs, 
-        [cols(7).+3.07, cols(8), cols(9), cols(10).+1.57]; #, cols(11)]; 
+        [cols(7).+3.07, cols(8), cols(9), cols(10).+2.879]; #, cols(11)]; 
         palette=sim_palette, linewidth=2, linestyle=:dash, 
         label=["sim axis e" "sim axis d" "sim axis c" "sim axis b"])
     plot!(p_js, legend=:outerbottomright)
@@ -133,8 +144,8 @@ bool_plot_positions = false
     title!("Alpha Arm Joint Positions")
     plot!(p_js, ylims=(-.5, 6))
 
-    super_plot = plot(p_js, p_ori, layout=(2, 1), plot_title="Sim vs Hinsdale, traj "*trial_code*" (artificial offset "*string(artificial_offset)*"s)")
-
+    super_plot = plot(p_js, p_ori, layout=(2, 1), plot_title="Simulation Data Point")
+#%%
     # if bool_plot_taus == true
     #     plot_control_taus(ctlr_cache, ts_down)
     # end 

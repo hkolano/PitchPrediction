@@ -4,6 +4,8 @@
 v_Kp = 1.2 #3.
 v_Ki = 0.6 #3.6
 v_Kd = 1.61 #1.68
+Ku_wrist = 1.01e-3
+Tu = 0.2
 Kp_dict = Dict("yaw" => 2.0, 
                 "x" => v_Kp, 
                 "y" => v_Kp,
@@ -11,8 +13,7 @@ Kp_dict = Dict("yaw" => 2.0,
                 "base" => 3.38e-2,
                 "shoulder" => 4.59e-2,
                 "elbow" => 1.35e-2,
-                "wrist" => 1.0e-3,
-                # "wrist" => 5.4e-4, 
+                "wrist" => 0.7*Ku_wrist, 
                 "jaw" => 5.4e-4)
 Ki_dict = Dict("yaw" => 1., 
                 "x" => v_Ki, 
@@ -21,7 +22,7 @@ Ki_dict = Dict("yaw" => 1.,
                 "base" => 4.39e-1,
                 "shoulder" => 3.73e-1,
                 "elbow" => 9.64e-2,
-                "wrist" => 3.6e-3, 
+                "wrist" => 1.75Ku_wrist/Tu, 
                 "jaw" => 3.6e-3)
 Kd_dict = Dict("yaw" => 0.1, 
                 "x" => v_Kd, 
@@ -30,8 +31,7 @@ Kd_dict = Dict("yaw" => 0.1,
                 "base" => 1.74e-3,
                 "shoulder" => 3.82e-3,
                 "elbow" => 1.27e-3,
-                # "wrist" => 2.03e-5,
-                "wrist" => 4.03e-5, 
+                "wrist" => .105Ku_wrist*Tu, 
                 "jaw" => 2.03e-5)
 
 do_feedforward = true

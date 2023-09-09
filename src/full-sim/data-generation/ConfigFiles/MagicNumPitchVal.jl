@@ -2,8 +2,8 @@
 # mechanism information
 # ----------------------------------------------------------
 is_jaw_fixed = false
-body_names = ["vehicle", "shoulder", "upperarm", "elbow", "wrist", "jaw"]
-dof_names = ["roll", "pitch", "yaw", "x", "y", "z", "base", "shoulder", "elbow", "wrist", "jaw"]
+body_names = ["vehicle", "shoulder", "upperarm", "elbow", "wrist"]
+dof_names = ["roll", "pitch", "yaw", "x", "y", "z", "base", "shoulder", "elbow", "wrist"]
 include("../CtlrParFiles/IrosActuatorLimits.jl")
 
 # ----------------------------------------------------------

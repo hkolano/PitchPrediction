@@ -85,6 +85,10 @@ function gen_rand_waypoints_to_rest()
     Waypoints(equil_pt, gen_rand_feasible_point_at_rest())
 end
 
+function gen_rand_waypoints_at_rest()
+    Waypoints(gen_rand_feasible_point_at_rest(), gen_rand_feasible_point_at_rest())
+end
+
 function gen_rand_waypoint_from_start(Js::jointState)
     Waypoints(Js, gen_rand_feasible_point_at_rest())
 end
@@ -197,18 +201,20 @@ function get_desv_at_t(t, p_array::Array{quinticTrajParams})
         end
     end
     t_mod = traj_num ==1 ? t : t-swap_times[traj_num-1]
-    p = p_array[traj_num]
-    
-    # @show t 
-    # @show t_mod 
 
-    if t_mod <= p.T # If the current time is less than the trajectory duration
-        for i = 1:num_trajectory_dofs # des vel for last joint is always 0
-            ds = vel_scale_at_t(p.a[i,:], t_mod)
-            des_vel[i] = ds*(p.wp.goal.θs[i]-p.wp.start.θs[i])
+    if traj_num <= length(params)
+        p = p_array[traj_num]
+    
+
+        if t_mod <= p.T # If the current time is less than the trajectory duration
+            for i = 1:num_trajectory_dofs # des vel for last joint is always 0
+                ds = vel_scale_at_t(p.a[i,:], t_mod)
+                des_vel[i] = ds*(p.wp.goal.θs[i]-p.wp.start.θs[i])
+            end
         end
     end
     # fill!(des_vel, 0)
+    des_vel[end] = 0.0
     return des_vel
 end
 
@@ -222,11 +228,11 @@ If the input for p is an array of parameters, this handles swiching between para
 at the input time. 
 """
 function get_desq_at_t(t, p::quinticTrajParams)
-    des_qs = zeros(num_velocities(mech_blue_alpha)-2)
+    des_qs = zeros(num_velocities(mech_blue_alpha)-6)
     if t < p.T 
         for i = 1:num_trajectory_dofs
             s = pos_scale_at_t(p.a[i,:], t)
-            des_qs[i+4] = p.wp.start.θs[i] + s*(p.wp.goal.θs[i]-p.wp.start.θs[i])
+            des_qs[i] = p.wp.start.θs[i] + s*(p.wp.goal.θs[i]-p.wp.start.θs[i])
         end
     end
     return des_qs
@@ -241,14 +247,18 @@ function get_desq_at_t(t, p_array::Array{quinticTrajParams})
         end
     end
     t_mod = traj_num ==1 ? t : t-swap_times[traj_num-1]
-    p = p_array[traj_num]
 
-    if t_mod < p.T 
-        for i = 1:num_trajectory_dofs
-            s = pos_scale_at_t(p.a[i,:], t_mod)
-            des_qs[i+4] = p.wp.start.θs[i] + s*(p.wp.goal.θs[i]-p.wp.start.θs[i])
+    if traj_num <= length(params)
+        p = p_array[traj_num]
+
+        if t_mod < p.T 
+            for i = 1:num_trajectory_dofs
+                s = pos_scale_at_t(p.a[i,:], t_mod)
+                des_qs[i+4] = p.wp.start.θs[i] + s*(p.wp.goal.θs[i]-p.wp.start.θs[i])
+            end
         end
     end
+    des_qs[end] = 0.0
     return des_qs
 end
 
@@ -324,13 +334,32 @@ function find_quintic_trajectory(pts::Waypoints; num_its=num_its, T_init=1.0)
     end
 
     if feasible_ct == num_trajectory_dofs
-        return [quinticTrajParams(a, pts, T), poses, vels]
+        return quinticTrajParams(a, pts, T), poses, vels
         # println("Trajectory parameters set")
     else
         # println("No path between points; try again.")
         return nothing
     end
 
+end
+
+"""
+    define_random_trajectory()
+"""
+function define_random_trajectory()
+   
+    wp = gen_rand_waypoints_at_rest()
+    traj = find_quintic_trajectory(wp)
+
+    while traj === nothing 
+        global wp = gen_rand_feasible_point_at_rest()
+        global traj = find_quintic_trajectory(wp)
+    end
+
+    if do_scale_traj == true
+        traj = scale_trajectory(traj..., max_traj_scaling)
+    end
+    return traj
 end
 
 """

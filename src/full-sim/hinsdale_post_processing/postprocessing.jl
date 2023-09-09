@@ -136,24 +136,6 @@ if translate_to_rpy == true
     end
 end
 
-function calc_rpy(mocap_df)
-    roll_vec = Vector{Float64}(undef, 0)
-    pitch_vec = Vector{Float64}(undef, 0)
-    yaw_vec = Vector{Float64}(undef, 0)
-
-    for i in 1:nrow(mocap_df)
-        r = QuatRotation([mocap_df[i, :w_ori], mocap_df[i, :x_ori], mocap_df[i, :y_ori], mocap_df[i, :z_ori]])
-        euler = RotZYX(r)
-        push!(roll_vec, euler.theta3)
-        push!(pitch_vec, euler.theta2)
-        push!(yaw_vec, euler.theta1)
-    end
-
-    mocap_df[!, "roll"] = roll_vec
-    mocap_df[!, "pitch"] = pitch_vec
-    mocap_df[!, "yaw"] = yaw_vec
-    return mocap_df
-end
 
 # function calc_rpy_forwardframe(mocap_df)
 #     roll_vec = Vector{Float64}(undef, 0)

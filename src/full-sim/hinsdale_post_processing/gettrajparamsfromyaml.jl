@@ -27,12 +27,13 @@ function gettrajparamsfromyaml(trial_code, dataset="fullrange2")
     for i in 1:num_trajectory_dofs
         dof_name = dof_names[i+6]
         a[i,:] = get_coeffs(pts, duration, i)
-        if i != 5
+        if i <= 5
             (poses[:,i], vels[:,i]) = get_path!(poses[:,i], vels[:,i], pts.start.θs[i], pts.goal.θs[i], duration, a[i,:], num_its)
+        else 
+            fill!(poses[:,i], 0.0)
+            fill!(vels[:,i], 0.0)
         end
     end
-    fill!(poses[:,5], 0.0)
-    fill!(vels[:,5], 0.0)
 
     dt = duration/num_its
 

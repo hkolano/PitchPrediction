@@ -63,6 +63,17 @@ function hydro_calc!(hydro_wrenches::Dict{BodyID, Wrench{Float64}}, t, state::Me
 
         wrench = buoy_wrench + grav_wrench
 
+        # ----- Add buoyancy/gravity of jaw if not included as separate body -----
+        if body_name == "wrist" && haskey(body_dict, "jaw") == false
+            def_to_jaw_cob = fixed_transform(bod, body_default_frame, cob_frame_dict["jaw_wrt_wrist"])
+            def_to_jaw_com = fixed_transform(bod, body_default_frame, com_frame_dict["jaw_wrt_wrist"])
+            buoy_force_trans_wristdef = RigidBodyDynamics.transform(state, buoyancy_force_dict["jaw"], body_default_frame)
+            grav_force_trans_wristdef = RigidBodyDynamics.transform(state, gravity_force_dict["jaw"], body_default_frame)
+            buoy_wrench_jaw = Wrench(Point3D(body_default_frame, translation(inv(def_to_jaw_cob))), buoy_force_trans_wristdef)
+            grav_wrench_jaw = Wrench(Point3D(body_default_frame, translation(inv(def_to_jaw_com))), grav_force_trans_wristdef)
+            wrench = wrench + buoy_wrench_jaw + grav_wrench_jaw
+        end
+
         # ----- Special calculaitons for the vehicle -----
         if body_name == "vehicle"
             # ----- Grav/buoy for arm base link ----- 

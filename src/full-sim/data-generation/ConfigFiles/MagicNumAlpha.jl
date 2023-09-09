@@ -15,6 +15,7 @@ com_vec_dict["elbow"] = SVector{3, Float64}([.017, -.026, -.002])
 com_vec_dict["wrist"] = SVector{3, Float64}([0.0, 0.0, -.098])
 com_vec_dict["jaw"] = SVector{3, Float64}([0.0, 0.0, 0.0])
 com_vec_dict["armbase"] = SVector{3, Float64}([-.075, -.006, -.003])
+com_vec_dict["jaw_wrt_wrist"] = SVector{3, Float64}([0., 0., -.190])
 
 # Calculate buoyancy forces
 link_volumes = Dict("shoulder" =>   0.018, # volume in L

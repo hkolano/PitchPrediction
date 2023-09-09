@@ -63,6 +63,18 @@ function setup_frames(body_dict, body_name_list, cob_vec_dict, com_vec_dict)
         end
     end
 
+    if haskey(body_dict, "jaw") == false 
+        jaw_wrt_wristframe = com_vec_dict["jaw_wrt_wrist"]
+        jaw_com_frame = CartesianFrame3D("jaw_com_cob_wrt_wrist")
+        com_transform = Transform3D(jaw_com_frame, default_frame(body_dict["wrist"]), jaw_wrt_wristframe)
+        if !(RigidBodyDynamics.is_fixed_to_body(body_dict["wrist"], jaw_com_frame))
+            add_frame!(body_dict["wrist"], com_transform)
+            cob_frame_dict["jaw_wrt_wrist"] = jaw_com_frame
+            com_frame_dict["jaw_wrt_wrist"] = jaw_com_frame
+            setelement!(mvis, jaw_com_frame)
+        end
+    end
+
     alphabase_com_wrt_linkframe = com_vec_dict["armbase"]
     # Arm base is rigidly attached to vehicle, so it has a transform in the vehicle's frame. It's the 5th body in the URDF attached to the vehicle. 
     linkframe_wrt_vehframe = translation(RigidBodyDynamics.frame_definitions(body_dict["vehicle"])[5])
