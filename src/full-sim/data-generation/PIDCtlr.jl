@@ -87,7 +87,7 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         if c.step_ctr == 0
             torques[7] = -.002      # ff joint E value
             torques[8] = -.32255    # ff Joint D value 
-            torques[9] = -.0335     # ff Joint C value
+            torques[9] = -.01     # ff Joint C value
             torques[10] = 0         #.5e-5
             println("At time... ")
         end
@@ -108,10 +108,11 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
         if rem(c.step_ctr, ctrl_steps) == 0 # && c.step_ctr != 0
 
             manip_des_vels = get_desv_at_t(t, pars)
-            # manip_des_vels[1:3] = [0.0, 0.0, 0.0]
+            # manip_des_vels[4] = [0.0, 0.0, 0.0]
             # @show manip_des_vels
             # TAKE THIS OUT IF YOU WANT THE ARM TO MOVE
             # fill!(manip_des_vels, 0.0)
+            # manip_des_vels[1] = .02
             for (idx, dof_name) in enumerate(dof_names[7:end])
                 c.des_vel[dof_name] = manip_des_vels[idx]
             end
@@ -124,18 +125,17 @@ function pid_control!(torques::AbstractVector, t, state::MechanismState, pars, c
             ff_torques = dynamics_bias(c.f_cache.filtered_state, h_wrenches)
             ff_torques[1:6] .= zeros(6)
 
-            for dir_idx = 3:num_dofs
+            for dir_idx = 7:num_dofs
                 dof = dof_names[dir_idx]
 
                 meas_vel = filtered_vels[dir_idx]
-                ctlr_tau = joint_controller(torques[dir_idx][1], filtered_vels[dir_idx], dof, c, ff_torques[dir_idx])
+                ctlr_tau = joint_controller(torques[dir_idx][1], velocity(state)[dir_idx], dof, c, ff_torques[dir_idx])
 
                 c_taus[dir_idx] = ctlr_tau
                 torques[dir_idx] = ctlr_tau
             end
 
-            # unactuate the jaw 
-            torques[end] = 0
+            # unactuate the vehicle 
             torques[3] = 0.
             torques[4] = 0.
             torques[5] = 0.

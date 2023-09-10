@@ -4,8 +4,40 @@
 v_Kp = 1.2 #3.
 v_Ki = 0.6 #3.6
 v_Kd = 1.61 #1.68
-Ku_wrist = 1.01e-3
-Tu = 0.2
+
+# Classic
+Kp = 0.6
+Ki = 1.2
+Kd = .075
+
+# Pessen Integral 
+# Kp = .7
+# Ki = 1.75
+# Kd = 0.105
+
+# some overshoot 
+# Kp = .333
+# Ki = .667
+# Kd = .111
+
+# no overshoot 
+# Kp = .2
+# Ki = .4
+# Kd = .0667
+
+Ku_wrist = 1.35e-3
+Tu_wrist = 0.16
+
+Ku_elbow = .06
+Tu_elbow = .3
+
+Ku_shoulder = .2
+Tu_shoulder = .3
+
+Ku_base = .035
+Tu_base = .3
+
+
 Kp_dict = Dict("yaw" => 2.0, 
                 "x" => v_Kp, 
                 "y" => v_Kp,
@@ -13,7 +45,12 @@ Kp_dict = Dict("yaw" => 2.0,
                 "base" => 3.38e-2,
                 "shoulder" => 4.59e-2,
                 "elbow" => 1.35e-2,
-                "wrist" => 0.7*Ku_wrist, 
+                # "base" => Kp*Ku_base,
+                # "shoulder" => Kp*Ku_shoulder,
+                # "elbow" => Kp*Ku_elbow,
+                # "elbow" => Ku_elbow,
+                "wrist" => Kp*Ku_wrist, 
+                # "wrist" => 1.35e-3,
                 "jaw" => 5.4e-4)
 Ki_dict = Dict("yaw" => 1., 
                 "x" => v_Ki, 
@@ -22,7 +59,11 @@ Ki_dict = Dict("yaw" => 1.,
                 "base" => 4.39e-1,
                 "shoulder" => 3.73e-1,
                 "elbow" => 9.64e-2,
-                "wrist" => 1.75Ku_wrist/Tu, 
+                # "base" => Ki*Ku_base/Tu_base,
+                # "shoulder" => Ki*Ku_shoulder/Tu_shoulder,
+                # "elbow" => Ki*Ku_elbow/Tu_elbow,
+                "wrist" => Ki*Ku_wrist/Tu_wrist, 
+                # "wrist" => 0.0,
                 "jaw" => 3.6e-3)
 Kd_dict = Dict("yaw" => 0.1, 
                 "x" => v_Kd, 
@@ -31,7 +72,11 @@ Kd_dict = Dict("yaw" => 0.1,
                 "base" => 1.74e-3,
                 "shoulder" => 3.82e-3,
                 "elbow" => 1.27e-3,
-                "wrist" => .105Ku_wrist*Tu, 
+                # "base" => Kd*Ku_base*Tu_base,
+                # "shoulder" => Kd*Ku_shoulder*Tu_shoulder,
+                # "elbow" => Kd*Ku_elbow*Tu_elbow,
+                "wrist" => Kd*Ku_wrist*Tu_wrist,
+                # "wrist" => 0.0, 
                 "jaw" => 2.03e-5)
 
 do_feedforward = true

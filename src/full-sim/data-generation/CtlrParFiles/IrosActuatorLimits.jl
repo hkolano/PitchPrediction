@@ -23,5 +23,5 @@ dtau_lim_dict = Dict("roll" => 0.0,
                     "base" => joint_dtau_lim,
                     "shoulder" => joint_dtau_lim,
                     "elbow" => joint_dtau_lim,
-                    "wrist" => .006, 
+                    "wrist" => .005, 
                     "jaw" => joint_dtau_lim)
