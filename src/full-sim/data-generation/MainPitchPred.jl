@@ -32,7 +32,7 @@ simhelperfuncsfile = joinpath("..", "hinsdale_post_processing", "simcomparisonfu
 
 urdf_file = joinpath("urdf", "blue_rov_hardware_fixedjaw.urdf")
 
-#%%
+
 # ----------------------------------------------------------
 #                 One-Time Mechanism Setup
 # ----------------------------------------------------------
@@ -52,13 +52,13 @@ num_actuated_dofs = num_dofs-2
 #                   Start: Gather Sim Data
 # ----------------------------------------------------------
 # Control variables
-num_trajs = 100
+num_trajs = 5000
 save_to_csv = true
-show_plots = true
+show_plots = false
 show_animation = false
 
 # Create (num_trajs) different trajectories and save to csvs 
-for n in ProgressBar(1:num_trajs)
+for n in ProgressBar(415:num_trajs)
 
     # ----------------------------------------------------------
     #                   Define a Trajectory
@@ -91,39 +91,45 @@ for n in ProgressBar(1:num_trajs)
     println("Total trajectory time will be: $(params.T+start_buffer+end_buffer) seconds")
 
     # Simulate the trajectory
-    if save_to_csv != true; println("Simulating... ") end
-    ts, qs, vs = simulate_with_ext_forces(state, delayed_params.endbuffer+end_buffer, delayed_params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    # ts, qs, vs = simulate_with_ext_forces(state, 12, delayed_params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    if save_to_csv != true; println("done.") end
-
+    try
+        global ts, qs, vs = simulate_with_ext_forces(state, delayed_params.endbuffer+end_buffer, delayed_params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+        show_plots = true
+        save_to_csv = true
+    catch y
+        println("Errors during simulation. Skipping to next trajectory.")
+        show_plots = false 
+        save_to_csv = false
+        # ts, qs, vs = simulate_with_ext_forces(state, 12, delayed_params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    end
     # @show vs[end]'
 
     # ----------------------------------------------------------
     #                      Prepare Plots
     # ----------------------------------------------------------
-    gr(size=(800, 600)) 
-    # Downsample the time steps to goal_freq
-    ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
-    ts_down_no_zero = ts_down[2:end]
-
-    include("UVMSPlotting.jl")
-
-    sim_palette = palette([:deepskyblue2, :magenta], 4)
-    actual_palette = palette([:goldenrod1, :springgreen3], 4)
-
-    # Set up data collection dicts
-    paths = prep_actual_vels_and_qs_for_plotting()
-    sim_df = DataFrame(paths)
-    sim_df[!,:time_secs] = ts_down_no_zero
-    des_paths = prep_desired_vels_and_qs_for_plotting(ts_down_no_zero, delayed_params)
-    des_df = DataFrame(des_paths)
-    # meas_paths = prep_measured_vels_and_qs_for_plotting()
-    # filt_paths = prep_filtered_vels_for_plotting()
-
-    deleteat!(des_df, findall(<(10), des_df[!,:time_secs]))
-    deleteat!(sim_df, findall(<(10), sim_df[!,:time_secs]))
-    
     if show_plots == true
+        gr(size=(800, 600)) 
+        # Downsample the time steps to goal_freq
+        ts_down = [ts[i] for i in 1:sample_rate:length(ts)]
+        global ts_down_no_zero = ts_down[2:end]
+
+        include("UVMSPlotting.jl")
+
+        sim_palette = palette([:deepskyblue2, :magenta], 4)
+        actual_palette = palette([:goldenrod1, :springgreen3], 4)
+
+        # Set up data collection dicts
+        paths = prep_actual_vels_and_qs_for_plotting(ts_down_no_zero)
+        sim_df = DataFrame(paths)
+        sim_df[!,:time_secs] = ts_down_no_zero
+        des_paths = prep_desired_vels_and_qs_for_plotting(ts_down_no_zero, delayed_params)
+        des_df = DataFrame(des_paths)
+        # meas_paths = prep_measured_vels_and_qs_for_plotting()
+        # filt_paths = prep_filtered_vels_for_plotting()
+
+        deleteat!(des_df, findall(<(10), des_df[!,:time_secs]))
+        deleteat!(sim_df, findall(<(10), sim_df[!,:time_secs]))
+    
+    
         p_ori = new_plot()
         xaxis!(p_ori, grid = (:x, :solid, .75, .9), minorgrid = (:x, :dot, .5, .5))
         @df sim_df plot!(p_ori, :time_secs, [:qs1, :qs2], 
@@ -176,7 +182,7 @@ for n in ProgressBar(1:num_trajs)
     if save_to_csv == true && maximum(paths["vs7"]) < 0.9
         deleteat!(sim_df, 1:2:length(sim_df[!,:time_secs]))
         sim_df[!,:time_secs] = sim_df[!,:time_secs] .- minimum(sim_df[!,:time_secs])
-        new_file_name = joinpath("data", "full-sim-data-091023", "train", lpad(n, 3, "0")*".csv")
+        new_file_name = joinpath("data", "full-sim-data-091023", "train", lpad(n, 4, "0")*".csv")
         CSV.write(new_file_name, sim_df)
     else
         println("Not saving trajectory")

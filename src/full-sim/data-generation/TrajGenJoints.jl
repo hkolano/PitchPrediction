@@ -86,7 +86,8 @@ function gen_rand_waypoints_to_rest()
 end
 
 function gen_rand_waypoints_at_rest()
-    Waypoints(gen_rand_feasible_point_at_rest(), gen_rand_feasible_point_at_rest())
+    wp = Waypoints(gen_rand_feasible_point_at_rest(), gen_rand_feasible_point_at_rest())
+    return wp
 end
 
 function gen_rand_waypoint_from_start(Js::jointState)
@@ -348,12 +349,12 @@ end
 """
 function define_random_trajectory()
    
-    wp = gen_rand_waypoints_at_rest()
-    traj = find_quintic_trajectory(wp)
+    new_wp = gen_rand_waypoints_at_rest()
+    traj = find_quintic_trajectory(new_wp)
 
     while traj === nothing 
-        global wp = gen_rand_feasible_point_at_rest()
-        global traj = find_quintic_trajectory(wp)
+        global new_wp = gen_rand_waypoints_at_rest()
+        global traj = find_quintic_trajectory(new_wp)
     end
 
     if do_scale_traj == true
