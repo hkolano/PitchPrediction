@@ -52,26 +52,29 @@ num_actuated_dofs = num_dofs-2
 #                   Start: Gather Sim Data
 # ----------------------------------------------------------
 # Control variables
-num_trajs = 1
-save_to_csv = false
+num_trajs = 100
+save_to_csv = true
+show_plots = true
 show_animation = false
 
 # Create (num_trajs) different trajectories and save to csvs 
-# for n in ProgressBar(1:num_trajs)
+for n in ProgressBar(1:num_trajs)
 
     # ----------------------------------------------------------
     #                   Define a Trajectory
     # ----------------------------------------------------------
     params, _, _ = define_random_trajectory()
     println("Scaled trajectory duration: $(params.T) seconds")
-#%%
-include("ConfigFiles/MagicNumPitchVal.jl")
+
+# include("ConfigFiles/MagicNumPitchVal.jl")
+# include("PIDCtlr.jl")
     # ----------------------------------------------------------
     #                  Setup and Run Simulation
     # ----------------------------------------------------------
     # Reset the sim to the equilibrium position
     zero!(state)
     set_configuration!(state, joint_dict["vehicle"], [.9993, .0339, .0124, -.004, 0., 0., 0.])
+    # set_configuration!(state, joint_dict["vehicle"], [.99956, .01133, -.0269, -.004, 0., 0., 0])
     set_configuration!(state, joint_dict["base"], params.wp.start.θs[1])
     set_configuration!(state, joint_dict["shoulder"], params.wp.start.θs[2])
     set_configuration!(state, joint_dict["elbow"], params.wp.start.θs[3])
@@ -81,19 +84,20 @@ include("ConfigFiles/MagicNumPitchVal.jl")
     noise_cache = NoiseCache(state)
     filter_cache = FilterCache(state)
     ctlr_cache = CtlrCache(state, noise_cache, filter_cache)
-
-    start_buffer = rand(10:.01:20)
-    end_buffer = rand(1:.01:10)
+ 
+    start_buffer = rand(10:.01:18)
+    end_buffer = rand(2:.01:10)
     delayed_params = delayedQuinticTrajParams(params,start_buffer, params.T+start_buffer)
+    println("Total trajectory time will be: $(params.T+start_buffer+end_buffer) seconds")
 
     # Simulate the trajectory
     if save_to_csv != true; println("Simulating... ") end
     ts, qs, vs = simulate_with_ext_forces(state, delayed_params.endbuffer+end_buffer, delayed_params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
-    # ts, qs, vs = simulate_with_ext_forces(state, 5, params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
+    # ts, qs, vs = simulate_with_ext_forces(state, 12, delayed_params, ctlr_cache, hydro_calc!, pid_control!; Δt=Δt)
     if save_to_csv != true; println("done.") end
 
-    @show vs[end]'
-#%%
+    # @show vs[end]'
+
     # ----------------------------------------------------------
     #                      Prepare Plots
     # ----------------------------------------------------------
@@ -116,36 +120,39 @@ include("ConfigFiles/MagicNumPitchVal.jl")
     # meas_paths = prep_measured_vels_and_qs_for_plotting()
     # filt_paths = prep_filtered_vels_for_plotting()
 
-    # deleteat!(des_df, findall(<(10), des_df[!,:time_secs]))
-    # deleteat!(sim_df, findall(<(10), sim_df[!,:time_secs]))
+    deleteat!(des_df, findall(<(10), des_df[!,:time_secs]))
+    deleteat!(sim_df, findall(<(10), sim_df[!,:time_secs]))
     
-    p_ori = new_plot()
-    xaxis!(p_ori, grid = (:x, :solid, .75, .9), minorgrid = (:x, :dot, .5, .5))
-    @df sim_df plot!(p_ori, :time_secs, [:qs1, :qs2], 
-        palette=sim_palette, linewidth=2, linestyle=:dash, 
-        label=["sim roll" "sim pitch"])
-    plot!(p_ori, legend=:outerbottomright)
-    ylabel!("Vehicle Orientation (rad)")
-    title!("BlueROV Orientation")
+    if show_plots == true
+        p_ori = new_plot()
+        xaxis!(p_ori, grid = (:x, :solid, .75, .9), minorgrid = (:x, :dot, .5, .5))
+        @df sim_df plot!(p_ori, :time_secs, [:qs1, :qs2], 
+            palette=sim_palette, linewidth=2, linestyle=:dash, 
+            label=["sim roll" "sim pitch"])
+        plot!(p_ori, legend=:outerbottomright)
+        ylabel!("Vehicle Orientation (rad)")
+        title!("BlueROV Orientation")
 
 
-    p_js = new_plot()
-    xaxis!(p_js, grid = (:x, :solid, .75, .9), minorgrid = (:x, :dot, .5, .5))
-    @df des_df plot!(p_js, :time_secs, 
-        [:qs7.+3.07, :qs8, :qs9, :qs10.+2.879]; 
-        palette=:atlantic, linewidth=2, linestyle=:solid, 
-        label=["des axis e" "des axis d" "des axis c" "des axis b"])
-    @df sim_df plot!(p_js, :time_secs, 
-        [cols(7).+3.07, cols(8), cols(9), cols(10).+2.879]; #, cols(11)]; 
-        palette=sim_palette, linewidth=2, linestyle=:dash, 
-        label=["sim axis e" "sim axis d" "sim axis c" "sim axis b"])
-    plot!(p_js, legend=:outerbottomright)
-    ylabel!("Joint position (rad)")
-    title!("Alpha Arm Joint Positions")
-    plot!(p_js, ylims=(-.5, 6))
+        p_js = new_plot()
+        xaxis!(p_js, grid = (:x, :solid, .75, .9), minorgrid = (:x, :dot, .5, .5))
+        @df des_df plot!(p_js, :time_secs, 
+            [:qs7.+3.07, :qs8, :qs9, :qs10.+2.879]; 
+            palette=:atlantic, linewidth=2, linestyle=:solid, 
+            label=["des axis e" "des axis d" "des axis c" "des axis b"])
+        @df sim_df plot!(p_js, :time_secs, 
+            [cols(7).+3.07, cols(8), cols(9), cols(10).+2.879]; #, cols(11)]; 
+            palette=sim_palette, linewidth=2, linestyle=:dash, 
+            label=["sim axis e" "sim axis d" "sim axis c" "sim axis b"])
+        plot!(p_js, legend=:outerbottomright)
+        ylabel!("Joint position (rad)")
+        title!("Alpha Arm Joint Positions")
+        plot!(p_js, ylims=(-.5, 6))
 
-    super_plot = plot(p_js, p_ori, layout=(2, 1), plot_title="Simulation Data Point")
-#%%
+        super_plot = plot(p_js, p_ori, layout=(2, 1), plot_title="Train Data Number $(n)")
+        display(super_plot)
+    end
+
     # if bool_plot_taus == true
     #     plot_control_taus(ctlr_cache, ts_down)
     # end 
@@ -158,7 +165,7 @@ include("ConfigFiles/MagicNumPitchVal.jl")
     if show_animation == true
         print("Animating... ")
         # MeshCatMechanisms.animate(mvis, ts[1:stop_step], qs[1:stop_step]; realtimerate = 5.0)
-        MeshCatMechanisms.animate(mvis, ts, qs; realtimerate=.01)
+        MeshCatMechanisms.animate(mvis, ts, qs; realtimerate=1.)
         println("done.")
     end
 
@@ -167,17 +174,12 @@ include("ConfigFiles/MagicNumPitchVal.jl")
     # ----------------------------------------------------------
     # only save the trajectory if Joint 1 doesn't exceed the joint velocity limits (which is a proxy for indicating whether it is unstable)
     if save_to_csv == true && maximum(paths["vs7"]) < 0.9
-        # Rows:
-        # 1-10: Actual position data (qs)
-        # 11-20: Actual velocity data (vs)
-        # 21-30: Noisy position data (noisy_qs)
-        # 31-40: Noisy velocity data (noisy_vs)
-        # 41-44: Desired velocities 
-        include("HelperFuncs.jl")
-        num_rows = 44
-        save_traj_to_csv(num_rows)
+        deleteat!(sim_df, 1:2:length(sim_df[!,:time_secs]))
+        sim_df[!,:time_secs] = sim_df[!,:time_secs] .- minimum(sim_df[!,:time_secs])
+        new_file_name = joinpath("data", "full-sim-data-091023", "train", lpad(n, 3, "0")*".csv")
+        CSV.write(new_file_name, sim_df)
     else
         println("Not saving trajectory")
     end
     println("")
-# end
+end

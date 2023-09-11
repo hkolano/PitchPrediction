@@ -6,14 +6,14 @@ v_Ki = 0.6 #3.6
 v_Kd = 1.61 #1.68
 
 # Classic
-Kp = 0.6
-Ki = 1.2
-Kd = .075
+# Kp = 0.6
+# Ki = 1.2
+# Kd = .075
 
 # Pessen Integral 
-# Kp = .7
-# Ki = 1.75
-# Kd = 0.105
+Kp = .7
+Ki = 1.75
+Kd = 0.105
 
 # some overshoot 
 # Kp = .333

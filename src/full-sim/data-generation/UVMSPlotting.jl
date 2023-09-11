@@ -333,7 +333,7 @@ function prep_desired_vels_and_qs_for_plotting(t_list, params)
     return des_paths
 end
 
-function prep_actual_vels_and_qs_for_plotting()
+function prep_actual_vels_and_qs_for_plotting(ts_down_no_zero)
     paths = OrderedDict();
 
     qs_down = Array{Float64}(undef, length(ts_down_no_zero), num_dofs)

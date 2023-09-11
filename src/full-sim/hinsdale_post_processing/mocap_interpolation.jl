@@ -1,18 +1,23 @@
 using DataFrames, DataInterpolations, Smoothers, StatsBase
 #TODO look into DataInterpolations (Akima interpolation?)
 
-function interp_at_timsteps(timestamps, df, col_names)
+function interp_at_timesteps(timestamps, df, col_names, type="akima")
     itp_dict = Dict()
-    interped_mocap_qs = DataFrame()
-    interped_mocap_qs[!,:time_secs] = timestamps
+    interped_df = DataFrame()
+    interped_df[!,:time_secs] = timestamps
     for (idx, meas_name) in enumerate(col_names)
-        itp_dict[meas_name] = DataInterpolations.AkimaInterpolation(Array(df[!, meas_name]), Array(df[!, :time_secs]))
-        # itp_dict[meas_name] = interpolate((Array(df[!, :time_secs]),), Array(df[!, meas_name]), Gridded(Linear()))
-        interped_mocap_qs[!, meas_name] = itp_dict[meas_name](timestamps)
+        if "type" == "akima"
+            itp_dict[meas_name] = DataInterpolations.AkimaInterpolation(Array(df[!, meas_name]), Array(df[!, :time_secs]))
+        else
+            itp_dict[meas_name] = DataInterpolations.LinearInterpolation(Array(df[!, meas_name]), Array(df[!, :time_secs]))
+        end
+            # itp_dict[meas_name] = interpolate((Array(df[!, :time_secs]),), Array(df[!, meas_name]), Gridded(Linear()))
+        interped_df[!, meas_name] = itp_dict[meas_name](timestamps)
     end
 
-    return interped_mocap_qs
+    return interped_df
 end
+
 
 function get_pitch_rmse(mocap_df, sim_df, with_offset=false, a_offset=0)  
     col_names = ["w_ori", "x_ori", "y_ori", "z_ori"]
@@ -21,7 +26,7 @@ function get_pitch_rmse(mocap_df, sim_df, with_offset=false, a_offset=0)
     trimmed_sim_time_steps = filter(x->x<mocap_end_time, sim_time_steps)
     num_timesteps = length(trimmed_sim_time_steps)
 
-    interped_mocap_df = interp_at_timsteps(trimmed_sim_time_steps, mocap_df, col_names)
+    interped_mocap_df = interp_at_timesteps(trimmed_sim_time_steps, mocap_df, col_names)
     interped_mocap_df = calc_rpy(interped_mocap_df)
 
     if with_offset == false

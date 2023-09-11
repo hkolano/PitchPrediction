@@ -51,13 +51,12 @@ function gettrajparamsfromyaml(trial_code, dataset="fullrange2")
 end
 
 
-function get_vehicle_response_from_csv(trial_code, foldername="hinsdale-data-2023", dataset="fullrange2")
-    if trial_code[1] == '0'
+function get_vehicle_response_from_csv(trial_code, foldername="hinsdale-data-2023", is_baseline=false)
+    if is_baseline == false
         mocap_datapath = joinpath("data", foldername, "traj"*trial_code*"_mocap.csv")
-    else 
+    else
         mocap_datapath = joinpath("data", foldername, trial_code*"_mocap.csv")
     end
-        # mocap_datapath = joinpath("data", foldername, trial_code*"_mocap.csv")
     mocap_df = CSV.read(mocap_datapath, DataFrame)
     dropmissing!(mocap_df)
     return mocap_df
