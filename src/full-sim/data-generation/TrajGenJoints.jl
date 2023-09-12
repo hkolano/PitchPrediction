@@ -339,7 +339,7 @@ function find_quintic_trajectory(pts::Waypoints; num_its=num_its, T_init=1.0)
         # println("Trajectory parameters set")
     else
         # println("No path between points; try again.")
-        return nothing
+        return "nothing", "nada"
     end
 
 end
@@ -348,15 +348,21 @@ end
     define_random_trajectory()
 """
 function define_random_trajectory()
-   
-    new_wp = gen_rand_waypoints_at_rest()
-    traj = find_quintic_trajectory(new_wp)
 
-    while traj === nothing 
-        global new_wp = gen_rand_waypoints_at_rest()
-        global traj = find_quintic_trajectory(new_wp)
+    local traj
+   
+    while true
+        new_wp = gen_rand_waypoints_at_rest()
+        # println(typeof(new_wp))
+        traj = find_quintic_trajectory(new_wp)
+        # println(traj)
+        if typeof(traj[1]) == quinticTrajParams
+            # println("found traj")
+            break 
+        end
     end
 
+    # println(traj)
     if do_scale_traj == true
         traj = scale_trajectory(traj..., max_traj_scaling)
     end
