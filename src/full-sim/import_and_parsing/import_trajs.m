@@ -10,6 +10,6 @@ function data = import_trajs(folder)
 
     function data = read_to_array(input)
         data = readtable(input);
-        data = table2array(data)';
+        % data = table2array(data)';
     end
 end

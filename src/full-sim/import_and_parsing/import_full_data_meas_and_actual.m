@@ -7,10 +7,19 @@ First step in Pitch Prediction after data gathering.
 last updated 3/8/23
 %}
 %% Data import and processing
-sequence_data = import_trajs("data/full-sim-data-022223");
+sequence_data = import_trajs("data/full-sim-data-091023/validate");
+outputFile = fullfile("data/full-sim-data-091023", 'UnnormalizedTableTrainData.mat');
+save(outputFile, 'sequence_data', 'p', '-v7.3')
 
 %%
 %{
+Sept 2023 information:
+1-10: actual position data (qs)
+11-20: actual velocity data (vs)
+21-24: original quaternion data 
+25: time_secs
+
+IROS information:
 X(:,1) is a column vector.
 1-10: Actual position data (qs)
 11-20: Actual velocity data (vs)
@@ -27,7 +36,7 @@ Old information:
 %}
 
 %%
-nan_IDs = ID_nans(sequence_data)
+nan_IDs = ID_nans(table2array(sequence_data))
 for idx = length(nan_IDs):-1:1
     sequence_data(nan_IDs(idx)) = [];
 end
@@ -55,30 +64,29 @@ seq_dataTest = sequence_data(idxTest);
 
 numChannels = size(seq_dataTrain{1}, 1);
 
-for n = 1:numel(seq_dataTrain)
-    X = seq_dataTrain{n};
-    XTrain{n} = X(:,1:end-1);
-    TTrain{n} = X(:,2:end);
-end
-
-for n = 1:numel(seq_dataTest)
-    X = seq_dataTest{n};
-    XTest{n} = X(:,1:end-1);
-    TTest{n} = X(:,2:end);
-end
+% for n = 1:numel(seq_dataTrain)
+%     X = seq_dataTrain{n};
+%     XTrain{n} = X(:,1:end-1);
+%     TTrain{n} = X(:,2:end);
+% end
+% 
+% for n = 1:numel(seq_dataTest)
+%     X = seq_dataTest{n};
+%     XTest{n} = X(:,1:end-1);
+%     TTest{n} = X(:,2:end);
+% end
 
 %% Sort by sequence length
-for i=1:numel(XTrain)
-    sequence = XTrain{i};
+for i=1:numel(sequence_data)
+    sequence = sequence_data{i};
     sequenceLengths(i) = size(sequence,2);
 end
 
 [sequenceLengths,idx] = sort(sequenceLengths,'descend');
-XTrain = XTrain(idx);
-TTrain = TTrain(idx);
+XTrain = sequence_data(idx);
 
 %% Save the output
-outputFile = fullfile("data/full-sim-data-022223", 'FullData.mat');
-save(outputFile, 'XTest', 'TTest', 'XTrain', 'TTrain', 'p', '-v7.3')
+outputFile = fullfile("data/full-sim-data-091023", 'TrainData.mat');
+save(outputFile, 'XTrain', 'p', '-v7.3')
 
 
