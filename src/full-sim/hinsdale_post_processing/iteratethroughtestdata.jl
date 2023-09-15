@@ -27,43 +27,47 @@ offset_rmses_pitch = []
 raw_rmses_roll = []
 offset_rmses_roll = []
 
-culled_traj_codes =
+
+# EXCLUDE list 
+# 012-3, 014-0, 014-1, 019-1, 020-0, alt 009-0, 009-1
+top_50_trajs =
 ["003-0", "003-1", 
 "004-0", "004-1", 
 "005-0", "005-1", "005-2", "005-3", 
 "006-0", "006-1", "006-2", "006-3", "006-4", 
 "007-0", "007-1",
-"009-0", "009-1",
-"012-0", "012-1", 
-"014-2",   
-"016-1", 
-"019-0", "019-1", "019-2", 
+"009-0", 
+"012-0", "012-1", "012-2", 
+"014-2", 
+"015-0", "015-1", 
+"016-0", "016-1", 
+"019-0", "019-2", "019-3",
 "020-1", 
 "024-0", "024-1", "024-2", 
-"025-0",  
-"026-0", "026-1", 
+"025-0", "025-1", 
+"026-0", "026-1", "026-2", 
 "030-0", "030-1", 
 "_alt_001-0", "_alt_001-1", "_alt_001-2", 
 "_alt_002-0", "_alt_002-1", 
-"_alt_008-0", 
-"_alt_008-1", "_alt_008-2", 
-"_alt_009-0", "_alt_009-1", 
+"_alt_008-0", "_alt_008-1", "_alt_008-2", 
+"_alt_009-1", 
 "_alt_011-0", "_alt_011-1", "_alt_011-2"]
 
-a_offset = -1.0
+a_offset = -1.8
 num_offset_steps = -Int(a_offset/.04)
 
 max_pitches = []
 min_pitches = []
 
-trial_code = "003-0"
-for (i, trial_code) in enumerate(all_traj_codes)
+trial_code = "009-1"
+# for (i, trial_code) in enumerate(top_50_trajs)
     # get original IMU data
-    imu_df = get_imu_data_from_csv(trial_code, "hinsdale-data-2023")
-    imu_df = calc_rpy(imu_df)
+    # imu_df = get_imu_data_from_csv(trial_code, "hinsdale-data-2023", true)
+    # imu_df = calc_rpy(imu_df)
+    mocap_df = get_vehicle_response_from_csv(trial_code, "hinsdale-data-2023", false)
     # get saved sim data (that includes downsampled imu)
     simdata_filepath = joinpath("data", "full-sim-data-091023", "test", trial_code*".csv")
-    og_sim_df = CSV.read(simdata_filepath, DataFrame)
+    # og_sim_df = CSV.read(simdata_filepath, DataFrame)
 
     # ===== Retroactively adding angular velocities into the dataset =====
     # const_dt_imu_angvels_df = interp_at_timesteps(og_sim_df[!,:time_secs], imu_df, [:x_angvel, :y_angvel, :z_angvel], "linear")
@@ -97,27 +101,27 @@ for (i, trial_code) in enumerate(all_traj_codes)
     # p = new_plot()
     # @df og_sim_df plot!(p, :time_secs, [:pitch, :qs2])
     # title!("Traj $(trial_code)")
-    # # @df imu_df plot!(p, :time_secs, :pitch)
+    # @df imu_df plot!(p, :time_secs, :pitch)
     # @df og_sim_df plot!(p, :time_secs, [:qs7.+3.07, :qs8, :qs9, :qs10.+2.879])
     # @df og_sim_df plot!(p, :time_secs, [:axis_e_pos, :axis_d_pos, :axis_c_pos, :axis_b_pos])
     # plot!(p, y_lims=(-.5, 6))
     # display(p)
 
     # ===== Write the data back to the filepath =====
-    CSV.write(simdata_filepath, og_sim_df)
-end
+    # CSV.write(simdata_filepath, og_sim_df)
+# end
 
 
 # ----------------------------------------------------------
 #             Show RMSE data for roll/pitch
 # ----------------------------------------------------------
 #%%
-@show mean(raw_rmses_pitch)
-@show std(raw_rmses_pitch, mean=mean(raw_rmses_pitch))
-@show mean(raw_rmses_roll)
-@show std(raw_rmses_roll, mean=mean(raw_rmses_roll))
+# @show mean(raw_rmses_pitch)
+# @show std(raw_rmses_pitch, mean=mean(raw_rmses_pitch))
+# @show mean(raw_rmses_roll)
+# @show std(raw_rmses_roll, mean=mean(raw_rmses_roll))
 
-@show mean(offset_rmses_pitch)
-@show std(offset_rmses_pitch, mean=mean(offset_rmses_pitch))
-@show mean(offset_rmses_roll)
-@show std(offset_rmses_roll, mean=mean(offset_rmses_roll))
+# @show mean(offset_rmses_pitch)
+# @show std(offset_rmses_pitch, mean=mean(offset_rmses_pitch))
+# @show mean(offset_rmses_roll)
+# @show std(offset_rmses_roll, mean=mean(offset_rmses_roll))

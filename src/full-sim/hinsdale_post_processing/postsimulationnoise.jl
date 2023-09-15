@@ -1,7 +1,7 @@
 using Glob, DataFrames
 
 # Get all trajectories in a folder
-traj_file_names = glob("*.csv", joinpath("data", "full-sim-data-091023", "train"))
+traj_file_names = glob("*.csv", joinpath("data", "full-sim-data-091023", "validate"))
 
 # Set up noise distributions
 v_ang_vel_noise_dist = Distributions.Normal(0, .0013) # 75 mdps (LSM6DSOX)
@@ -17,7 +17,7 @@ arm_vel_extra_noise_dist = Distributions.Normal(0, .0017*10)
 # file_name = "data/full-sim-data-091023/train/0006.csv"
 # Iterate through each file
 
-for file_name in traj_file_names[]
+for file_name in traj_file_names
 
     # read file into dataframe
     file_df = CSV.read(file_name, DataFrame)
@@ -69,5 +69,5 @@ for file_name in traj_file_names[]
     file_df[!,:extranoisy_vs10] = file_df[!,:vs10] + rand(arm_vel_extra_noise_dist, traj_length)
  
     select!(file_df, Not([:qs4, :qs5, :qs6, :qs7, :qs10, :vs4, :vs5, :vs6, :w_ori, :x_ori, :y_ori, :z_ori]))
-    # CSV.write(file_name, file_df)
+    CSV.write(file_name, file_df)
 end
