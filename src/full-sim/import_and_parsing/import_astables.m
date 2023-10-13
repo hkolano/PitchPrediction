@@ -8,8 +8,9 @@ First step in Pitch Prediction after data gathering. Replaces
 import_full_data_meas_and_actual.
 last updated 9/12/23
 %}
-data_set = "test";
+data_set = "train";
 datafolder = strcat("data/full-sim-data-091023/", data_set);
+get_normalization_params = false; % KEEP THIS FALSE UNLESS YOU WANT TO OVERWRITE THE PARAMS
 
 % define columns to keep 
 % qs1-2 (roll, pitch)
@@ -17,25 +18,24 @@ datafolder = strcat("data/full-sim-data-091023/", data_set);
 % vs1-3 (vehicle angular velocities)
 % vs7-10 (joint velocities e->b)
 % not noisy q1 and q2 if noisy values are used 
-noiseless_input_names = ["qs1", "qs2", "qs7", "qs8", "qs9", "qs10", "vs1", "vs2", "vs3", "vs7", "vs8", "vs9", "vs10"];
+noiseless_input_names = ["qs1", "qs2", "qs7adj", "qs8", "qs9", "qs10adj", "vs1", "vs2", "vs3", "vs7", "vs8", "vs9", "vs10"];
 noisy_input_names = ["noisy_qs1", "noisy_qs2", "noisy_qs7", "noisy_qs8", "noisy_qs9", "noisy_qs10", "noisy_vs1", "noisy_vs2", "noisy_vs3", "noisy_vs7", "noisy_vs8", "noisy_vs9", "noisy_vs10", "qs1", "qs2"];
 extranoisy_input_names =  ["extranoisy_qs1", "extranoisy_qs2", "extranoisy_qs7", "extranoisy_qs8", "extranoisy_qs9", "extranoisy_qs10", "extranoisy_vs1", "extranoisy_vs2", "extranoisy_vs3", "extranoisy_vs7", "extranoisy_vs8", "extranoisy_vs9", "extranoisy_vs10", "qs1", "qs2"];
 hardware_input_names = ["roll", "pitch", "axis_e_pos", "axis_d_pos", "axis_c_pos", "axis_b_pos", "x_angvel", "y_angvel", "z_angvel", "axis_e_vel", "axis_d_vel", "axis_c_vel", "axis_b_vel"];
 
-
-% load in data  array (only needed for train data)
-if data_set == "train"
+if get_normalization_params == true
     sequence_data_array = import_trajs_to_array(datafolder, noiseless_input_names);
-    [sequence_data_array, p] = normalize_data(sequence_data_array);
-else
-    load("data/full-sim-data-091023/NormalizedTableTrainData.mat", "p");
+    [~,p] = normalize_data(sequence_data_array);
+    save(fullfile("data/full-sim-data-091023", "normparams.mat"), 'p')
+else 
+    load("data/full-sim-data-091023/normparams.mat")
 end
 
 % Load in sequence data in table format, getting only the relevant columns
 if data_set == "test"
     sequence_data_table = import_trajs_to_table(datafolder, hardware_input_names);
 else
-    sequence_data_table = import_trajs_to_table(datafolder, noiseless_input_names);
+    sequence_data_table = import_trajs_to_table(datafolder, noisy_input_names);
 end
 
 num_base_inputs = length(noiseless_input_names);
@@ -51,7 +51,7 @@ for i = 1:numel(sequence_data_table)
             mu = p.mu(n-num_base_inputs);
             sig = p.sig(n-num_base_inputs);
         end
-        traj_table{:,n} = traj_table{:,n}-mu ./ sig;
+        traj_table{:,n} = (traj_table{:,n}-mu) ./ sig;
     end
     sequence_data_table{i} = traj_table;
 end
@@ -59,13 +59,13 @@ end
 if data_set == "test"
     outputFile = fullfile("data/full-sim-data-091023", "NormalizedTableTestData.mat");
 elseif data_set == "train"
-    outputFile = fullfile("data/full-sim-data-091023", "NormalizedTableTrainData.mat");
+    outputFile = fullfile("data/full-sim-data-091023", "NormalizedTableTrainDataNoisy.mat");
 elseif data_set == "validate"
-    outputFile = fullfile("data/full-sim-data-091023", "NormalizedTableValData.mat");
+    outputFile = fullfile("data/full-sim-data-091023", "NormalizedTableValDataNoisy.mat");
 end
 save(outputFile, 'sequence_data_table', 'p', '-v7.3')
 
-
+%%
 % ----- IMPORT FUNCTIONS -----
 function data = import_trajs_to_table(folder, input_names)
     fds = fileDatastore(folder,"ReadFcn",@read_to_array);

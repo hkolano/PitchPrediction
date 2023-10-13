@@ -58,7 +58,7 @@ show_plots = false
 show_animation = false
 
 # Create (num_trajs) different trajectories and save to csvs 
-for n in ProgressBar(415:num_trajs)
+for n in ProgressBar(1369:num_trajs)
 
     # ----------------------------------------------------------
     #                   Define a Trajectory
